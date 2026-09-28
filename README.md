@@ -325,6 +325,20 @@ An autonomous bidding agent (v4) watches one auction for one custodial demo wall
 
 **Env.** Backend: `AI_AGENT_URL` (URL of the `ai-agent` Railway service; empty → deterministic fallback only). Agent service (`agent/`): `GROQ_API_KEY`, `CHITCHAIN_API_URL`, `MODEL` (default `groq/qwen/qwen3.8-27b` via LiteLLM), `PORT`. Local run: `cd agent && python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt && GROQ_API_KEY=… CHITCHAIN_API_URL=http://localhost:4000 .venv/bin/uvicorn main:app --port 8000`.
 
+### Live proof (circle #8, round 1, MST testnet, 2026-09-29)
+
+The agent was activated for demo wallet A with the goal "I need liquidity before Diwali", desired payout 0.22 MST, maximum discount 0.05 MST (20 %), high urgency, autonomous bidding on, demo rival on. Every row below is a real testnet transaction.
+
+| Step | What happened | Transaction |
+|---|---|---|
+| Rival bid | Demo rival (wallet B) placed a 0.005 MST discount so the agent had something to respond to | [`0x7068…27d8`](https://testnet.mstscan.com/tx/0x7068468af61cb8344028918bafbd1ae66bc5aab5d061a6a0b16e10fa683b27d8) |
+| Crew decision | Auction Analyst + Bidding Strategist (Groq via CrewAI) returned `BID 0.0299 MST`, reason code `DESIRED_PAYOUT`, confidence 0.9 | (off-chain) |
+| Risk guard | Deterministic checks passed: below the 0.05 MST cap, below 20 % of the pot, above the current best, correct circle and round, eligible wallet | (off-chain) |
+| Agent bid | Wallet A bid a 0.0299 MST discount (payout 0.22 MST), confirmed in block 5792441 | [`0x4f47…dc75`](https://testnet.mstscan.com/tx/0x4f47f111e5e089302605eea3d2e4941d3966436509332cda8edd599879a0dc75) |
+| Settlement | Keeper settled round 1; wallet A won the pot | [`0x3151…3554`](https://testnet.mstscan.com/tx/0x3151ae918f39ee6283b4b18e136124b636b5a40aa78fe82195ae5c939e133554) |
+
+The agent then reported "You hold the winning bid", waited through the rest of the window, and finished with "Auction ended".
+
 ## MSTScan verification
 Every action in the UI links to `https://testnet.mstscan.com/tx/<hash>`. Open the contract page, tab **Logs**, to see `DefaultDetected`, `HoldbackApplied`, `RoundSettled` and `DividendCredited` with their decoded arguments. Only hashes returned by the MST network are ever displayed.
 
