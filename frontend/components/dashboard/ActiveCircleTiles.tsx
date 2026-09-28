@@ -23,21 +23,21 @@ export function ActiveCircleTiles({ circle: summary, account }: { circle: MyCirc
   const labelFor = (a: string) => room.data?.members.find((m) => m.address.toLowerCase() === a.toLowerCase())?.label ?? shortAddr(a);
   const hasBid = round && big(round.bestDiscount) > 0n;
   const claimable = big(me.claimable);
-  const cta = claimable > 0n ? "Withdraw" : !me.paidThisRound && clock.roundPhase === "contribution" ? "Contribute" : !me.hasWon && big(me.bidThisRound) === 0n && clock.roundPhase !== "settling" ? "Place bid" : "Open room";
+  const cta = claimable > 0n ? "Withdraw" : !me.paidThisRound && clock.roundPhase === "contribution" ? "Contribute" : !me.hasWon && big(me.bidThisRound) === 0n && clock.roundPhase !== "settling" ? "Place a bid" : "Open the room";
   const deadline = clock.roundPhase === "contribution" ? clock.contributionDeadline : clock.biddingDeadline;
   const used = big(me.collateralUsed);
 
   return (
-    <section className="space-y-3" aria-label={`Circle #${circle.id}`}>
+    <section className="space-y-4" aria-label={`Circle #${circle.id}`}>
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-lg">
+        <h2 className="text-[17px]">
           <Link href={`/circle/${circle.id}`} className="hover:underline">Circle #{circle.id}</Link>
           <span className="ml-2 text-sm font-normal text-muted-foreground">Round {circle.round} of {circle.maxMembers}</span>
         </h2>
         <Countdown deadline={deadline || null} active={circle.status === 1} label={clock.roundPhase === "settling" ? undefined : PHASE_LABEL[clock.roundPhase]} tone={clock.roundPhase} size="sm" />
         <Button asChild className="ml-auto"><Link href={`/circle/${circle.id}`}>{cta}</Link></Button>
       </div>
-      <RevealGroup mode="load" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <RevealGroup mode="load" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile label="Current pot" testnet valueClassName="text-pot" value={round ? <>{formatMst(round.collected)} <span className="text-base font-medium text-muted-foreground">/ {formatMst(round.expectedPot)}</span></> : "—"} hint="collected / expected, MST" loading={!round && room.loading} />
         <StatTile label="My contribution" value={<ContributionChip status={me.contributionStatus} className="text-xs" />} hint={me.paidThisRound ? `${formatMst(circle.contribution)} MST paid this round` : `${formatMst(circle.contribution)} MST due`} />
         <StatTile label="My collateral" testnet value={<MstcAmount wei={me.collateral} size="lg" animate />} hint={used > 0n ? `used ${formatMst(used)} MST` : "nothing used"} />
@@ -47,7 +47,7 @@ export function ActiveCircleTiles({ circle: summary, account }: { circle: MyCirc
         <StatTile label="Claimable" testnet value={<MstcAmount wei={claimable} size="lg" className={claimable > 0n ? "text-success" : undefined} animate />} hint={claimable > 0n ? "payouts, dividends and refunds" : "nothing to withdraw yet"} />
         <StatTile label="Won" value={me.hasWon ? "Yes" : "Not yet"} hint={me.hasWon ? "holdback released at completion" : "you can still bid"} />
       </RevealGroup>
-      {room.error && !room.data && <p className="text-xs text-muted-foreground">Live round data unavailable, showing the last known state.</p>}
+      {room.error && !room.data && <p className="text-[13px] text-muted-foreground">Live round data is temporarily unavailable. Showing the last known state.</p>}
     </section>
   );
 }

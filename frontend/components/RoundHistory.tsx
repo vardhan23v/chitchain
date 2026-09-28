@@ -29,11 +29,11 @@ function when(ts: number): string {
 export function RoundHistory({ rounds, loading, labelFor, source, className }: Props) {
   return (
     <Card className={cn("overflow-hidden", className)}>
-      <SectionTitle Icon={History} className="px-4 pt-4 md:px-5" trailing={source === "chain" ? <span>from contract · no tx links</span> : undefined}>Round history</SectionTitle>
+      <SectionTitle Icon={History} className="px-4 pt-4 md:px-5" trailing={source === "chain" ? <span>Read from the contract, no transaction links</span> : undefined}>Round history</SectionTitle>
       {loading && !rounds ? (
-        <div className="space-y-2 p-4">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
+        <div className="space-y-2 p-4" aria-busy="true">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-9 w-full" />)}</div>
       ) : !rounds || rounds.length === 0 ? (
-        <p className="p-4 text-sm text-muted-foreground md:px-5">No rounds settled yet.</p>
+        <p className="p-4 text-[13px] text-muted-foreground md:px-5">No rounds settled yet.</p>
       ) : (
         <TableScroll className="mt-3">
           <table className="table-data w-full min-w-[760px] text-sm">

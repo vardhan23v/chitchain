@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -45,7 +46,7 @@ export default function CreatePage() {
     let canClaim = signedIn;
     if (!canClaim) {
       canClaim = !!(await auth.signIn());
-      if (!canClaim) toast("Creating without a name, sign in later to claim and name this circle.");
+      if (!canClaim) toast("Creating without a name. Sign in later to claim and name this circle.");
     }
     const { name, description } = parsed.data;
     const params = toCircleParams(parsed.data);
@@ -55,7 +56,7 @@ export default function CreatePage() {
         return c.createCircle(params);
       },
       {
-        success: "Circle created on-chain",
+        success: "Circle created.",
         onMined: async (hash) => {
           // Find the CircleCreated event to get the id; fall back to circleCount.
           const c = await getSignerContract();
@@ -77,7 +78,7 @@ export default function CreatePage() {
             toast.success(`"${r.circle.name ?? name}" is yours, you're the organizer.`);
             router.push("/organizer");
           } catch (e) {
-            toast.error(`Circle #${id} is on-chain, but naming it failed: ${e instanceof Error ? e.message : "backend unreachable"}. You can name it later from the Organizer dashboard.`);
+            toast.error(`Circle #${id} was created, but naming it failed. You can name it later from the organizer dashboard.`, { description: e instanceof Error ? e.message : undefined });
             router.push(`/circle/${id}`);
           }
         },
@@ -85,23 +86,25 @@ export default function CreatePage() {
     );
   };
 
-  const cta = !HAS_CONTRACT ? "Contract not deployed" : !wallet.account ? "Connect BridgeKey" : !wallet.correctChain ? "Switch to MST Testnet" : auth.status === "signing" ? "Confirm the signature in BridgeKey…" : pending ? "Confirm in BridgeKey…" : signedIn ? "Create circle" : "Sign in & create circle";
+  const busy = auth.status === "signing" || pending;
+  const cta = !HAS_CONTRACT ? "Contract not deployed" : !wallet.account ? "Connect BridgeKey" : !wallet.correctChain ? "Switch to MST Testnet" : signedIn || auth.status === "signing" ? "Create a circle" : "Sign in and create a circle";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 md:space-y-8">
       <PageHeader eyebrow="New circle" title="Create a circle" description="Set the rules once. The contract enforces them for everyone. Amounts are MST testnet coins." />
       <div className="grid items-start gap-6 lg:grid-cols-[3fr_2fr]">
-        <Card className="p-4 md:p-6">
+        <Card className="p-4 md:p-5">
           <form className="space-y-6" onSubmit={submit} noValidate>
             <CoreFields v={v} set={set} errors={errors} />
             <RiskFields v={v} set={set} errors={errors} />
-            <Button type="submit" size="lg" className="w-full" disabled={pending || !HAS_CONTRACT || !wallet.hasWallet}>{cta}</Button>
+            <Button type="submit" size="lg" className="w-full" disabled={busy || !HAS_CONTRACT || !wallet.hasWallet}>{busy && <Loader2 className="animate-spin" aria-hidden />}{cta}</Button>
             <TxStepper state={state} />
             {errors.form && <p className="text-xs text-danger" role="alert">{errors.form}</p>}
-            {!wallet.hasWallet && <p className="text-center text-xs text-muted-foreground">Install BridgeKey to create a circle.</p>}
+            {busy && <p className="text-center text-[13px] text-muted-foreground" role="status">Confirm in BridgeKey to continue.</p>}
+            {!wallet.hasWallet && <p className="text-center text-[13px] text-muted-foreground">Install BridgeKey to create a circle.</p>}
             {wallet.hasWallet && !signedIn && (
-              <p className="text-center text-xs text-muted-foreground">
-                <Link href="/login?next=/create" className="text-primary hover:underline">Sign in</Link> to name your circle and get the Organizer dashboard.
+              <p className="text-center text-[13px] text-muted-foreground">
+                <Link href="/login?next=/create" className="text-primary hover:underline">Sign in</Link> to name your circle and get the organizer dashboard.
               </p>
             )}
           </form>

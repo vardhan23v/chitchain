@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, CircleDot, Coins, Plus, Sparkles } from "lucide-react";
+import { Activity, CircleDot, Coins, Plus, Sparkles, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,10 +38,10 @@ export default function HomePage() {
   const featured = pickFeatured(all);
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10 md:space-y-12">
       {/* One load sequence: eyebrow, headline, copy, CTAs, then the featured circle. */}
       <RevealGroup as="section" mode="load" className="grid items-center gap-8 pt-2 md:grid-cols-[3fr_2fr] md:pt-6">
-        <div>
+        <div className="max-w-xl">
           <RevealItem className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
             <span>Chit funds on MST Blockchain</span>
             <TestnetBadge size="xs" />
@@ -52,7 +52,7 @@ export default function HomePage() {
             </h1>
           </RevealItem>
           <RevealItem>
-            <p className="mt-4 max-w-xl text-[15px] text-muted-foreground md:text-lg">Contributions, auctions, payouts and penalties are enforced by code. Every step is verifiable on MSTScan.</p>
+            <p className="mt-4 text-[15px] text-muted-foreground md:text-lg">Contributions, auctions, payouts and penalties are enforced by code. Every step is verifiable on MSTScan.</p>
           </RevealItem>
           <RevealItem className="mt-6 flex flex-wrap gap-3">
             <Button size="lg" asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>
@@ -64,10 +64,10 @@ export default function HomePage() {
         </RevealItem>
       </RevealGroup>
 
-      <RevealGroup as="section" className="grid grid-cols-2 gap-3 md:grid-cols-3" aria-label="Network stats">
+      <RevealGroup as="section" className="grid grid-cols-2 gap-4 md:grid-cols-3" aria-label="Network stats">
         <StatTile label="Circles live" Icon={CircleDot} iconClassName="text-primary" value={stats?.circlesLive ?? (data ? all.filter((c) => c.status <= 1).length : "—")} loading={loading && !data} hint={stats ? `${stats.circlesTotal} total` : data?.source === "chain" ? "read from contract" : undefined} />
-        <StatTile label="MST in contracts" Icon={Coins} iconClassName="text-pot" testnet value={stats ? <CountUpMst wei={stats.mstcInContract} fromZero /> : "—"} valueClassName="text-pot" loading={loading && !data} hint={stats ? "held by the contract, not by anyone" : "needs backend"} />
-        <StatTile label="On-chain transactions" Icon={Activity} iconClassName="text-chain" value={stats ? <CountUp value={stats.txCount} fromZero /> : "—"} loading={loading && !data} hint={stats ? "every one verifiable on MSTScan" : "needs backend"} className="col-span-2 md:col-span-1" />
+        <StatTile label="MST in contracts" Icon={Coins} iconClassName="text-pot" testnet value={stats ? <CountUpMst wei={stats.mstcInContract} fromZero /> : "—"} valueClassName="text-pot" loading={loading && !data} hint={stats ? "held by the contract, not by anyone" : "temporarily unavailable"} />
+        <StatTile label="On-chain transactions" Icon={Activity} iconClassName="text-chain" value={stats ? <CountUp value={stats.txCount} fromZero /> : "—"} loading={loading && !data} hint={stats ? "every one verifiable on MSTScan" : "temporarily unavailable"} className="col-span-2 md:col-span-1" />
       </RevealGroup>
 
       <HowItWorks />
@@ -88,17 +88,21 @@ export default function HomePage() {
             </TabsList>
           </Tabs>
         </div>
-        {slow && !data && <p className="text-sm text-warning" role="status">MST testnet is slow, retrying</p>}
+        {slow && !data && <p className="text-[13px] text-warning" role="status">MST testnet is slow, retrying.</p>}
         {loading && !data ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-52 rounded-2xl" />)}</div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-64 rounded-2xl" />)}</div>
         ) : circles.length === 0 ? (
+          error && !data ? (
+            <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="Circle data is temporarily unavailable." text="Check your connection and try again in a moment." />
+          ) : (
           <EmptyState
             Icon={Sparkles}
             tone="bg-pot/10 text-pot"
-            title={error && !data ? "Couldn't reach the backend or the contract" : all.length ? `No ${filter} circles` : "No circles here yet"}
-            text={error && !data ? "Check your connection and try again." : "Set the rules once. The contract enforces them for everyone."}
-            action={<Button asChild><Link href="/create"><Plus aria-hidden /> Create the first circle</Link></Button>}
+            title={all.length ? `No ${filter} circles yet` : "No circles here yet"}
+            text="Set the rules once. The contract enforces them for everyone."
+            action={<Button asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>}
           />
+          )
         ) : (
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={filter} exit={{ opacity: 0 }} transition={{ duration: 0.15, ease: EASE }}>

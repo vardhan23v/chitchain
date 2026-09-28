@@ -43,7 +43,7 @@ export function RoomHeader({ circle, round, txCount, onSettle, settling, source 
           {circle.name && <span className="tnum">Circle #{circle.id}</span>}
           {active && <span className="tnum font-normal">Round {circle.round} of {circle.maxMembers}</span>}
           {circle.status === 0 && <span className="tnum font-normal">{circle.memberCount}/{circle.maxMembers} members</span>}
-          <span className="inline-flex items-center gap-1 font-normal" title={source === "api" ? "Indexed by the ChitChain backend" : "Backend offline, reading the contract directly"}>
+          <span className="inline-flex items-center gap-1 font-normal" title={source === "api" ? "Indexed by ChitChain" : "Indexer offline, reading the contract directly"}>
             <Hash className="h-3 w-3" aria-hidden />
             {source === "api" ? <span className="tnum">{txCount} on-chain transactions</span> : <span>reading directly from the contract</span>}
           </span>

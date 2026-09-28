@@ -24,7 +24,7 @@ export function CircleCard({ c }: { c: CircleSummary }) {
   const st = STATUS[c.status];
   const fill = useCountdown(c.joinDeadline, c.status === 0);
   const pot = BigInt(c.contribution) * BigInt(c.maxMembers);
-  const cta = c.status === 0 ? "Join circle" : c.status === 1 ? "Open room" : "View summary";
+  const cta = c.status === 0 ? "Join the circle" : c.status === 1 ? "Open the room" : "View the summary";
   const done = c.status >= 2;
 
   return (
@@ -32,8 +32,8 @@ export function CircleCard({ c }: { c: CircleSummary }) {
     <Card className={cn("flex w-full flex-col gap-4 p-4 md:p-5", done && "opacity-80")}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate text-base font-semibold" title={c.name ? `${c.name} · Circle #${c.id}` : undefined}>{c.name ?? `Circle #${c.id}`}</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="truncate text-[17px] font-semibold tracking-tight" title={c.name ? `${c.name} · Circle #${c.id}` : undefined}>{c.name ?? `Circle #${c.id}`}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
             {c.name && <span className="tnum">Circle #{c.id} ·</span>}
             {c.status === 1 && <span className="tnum">Round {c.round} of {c.maxMembers}</span>}
             {c.status === 0 && <span className="tnum">{c.memberCount}/{c.maxMembers} joined</span>}
@@ -47,14 +47,14 @@ export function CircleCard({ c }: { c: CircleSummary }) {
       </div>
 
       <div>
-        <div className="text-[11px] font-medium text-muted-foreground">{c.status === 0 ? "Pot per round" : c.status === 1 ? "Pot this round" : "Pot per round"}</div>
+        <div className="text-[13px] font-medium text-muted-foreground">{c.status === 1 ? "Pot this round" : "Pot per round"}</div>
         <MstcAmount wei={pot} size="lg" className={done ? "text-foreground" : "text-pot"} />
-        <div className="tnum mt-0.5 text-xs text-muted-foreground">
+        <div className="tnum mt-0.5 text-[13px] text-muted-foreground">
           {c.status === 2 || c.status === 3 ? `${c.maxMembers} rounds · ${c.memberCount} members` : <><MstcAmount wei={c.contribution} size="sm" className="text-foreground" /> per member · rounds of {formatDuration(c.contributionDuration + c.biddingDuration)}</>}
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 text-[13px] text-muted-foreground">
         <span className="flex items-center gap-1" aria-label={`${c.memberCount} of ${c.maxMembers} members`}>
           <span className="flex items-center gap-0.5" aria-hidden>
             {Array.from({ length: Math.min(c.maxMembers, 12) }, (_, i) => (

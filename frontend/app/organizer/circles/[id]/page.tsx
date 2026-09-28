@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ShieldHalf } from "lucide-react";
+import { ArrowLeft, ShieldHalf, WifiOff } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DefaultEventCard } from "@/components/DefaultEventCard";
@@ -43,7 +44,7 @@ function Analytics({ id }: { id: number }) {
   const rate = Math.round((d?.contributionRate ?? 0) * 100);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 md:space-y-8">
       <PageHeader
         back={<Link href="/organizer" className="inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline"><ArrowLeft className="h-3.5 w-3.5" aria-hidden /> My circles</Link>}
         eyebrow={`Circle #${id} · analytics`}
@@ -57,16 +58,16 @@ function Analytics({ id }: { id: number }) {
         }
       />
       <OrganizerNotice />
-      {d && !d.circle.name && <Card className="p-4"><NameCircleForm id={id} onSaved={() => void a.refetch()} /></Card>}
+      {d && !d.circle.name && <Card className="p-4 md:p-5"><NameCircleForm id={id} onSaved={() => void a.refetch()} /></Card>}
 
       {a.loading && !d ? (
-        <Skeleton className="h-40 rounded-2xl" />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-busy="true">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}</div>
       ) : a.error && !d ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">{isUnreachable(a.error) ? "Backend unreachable, analytics need the ChitChain API." : a.error}</Card>
+        <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="Analytics are temporarily unavailable." text={isUnreachable(a.error) ? "Check your connection and try again in a moment." : a.error} />
       ) : d ? (
         <>
-          <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Circle analytics">
-            <StatTile label="Round" value={d.circle.status === 1 ? `${d.round.round} / ${d.circle.maxMembers}` : "—"} hint={PHASE_LABEL[d.round.phase]} />
+          <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Circle analytics">
+            <StatTile label="Round" value={d.circle.status === 1 ? `${d.round.round} / ${d.circle.maxMembers}` : "—"} hint={d.circle.status === 1 ? PHASE_LABEL[d.round.phase] : "not active"} />
             <StatTile label="Current pot" testnet valueClassName="text-pot" value={<>{formatMst(d.round.collected)} <span className="text-base font-medium text-muted-foreground">/ {formatMst(d.round.expectedPot)}</span></>} hint="collected / expected, MST" />
             <StatTile label="Contribution rate" value={`${rate}%`} hint="this round">
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={rate} aria-valuemin={0} aria-valuemax={100}>
@@ -77,10 +78,10 @@ function Analytics({ id }: { id: number }) {
           </RevealGroup>
           <MembersTable circle={d.circle} members={d.members} viewer={auth.user?.walletAddress ?? null} extras={{}} />
           <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
-            <div className="space-y-4">
+            <div className="space-y-6">
               <RoundHistory rounds={d.rounds} loading={false} labelFor={labelFor} source="api" />
               {d.defaults.length > 0 && (
-                <section className="space-y-2">
+                <section className="space-y-3">
                   <SectionTitle Icon={ShieldHalf} tone="text-warning" trailing={<span className="tnum">{d.defaults.length}</span>}>Defaults</SectionTitle>
                   {d.defaults.map((x) => <DefaultEventCard key={`${x.member}-${x.round}-${x.txHash}`} d={x} compact />)}
                 </section>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, History, ShieldHalf, Users } from "lucide-react";
+import { History, ShieldHalf, Users, WifiOff } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DefaultEventCard } from "@/components/DefaultEventCard";
@@ -52,11 +52,11 @@ export function RoomTabs({ data, me, viewer, events, labelFor, onChanged }: Prop
     ) : (
       <div className="space-y-3">
         {backendDown ? (
-          <EmptyState Icon={Bot} tone="bg-muted text-muted-foreground" title="Default details need the backend indexer" />
+          <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="Default details are temporarily unavailable." text="Try again in a moment." />
         ) : defaults.loading && !defaults.data ? (
-          <Skeleton className="h-28 rounded-[22px]" />
+          <Skeleton className="h-28 rounded-[22px]" aria-busy="true" />
         ) : !defaults.data?.length ? (
-          <EmptyState Icon={ShieldHalf} tone="bg-success/10 text-success" title="No missed contributions" text="Every round so far was paid in full." />
+          <EmptyState Icon={ShieldHalf} tone="bg-success/10 text-success" title="No missed contributions." text="Every round so far was paid in full." />
         ) : (
           defaults.data.map((d) => <DefaultEventCard key={`${d.txHash}-${d.member}-${d.round}`} d={d} />)
         )}

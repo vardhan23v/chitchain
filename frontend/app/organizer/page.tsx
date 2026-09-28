@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,7 +30,7 @@ function Organizer() {
   if (forbidden) return <ForbiddenCard detail="The API says this wallet doesn't organize any circle yet. Create one to become an organizer." />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 md:space-y-8">
       <PageHeader
         eyebrow="Organizer dashboard"
         title="My circles"
@@ -39,17 +38,17 @@ function Organizer() {
         actions={
           <>
             {auth.user && <RoleBadge role={auth.user.role} />}
-            <Button asChild size="sm"><Link href="/create"><Plus aria-hidden /> New circle</Link></Button>
+            <Button asChild size="sm"><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>
           </>
         }
       />
       <OrganizerNotice plural />
       {circles.loading && !circles.data ? (
-        <div className="grid gap-4 md:grid-cols-2">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}</div>
+        <div className="grid gap-4 md:grid-cols-2" aria-busy="true">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className="h-72 rounded-2xl" />)}</div>
       ) : circles.error && !circles.data ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">{isUnreachable(circles.error) ? "Backend unreachable, organizer data needs the ChitChain API." : circles.error}</Card>
+        <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="Your circles are temporarily unavailable." text={isUnreachable(circles.error) ? "Check your connection and try again in a moment." : circles.error} />
       ) : list.length === 0 ? (
-        <EmptyState Icon={Users} title="You don't organize a circle yet" text="Create one. The contract stores you as creator and ChitChain lets you name it." action={<Button asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>} />
+        <EmptyState Icon={Users} title="You don't organize a circle yet." text="Create one. The contract records you as creator and ChitChain lets you name it." action={<Button asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">{list.map((c) => <OrganizerCircleCard key={c.id} c={c} onChanged={() => void circles.refetch()} />)}</div>
       )}

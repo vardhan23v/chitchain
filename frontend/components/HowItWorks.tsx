@@ -16,10 +16,10 @@ export function HowItWorks() {
   return (
     <section aria-label="How it works" className="space-y-4">
       <SectionTitle Icon={ListOrdered}>How it works</SectionTitle>
-      <RevealGroup as="ol" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+      <RevealGroup as="ol" className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         {STEPS.map((s, i) => (
-          <RevealItem as="li" key={s.title} className="min-w-0">
-            <Card className="flex h-full flex-col gap-3 p-4 md:p-5">
+          <RevealItem as="li" key={s.title} className="flex min-w-0">
+            <Card className="flex w-full flex-col gap-3 p-4 md:p-5">
               <div className="flex items-center justify-between">
                 <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.bg}`}>
                   <s.Icon className={`h-[18px] w-[18px] ${s.color}`} aria-hidden />
@@ -27,7 +27,7 @@ export function HowItWorks() {
                 <span className="tnum text-[11px] font-bold text-muted-foreground/70">0{i + 1}</span>
               </div>
               <div>
-                <div className="text-sm font-semibold">{s.title}</div>
+                <div className="text-[17px] font-semibold tracking-tight">{s.title}</div>
                 <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{s.text}</p>
               </div>
             </Card>

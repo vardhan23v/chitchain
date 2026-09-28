@@ -2,12 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, FlaskConical, Loader2, WifiOff } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { InfoBanner } from "@/components/InfoBanner";
+import { PageHeader, SectionTitle } from "@/components/PageHeader";
+import { StatTile } from "@/components/StatTile";
+import { TableScroll, TD, TH } from "@/components/TableScroll";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { AddressPill } from "@/components/AddressPill";
 import { RequireAuth } from "@/components/RequireAuth";
 import { MstcAmount } from "@/components/MstcAmount";
@@ -45,28 +51,30 @@ function Demo() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-2xl border-2 border-warning bg-warning/10 px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-warning">Demo controls <DemoBadge /> <TestnetBadge size="xs" /></div>
-        <p className="text-xs text-muted-foreground">Operator-only. Wallets A–E are custodial demo wallets held by the backend. Every action here is a real MST testnet transaction with testnet coins of no monetary value.</p>
-      </div>
+    <div className="space-y-6 md:space-y-8">
+      <PageHeader eyebrow="Platform admin" title="Demo controls" description="Operator-only. Wallets A to E are custodial demo wallets. Every action here is a real MST testnet transaction with testnet coins of no monetary value." actions={<><DemoBadge /><TestnetBadge size="xs" /></>} />
 
-      {d.error && !s && <p className="text-sm text-danger">Backend unreachable: {d.error}</p>}
+      {d.error && !s && (
+        <InfoBanner Icon={WifiOff} tone="warning" role="status">
+          <span className="font-semibold text-foreground">Demo controls are temporarily unavailable.</span>
+          <span className="mt-1 block font-mono text-[11px] text-muted-foreground/80">{d.error}</span>
+        </InfoBanner>
+      )}
 
-      <div className="grid gap-3 sm:grid-cols-4">
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Txs this demo</div><div className="tnum text-2xl font-bold">{s?.txCount ?? "—"}</div></Card>
-        <Card className="p-3"><div className="text-xs text-muted-foreground">Latest demo circle</div><div className="text-2xl font-bold">{s?.circleId ? <Link className="text-primary hover:underline" href={`/circle/${s.circleId}`}>#{s.circleId}</Link> : "—"}</div></Card>
-        <Card className="p-3 sm:col-span-2"><div className="text-xs text-muted-foreground">Contract</div>{s?.contract ? <a className="font-mono text-sm text-chain hover:underline" href={addrUrl(s.contract)} target="_blank" rel="noopener noreferrer">{shortAddr(s.contract, 10, 8)} <ExternalLink className="inline h-3 w-3" aria-hidden /></a> : <div className="text-sm">—</div>}</Card>
-      </div>
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Demo overview">
+        <StatTile label="Transactions this demo" value={s?.txCount ?? "—"} loading={!s && !d.error} />
+        <StatTile label="Latest demo circle" value={s?.circleId ? <Link className="text-primary hover:underline" href={`/circle/${s.circleId}`}>#{s.circleId}</Link> : "—"} loading={!s && !d.error} />
+        <StatTile label="Contract" className="col-span-2" value={s?.contract ? <a className="font-mono text-lg text-chain hover:underline" href={addrUrl(s.contract)} target="_blank" rel="noopener noreferrer" aria-label={`Contract ${s.contract} on MSTScan`}>{shortAddr(s.contract, 10, 8)} <ExternalLink className="inline h-3.5 w-3.5" aria-hidden /></a> : "—"} loading={!s && !d.error} />
+      </section>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" disabled={!!d.busy || !s} onClick={() => void d.fund()}><Spin k="fund" />Fund wallets</Button>
-        <Button variant="outline" disabled={!!d.busy || !s} onClick={() => void d.assessAll()}><Spin k="assess" />Assess all</Button>
+        <Button variant="outline" disabled={!!d.busy || !s} onClick={() => void d.fund()}><Spin k="fund" />Fund demo wallets</Button>
+        <Button variant="outline" disabled={!!d.busy || !s} onClick={() => void d.assessAll()}><Spin k="assess" />Assess all wallets</Button>
       </div>
 
-      <Card className="p-4">
-        <h2 className="text-base">New demo circle</h2>
-        <p className="text-xs text-muted-foreground">Creates a circle and joins all five demo wallets. The autopilot contributes and the agent bids each round.</p>
+      <Card className="p-4 md:p-5">
+        <SectionTitle Icon={FlaskConical} tone="text-warning">Create a demo circle</SectionTitle>
+        <p className="mt-1 text-[13px] text-muted-foreground">Creates a circle and joins all five demo wallets. The autopilot contributes and the agent bids each round.</p>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
           {(
             [
@@ -84,46 +92,50 @@ function Demo() {
           ))}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <Button disabled={!!d.busy || !s} onClick={() => void create()}><Spin k="new" />New demo circle</Button>
+          <Button disabled={!!d.busy || !s} onClick={() => void create()}><Spin k="new" />Create a demo circle</Button>
           {created && (
             <span className="flex flex-wrap items-center gap-2 text-sm">
-              Created <Link href={`/circle/${created.circleId}`} className="font-semibold text-primary hover:underline">Circle #{created.circleId} → open room</Link>
-              <TxLink hash={created.txHash} label="↗" />
+              Created <Link href={`/circle/${created.circleId}`} className="font-semibold text-primary hover:underline">circle #{created.circleId}</Link>
+              <TxLink hash={created.txHash} label="MSTScan" />
             </span>
           )}
         </div>
       </Card>
 
-      <Card className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-white/50 text-left text-xs text-muted-foreground">
-            <tr><th className="p-3">Label</th><th className="p-3">Address</th><th className="p-3">Balance</th><th className="p-3">Tier</th><th className="p-3">Skip payment</th><th className="p-3">Withdraw</th></tr>
+      <Card className="overflow-hidden">
+        {!s && d.error ? (
+          <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" className="border-0" title="Demo wallets are temporarily unavailable." />
+        ) : (
+        <TableScroll><table className="table-data w-full min-w-[720px] text-sm">
+          <thead>
+            <tr><th className={TH}>Wallet</th><th className={TH}>Address</th><th className={cn(TH, "text-right")}>Balance</th><th className={TH}>Tier</th><th className={TH}>This round</th><th className={TH}>Withdraw</th></tr>
           </thead>
           <tbody>
             {!s ? (
-              Array.from({ length: 5 }, (_, i) => <tr key={i}><td colSpan={6} className="p-3"><Skeleton className="h-6 w-full" /></td></tr>)
+              Array.from({ length: 5 }, (_, i) => <tr key={i}><td colSpan={6} className={TD}><Skeleton className="h-7 w-full" /></td></tr>)
             ) : (
               s.wallets.map((w) => (
-                <tr key={w.address} className="border-t">
-                  <td className="p-3 font-semibold">Member {w.label}</td>
-                  <td className="p-3"><AddressPill address={w.address} /></td>
-                  <td className="p-3"><MstcAmount wei={w.balance} size="sm" /></td>
-                  <td className="p-3"><Link href={`/member/${w.address}`}><TierChip tier={w.tier} /></Link></td>
-                  <td className="p-3">
+                <tr key={w.address}>
+                  <td className={cn(TD, "font-semibold")}>Member {w.label}</td>
+                  <td className={TD}><AddressPill address={w.address} /></td>
+                  <td className={cn(TD, "tnum text-right")}><MstcAmount wei={w.balance} size="sm" /></td>
+                  <td className={TD}><Link href={`/member/${w.address}`} aria-label={`Profile of member ${w.label}`}><TierChip tier={w.tier} /></Link></td>
+                  <td className={TD}>
                     <Button size="sm" variant={w.skip ? "destructive" : "outline"} disabled={!!d.busy} onClick={() => void d.skip(w.address, !w.skip)} aria-pressed={w.skip}>
-                      <Spin k={`skip:${w.address}`} />{w.skip ? "Skipping" : "Paying"}
+                      <Spin k={`skip:${w.address}`} />{w.skip ? "Skipping payment" : "Paying"}
                     </Button>
                   </td>
-                  <td className="p-3">
+                  <td className={TD}>
                     <Button size="sm" variant="ghost" disabled={!!d.busy || !s.circleId} onClick={() => s.circleId && void d.withdraw(w.address, s.circleId)}>
-                      <Spin k={`wd:${w.address}`} />Withdraw{s.circleId ? ` #${s.circleId}` : ""}
+                      <Spin k={`wd:${w.address}`} />Withdraw{s.circleId ? ` from #${s.circleId}` : ""}
                     </Button>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
-        </table>
+        </table></TableScroll>
+        )}
       </Card>
     </div>
   );

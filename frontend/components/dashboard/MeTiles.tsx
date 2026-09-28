@@ -30,11 +30,11 @@ export function MeTiles({ me, circles, account, loading }: Props) {
   const r = me?.risk ?? null;
   const bid = ac ? big(ac.me.bidThisRound) : 0n;
   const deadline = clock.roundPhase === "contribution" ? clock.contributionDeadline : clock.biddingDeadline;
-  const cta = ac ? (big(ac.me.claimable) > 0n ? "Withdraw" : !ac.me.paidThisRound && clock.roundPhase === "contribution" ? "Contribute" : !ac.me.hasWon && bid === 0n && clock.roundPhase !== "settling" ? "Place bid" : "Open room") : null;
+  const cta = ac ? (big(ac.me.claimable) > 0n ? "Withdraw" : !ac.me.paidThisRound && clock.roundPhase === "contribution" ? "Contribute" : !ac.me.hasWon && bid === 0n && clock.roundPhase !== "settling" ? "Place a bid" : "Open the room") : null;
   const t = me?.totals;
 
   return (
-    <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="My overview">
+    <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="My overview">
       <StatTile label="Wallet" Icon={Wallet} value={<span className="font-mono text-lg">{shortAddr(account)}</span>} hint={me?.user.displayName ?? "no display name"} />
       <StatTile label="Available MST" testnet value={me ? <MstcAmount wei={me.balance} size="lg" animate /> : "—"} loading={loading && !me} hint="testnet coins, no monetary value" />
       <StatTile label="Locked collateral" Icon={Lock} iconClassName="text-primary" testnet value={<MstcAmount wei={locked} size="lg" animate />} hint={`across ${circles.length} circle${circles.length === 1 ? "" : "s"}`} />

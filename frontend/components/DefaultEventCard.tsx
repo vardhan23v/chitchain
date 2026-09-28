@@ -1,10 +1,10 @@
 "use client";
 
-import { ExternalLink, ShieldAlert, ShieldHalf } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ShieldAlert, ShieldHalf } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { DefaultStatusChip } from "@/components/StatusChip";
-import { big, formatMst, shortAddr, timeAgo, txUrl } from "@/lib/format";
+import { TxLink } from "@/components/TxLink";
+import { big, formatMst, shortAddr, timeAgo } from "@/lib/format";
 import { memberLabel } from "@/lib/labels";
 import type { DefaultRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -39,11 +39,16 @@ export function DefaultEventCard({ d, compact, className }: Props) {
           <Icon className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold leading-snug">
+          <h3 className="text-[15px] font-semibold leading-snug">
             {memberLabel(d.label, d.member)} missed the Round {d.round} contribution.
           </h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {partial ? `Partially covered, shortfall ${formatMst(shortfall)} MST` : `Collateral covered ${formatMst(d.fromCollateral)} MST`} · {timeAgo(d.ts)} · <span className="font-mono">{shortAddr(d.member)}</span>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[13px] text-muted-foreground">
+            <span>{partial ? `Partially covered, shortfall ${formatMst(shortfall)} MST.` : `Collateral covered ${formatMst(d.fromCollateral)} MST.`}</span>
+            <span className="tnum">{timeAgo(d.ts)}</span>
+            <span aria-hidden>·</span>
+            <span className="font-mono">{shortAddr(d.member)}</span>
+            <span aria-hidden>·</span>
+            <TxLink hash={d.txHash} label="MSTScan" className="text-[13px]" />
           </p>
         </div>
         <DefaultStatusChip status={partial ? "PARTIALLY_COVERED" : "COVERED_BY_COLLATERAL"} />
@@ -58,11 +63,6 @@ export function DefaultEventCard({ d, compact, className }: Props) {
           ))}
         </dl>
       )}
-      <div className="mt-3">
-        <Button asChild size="sm" variant="outline" className="rounded-full border-chain/30 text-chain hover:bg-chain/10 hover:text-chain">
-          <a href={txUrl(d.txHash)} target="_blank" rel="noopener noreferrer" aria-label={`View transaction ${d.txHash} on MSTScan`}>View on MSTScan <ExternalLink aria-hidden /></a>
-        </Button>
-      </div>
     </Card>
   );
 }

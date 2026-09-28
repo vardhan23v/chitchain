@@ -47,16 +47,17 @@ export function RequireAuth({ roles, children }: { roles?: Role[]; children: Rea
 
   if (!auth.ready || auth.status === "signing") {
     return (
-      <div className="space-y-3" aria-busy="true">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 rounded-[22px]" />
+      <div className="space-y-6" aria-busy="true" aria-label="Loading">
+        <div className="space-y-2"><Skeleton className="h-3.5 w-32" /><Skeleton className="h-9 w-64" /></div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-28 rounded-[22px]" />)}</div>
+        <Skeleton className="h-48 rounded-[22px]" />
       </div>
     );
   }
   if (anonymous) {
     return (
       <Card className="p-8 text-center text-sm text-muted-foreground">
-        Redirecting to sign in… <Link href={`/login?next=${encodeURIComponent(path || "/")}`} className="text-primary hover:underline">Sign in</Link>
+        Redirecting to sign in. <Link href={`/login?next=${encodeURIComponent(path || "/")}`} className="text-primary hover:underline">Sign in</Link>
       </Card>
     );
   }

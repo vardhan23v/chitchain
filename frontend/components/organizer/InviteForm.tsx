@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { SectionTitle } from "@/components/PageHeader";
 import { AddressPill } from "@/components/AddressPill";
 import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
@@ -33,9 +34,9 @@ export function InviteForm({ circleId }: { circleId: number }) {
       const fresh = r.invites.map((i, idx) => (inviteAddr(i) ? i : ({ ...i, address: addrs[idx] ?? "" } as Invite)));
       setInvites((cur) => [...fresh, ...cur.filter((i) => !fresh.some((n) => inviteAddr(n) === inviteAddr(i)))]);
       setText("");
-      toast.success(`Invited ${r.invites.length} wallet${r.invites.length === 1 ? "" : "s"}`);
+      toast.success(`Invites sent to ${r.invites.length} wallet${r.invites.length === 1 ? "" : "s"}.`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Invite failed");
+      toast.error(e instanceof Error ? e.message : "The invites could not be sent.");
     } finally {
       setBusy(false);
     }
@@ -44,16 +45,16 @@ export function InviteForm({ circleId }: { circleId: number }) {
     try {
       await api.organizerUninvite(circleId, addr);
       setInvites((cur) => cur.filter((i) => inviteAddr(i) !== addr));
-      toast("Invite removed");
+      toast("Invite removed.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't remove the invite");
+      toast.error(e instanceof Error ? e.message : "The invite could not be removed.");
     }
   };
 
   return (
-    <Card className="rounded-2xl p-4 md:p-5">
-      <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground"><UserPlus className="h-4 w-4" aria-hidden /> Invite members</div>
-      <p className="mt-1 text-xs text-muted-foreground">One wallet address per line. Invites are a website nudge, joining still locks collateral on-chain.</p>
+    <Card className="p-4 md:p-5">
+      <SectionTitle Icon={UserPlus} tone="text-primary">Invite members</SectionTitle>
+      <p className="mt-1 text-[13px] text-muted-foreground">One wallet address per line. Invites are a website nudge. Joining still locks collateral on-chain.</p>
       <Textarea className="mt-3 font-mono text-xs" rows={3} placeholder="0x…" value={text} onChange={(e) => setText(e.target.value)} aria-label="Wallet addresses to invite" />
       {bad.length > 0 && <p className="mt-1 text-xs text-danger" role="alert">{bad.length} entr{bad.length === 1 ? "y isn't" : "ies aren't"} a valid address.</p>}
       <div className="mt-2 flex justify-end">

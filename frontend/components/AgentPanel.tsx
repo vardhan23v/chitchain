@@ -56,25 +56,25 @@ export function AgentPanel({ circleId, member, isDemoWallet, logs, mandate, labe
       if (urgency) body.urgency = urgency;
       if (riskTolerance) body.riskTolerance = riskTolerance;
       const r = await api.mandate(body);
-      toast.success(r.decision ? (r.decision.bidThisRound ? "Agent placed a bid" : "Agent decided not to bid this round") : "Goal saved, agent will act when the circle is active");
+      toast.success(r.decision ? (r.decision.bidThisRound ? "Agent placed a bid." : "Agent decided not to bid this round.") : "Goal saved. The agent acts once the circle is active.");
       onChanged();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Agent request failed");
+      toast.error(e instanceof Error ? e.message : "The agent request failed.");
     } finally {
       setBusy(false);
     }
   };
 
-  const status = !member ? "Connect or pick a member." : !isDemoWallet ? "Agent bids only for custodial demo wallets (A–E)." : backendDown ? "Backend unreachable." : mandate?.active ? "Mandate active, re-planned each round." : "";
+  const status = !member ? "Connect or pick a member." : !isDemoWallet ? "Agent bids only for custodial demo wallets (A–E)." : backendDown ? "The agent is temporarily unavailable." : mandate?.active ? "Mandate active, re-planned each round." : "";
 
   return (
     <Card className="border-agent/30 bg-agent/[0.03] p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-agent"><Bot className="h-3.5 w-3.5" aria-hidden /> AI bidding agent</span>
-        <Badge variant="agent">custodial demo wallet</Badge>
-        <Badge variant="outline" className="text-muted-foreground">experimental</Badge>
+        <span className="inline-flex items-center gap-1.5 text-[17px] font-semibold tracking-tight text-agent"><Bot className="h-4 w-4" aria-hidden /> AI bidding agent</span>
+        <Badge variant="agent">Custodial demo wallet</Badge>
+        <Badge variant="outline" className="text-muted-foreground">Experimental</Badge>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-[13px] text-muted-foreground">
         Tell the agent your goal. Each round it re-reads the auction and bids on-chain from {member && isDemoWallet ? `${labelFor(member.address)}'s` : "the member's"} custodial demo wallet. Real BridgeKey wallets bid manually.
       </p>
       {!signedIn ? (
@@ -100,7 +100,7 @@ export function AgentPanel({ circleId, member, isDemoWallet, logs, mandate, labe
       <div className="mt-3 flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">{status}</span>
         <Button size="sm" className="bg-agent text-agent-foreground hover:bg-agent/90" disabled={!canAsk} onClick={ask}>
-          {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Bot aria-hidden />} Ask agent
+          {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Bot aria-hidden />} Ask the agent
         </Button>
       </div>
       </>
@@ -115,7 +115,7 @@ function LevelSelect({ id, label, value, onChange, disabled }: { id: string; lab
     <div className="space-y-1">
       <Label htmlFor={id} className="text-xs">{label}</Label>
       <Select value={value || "unset"} onValueChange={(v) => onChange(v === "unset" ? "" : (v as Level))} disabled={disabled}>
-        <SelectTrigger id={id} className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
+        <SelectTrigger id={id} className="h-8"><SelectValue placeholder="Not set" /></SelectTrigger>
         <SelectContent>
           <SelectItem value="unset">Not set</SelectItem>
           {LEVELS.map((l) => <SelectItem key={l} value={l} className="capitalize">{l}</SelectItem>)}

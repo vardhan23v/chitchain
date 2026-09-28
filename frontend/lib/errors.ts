@@ -51,7 +51,7 @@ const MESSAGES: Record<string, (args: readonly unknown[]) => string> = {
   MemberRemoved: () => "You were removed from this circle, collateral exhausted.",
   NothingToWithdraw: () => "Nothing to withdraw.",
   InvalidParams: () =>
-    "Invalid circle parameters. Check: 3–20 members, base collateral ≥ contribution, fee ≤ 3%, holdback ≤ 100%, max discount ≤ 50%, and Low ≤ Medium ≤ High multipliers.",
+    "Invalid circle parameters. Check that members are 3 to 20, base collateral is at least the contribution, fee is at most 3%, holdback at most 100%, max discount at most 50%, and the tier multipliers rise from Low to High.",
   OnlyOracle: () => "Only the risk oracle can do this.",
   OnlyTreasury: () => "Only the treasury can do this.",
   DirectPaymentRejected: () => "Direct payments are rejected, use the app.",
@@ -81,7 +81,7 @@ export function parseTxError(e: unknown): UiError {
   }
   if (o?.code === "NETWORK_ERROR" || o?.code === "TIMEOUT") return { message: "MST testnet didn't answer, check your connection and try again.", neutral: false };
   if (o?.code === "CALL_EXCEPTION" || o?.code === "UNPREDICTABLE_GAS_LIMIT") return { message: "The contract rejected this transaction. The round may have moved on, refresh and try again.", neutral: false };
-  const msg = o?.reason && !RAW_PATTERNS.some((p) => p.test(o.reason!)) ? o.reason : o?.shortMessage ?? o?.message ?? "Transaction failed";
-  if (RAW_PATTERNS.some((p) => p.test(msg))) return { message: "Transaction failed, the contract rejected it.", neutral: false };
+  const msg = o?.reason && !RAW_PATTERNS.some((p) => p.test(o.reason!)) ? o.reason : o?.shortMessage ?? o?.message ?? "The transaction failed.";
+  if (RAW_PATTERNS.some((p) => p.test(msg))) return { message: "The contract rejected this transaction.", neutral: false };
   return { message: msg.length > 160 ? msg.slice(0, 157) + "…" : msg, neutral: false };
 }

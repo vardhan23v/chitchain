@@ -19,7 +19,7 @@ export function useDemo() {
       await state.refetch();
       return r;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Request failed");
+      toast.error(e instanceof Error ? e.message : "The request failed.");
       return null;
     } finally {
       setBusy(null);
@@ -29,10 +29,10 @@ export function useDemo() {
   return {
     ...state,
     busy,
-    fund: () => act("fund", api.demoFund, (r) => `Funded — ${r.txHashes.length} txs`),
-    assessAll: () => act("assess", api.demoAssessAll, (r) => `Assessed ${r.results.length} wallets on-chain`),
-    newCircle: (body: DemoNewCircleBody) => act("new", () => api.demoNewCircle(body), (r) => `Circle #${r.circleId} created and all 5 wallets joined`),
-    skip: (address: string, skip: boolean) => act(`skip:${address}`, () => api.demoSkip(address, skip), () => (skip ? "Will skip payment this round" : "Will pay this round")),
-    withdraw: (address: string, circleId: number) => act(`wd:${address}`, () => api.demoWithdraw(address, circleId), () => "Withdraw sent"),
+    fund: () => act("fund", api.demoFund, (r) => `Funded demo wallets, ${r.txHashes.length} transactions.`),
+    assessAll: () => act("assess", api.demoAssessAll, (r) => `Assessed ${r.results.length} wallets.`),
+    newCircle: (body: DemoNewCircleBody) => act("new", () => api.demoNewCircle(body), (r) => `Demo circle #${r.circleId} created, all five wallets joined.`),
+    skip: (address: string, skip: boolean) => act(`skip:${address}`, () => api.demoSkip(address, skip), () => (skip ? "This wallet will skip payment this round." : "This wallet will pay this round.")),
+    withdraw: (address: string, circleId: number) => act(`wd:${address}`, () => api.demoWithdraw(address, circleId), () => "Withdrawal sent."),
   };
 }

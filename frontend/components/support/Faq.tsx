@@ -13,7 +13,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     ),
   },
   {
-    q: "MST testnet & faucet",
+    q: "MST testnet and faucet",
     a: (
       <>
         Every amount in ChitChain is an MST testnet coin with no monetary value. Get test MST from the <A href={FAUCET_URL}>faucet</A>, 10 MST per wallet every 24 hours. You need a little MST for gas plus your contribution and collateral.
@@ -21,10 +21,10 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     ),
   },
   {
-    q: "Transactions & MSTScan",
+    q: "Transactions and MSTScan",
     a: (
       <>
-        Every action (join, contribute, bid, settle, withdraw) is a real transaction on {CHAIN_NAME}. Each toast and feed item links to <A href={EXPLORER_URL}>MSTScan</A>, where you can verify the amount, the sender and the contract. Stages: waiting for wallet → signing → submitted → confirming → confirmed.
+        Every action (join, contribute, bid, settle, withdraw) is a real transaction on {CHAIN_NAME}. Each toast and feed item links to <A href={EXPLORER_URL}>MSTScan</A>, where you can verify the amount, the sender and the contract. The stages are waiting for wallet, signing, submitted, confirming and confirmed.
       </>
     ),
   },
@@ -37,7 +37,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     ),
   },
   {
-    q: "Defaults & collateral",
+    q: "Defaults and collateral",
     a: (
       <>
         Collateral is locked when you join, sized by your risk tier. If you miss a contribution, the contract covers it from your collateral (and the reserve if needed) and records a default. Shortfalls are shown, never hidden. Remaining collateral and holdback are released when the circle completes.
@@ -51,11 +51,11 @@ export function Faq() {
     <div className="space-y-2">
       {FAQ.map((f) => (
         <details key={f.q} className="glass group rounded-[22px] transition-colors open:border-primary/30">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[22px] px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[22px] px-4 py-3 text-[15px] font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-90" aria-hidden />
             {f.q}
           </summary>
-          <p className="px-4 pb-4 pl-10 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+          <p className="px-4 pb-4 pl-10 text-[15px] leading-relaxed text-muted-foreground">{f.a}</p>
         </details>
       ))}
     </div>

@@ -16,7 +16,7 @@ export function useRisk(addr: string) {
       setData(await api.risk(addr));
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Backend unreachable");
+      setError(e instanceof Error ? e.message : "Risk assessment is temporarily unavailable.");
     } finally {
       setLoading(false);
     }

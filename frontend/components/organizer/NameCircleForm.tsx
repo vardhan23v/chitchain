@@ -18,10 +18,10 @@ export function NameCircleForm({ id, initial, onSaved }: { id: number; initial?:
     setBusy(true);
     try {
       await api.organizerMeta(id, { name: name.trim() });
-      toast.success("Circle named");
+      toast.success("Circle named.");
       onSaved();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't save the name");
+      toast.error(err instanceof Error ? err.message : "The name could not be saved.");
     } finally {
       setBusy(false);
     }
@@ -29,7 +29,7 @@ export function NameCircleForm({ id, initial, onSaved }: { id: number; initial?:
   return (
     <form onSubmit={save} className="flex items-center gap-2" aria-label="Name this circle">
       <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name this circle" maxLength={60} className="h-8" aria-label="Circle name" />
-      <Button type="submit" size="sm" disabled={!valid || busy}>{busy ? <Loader2 className="animate-spin" aria-hidden /> : "Save"}</Button>
+      <Button type="submit" size="sm" disabled={!valid || busy}>{busy && <Loader2 className="animate-spin" aria-hidden />}Save the name</Button>
     </form>
   );
 }

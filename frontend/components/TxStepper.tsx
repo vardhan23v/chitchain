@@ -27,7 +27,7 @@ export function TxStepper({ state, className }: { state: TxState; className?: st
       </ol>
       {failed && (
         <p className="mt-1 flex items-start gap-1 text-danger">
-          <XCircle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden /> Failed: {state.error ?? "Transaction failed"}
+          <XCircle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden /> {state.error ?? "The transaction failed."}
         </p>
       )}
       {state.hash && <TxLink hash={state.hash} label="View on MSTScan" className="mt-1 text-xs" />}

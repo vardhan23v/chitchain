@@ -18,7 +18,7 @@ export function ConfigTab() {
       {c.loading && !c.data ? (
         <div className="space-y-2 p-4">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
       ) : c.error && !c.data ? (
-        <p className="p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load config, {c.error}</p>
+        <p className="p-6 text-center text-sm text-muted-foreground">Config is temporarily unavailable.<span className="mt-1 block font-mono text-[11px] text-muted-foreground/80">{c.error}</span></p>
       ) : (
         <TableScroll><table className="table-data w-full text-sm">
           <thead><tr><th className={TH}>Key</th><th className={TH}>Value</th></tr></thead>
@@ -35,7 +35,7 @@ export function ConfigTab() {
   );
 }
 
-const ms = (v: number | null) => (v ? timeAgo(v < 1e12 ? v : Math.floor(v / 1000)) : "never");
+const ms = (v: number | null) => (v ? timeAgo(v < 1e12 ? v : Math.floor(v / 1000)) : "Never");
 
 /** Backend loops (indexer, keeper, autopilot, agent, oracle…) with last tick and last error. */
 export function SystemTab({ loops, loading }: { loops: LoopStatus[] | null; loading: boolean }) {
@@ -45,14 +45,14 @@ export function SystemTab({ loops, loading }: { loops: LoopStatus[] | null; load
         <div className="space-y-2 p-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
       ) : (
         <TableScroll><table className="table-data w-full min-w-[720px] text-sm">
-          <thead><tr><th className={TH}>Loop</th><th className={TH}>Every</th><th className={TH}>Ticks</th><th className={TH}>Errors</th><th className={TH}>Last tick</th><th className={TH}>Last OK</th><th className={TH}>Last error</th></tr></thead>
+          <thead><tr><th className={TH}>Loop</th><th className={cn(TH, "text-right")}>Every</th><th className={cn(TH, "text-right")}>Ticks</th><th className={cn(TH, "text-right")}>Errors</th><th className={TH}>Last tick</th><th className={TH}>Last OK</th><th className={TH}>Last error</th></tr></thead>
           <tbody>
             {(loops ?? []).map((l) => (
               <tr key={l.name} className="align-top">
-                <td className="px-3 py-2 font-medium">{l.name}{l.busy && <span className="ml-1 text-[10px] text-muted-foreground">busy</span>}</td>
-                <td className="tnum px-3 py-2">{Math.round(l.everyMs / 1000)} s</td>
-                <td className="tnum px-3 py-2">{l.ticks}</td>
-                <td className={cn("tnum px-3 py-2", l.errors > 0 && "font-semibold text-danger")}>{l.errors}</td>
+                <td className="px-3 py-2 font-medium">{l.name}{l.busy && <span className="ml-1 text-[10px] font-medium text-muted-foreground">Busy</span>}</td>
+                <td className="tnum px-3 py-2 text-right">{Math.round(l.everyMs / 1000)} s</td>
+                <td className="tnum px-3 py-2 text-right">{l.ticks}</td>
+                <td className={cn("tnum px-3 py-2 text-right", l.errors > 0 && "font-semibold text-danger")}>{l.errors}</td>
                 <td className="px-3 py-2 text-muted-foreground">{ms(l.lastTickAt)}</td>
                 <td className="px-3 py-2 text-muted-foreground">{ms(l.lastOkAt)}</td>
                 <td className="max-w-[260px] truncate px-3 py-2 text-xs text-danger" title={l.lastError ?? undefined}>{l.lastError ?? "—"}</td>

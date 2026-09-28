@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { History } from "lucide-react";
+import { History, WifiOff } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { TableScroll, TH } from "@/components/TableScroll";
@@ -33,13 +33,13 @@ function Activity() {
   const events = act.data ?? [];
 
   return (
-    <div className="space-y-5">
-      <PageHeader eyebrow="My activity" title="Transaction history" description="Every indexed on-chain event where you were the member, winner or bidder, each one verifiable on MSTScan." actions={events.length ? <span className="tnum text-xs text-muted-foreground">{events.length} events</span> : undefined} />
+    <div className="space-y-6 md:space-y-8">
+      <PageHeader eyebrow="My activity" title="Transaction history" description="Every indexed on-chain event where you were the member, winner or bidder, each one verifiable on MSTScan." actions={events.length ? <span className="tnum text-[13px] text-muted-foreground">{events.length} events</span> : undefined} />
       <Card className="overflow-hidden">
         {act.loading && !act.data ? (
-          <div className="space-y-2 p-4">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
+          <div className="space-y-2 p-4" aria-busy="true">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-9 w-full" />)}</div>
         ) : act.error && !act.data ? (
-          <p className="p-6 text-center text-sm text-muted-foreground">History needs the backend indexer, which is unreachable right now.</p>
+          <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" className="border-0" title="Your history is temporarily unavailable." text="Try again in a moment. Every event stays verifiable on MSTScan." />
         ) : events.length === 0 ? (
           <EmptyState Icon={History} className="border-0" title="No on-chain activity yet" text="Join a circle and every contribution, bid and payout will appear here." action={<Button asChild variant="outline"><Link href="/#circles">Join a circle</Link></Button>} />
         ) : (

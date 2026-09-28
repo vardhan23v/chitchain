@@ -1,7 +1,6 @@
 "use client";
 
-import { FileText, Lock, ScrollText, Server, Settings2, Users } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { FileText, Lock, ScrollText, Server, Settings2, Users, WifiOff } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AuditTab } from "@/components/admin/AuditTab";
 import { OverviewTiles } from "@/components/admin/OverviewTiles";
@@ -34,13 +33,16 @@ export default function AdminPage() {
 function Admin() {
   const ov = useAdminOverview();
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 md:space-y-8">
       <PageHeader eyebrow="Platform admin" title="ChitChain admin" description="Users, audit log, support and system health. Read-only over funds." actions={<RoleBadge role="ADMIN" />} />
       <InfoBanner Icon={Lock} tone="chain" role="note">
         <span className="font-semibold text-foreground">No withdraw controls exist here.</span> Funds are controlled by the smart contract. All amounts are MST testnet coins.
       </InfoBanner>
       {ov.error && !ov.data && (
-        <Card className="p-6 text-center text-sm text-muted-foreground">{isUnreachable(ov.error) ? "Backend unreachable, the admin dashboard needs the ChitChain API." : ov.error}</Card>
+        <InfoBanner Icon={WifiOff} tone="warning" role="status">
+          <span className="font-semibold text-foreground">Platform overview is temporarily unavailable.</span> Users, audit log and support below may also be affected.
+          <span className="mt-1 block font-mono text-[11px] text-muted-foreground/80">{isUnreachable(ov.error) ? "API unreachable" : ov.error}</span>
+        </InfoBanner>
       )}
       <OverviewTiles o={ov.data} loading={ov.loading} />
       <Tabs defaultValue="users" className="space-y-4">

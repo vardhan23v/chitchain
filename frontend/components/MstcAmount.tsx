@@ -14,7 +14,7 @@ interface Props {
 
 const SIZES = {
   display: "text-[44px] font-extrabold leading-none tracking-tight md:text-5xl",
-  lg: "text-2xl font-bold leading-tight tracking-tight",
+  lg: "text-[32px] font-semibold leading-tight tracking-tight",
   md: "text-base font-semibold",
   sm: "text-sm font-medium",
 };

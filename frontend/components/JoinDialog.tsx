@@ -18,7 +18,7 @@ interface Props {
 
 /** DESIGN §7: AlertDialog for join showing the exact collateral and the tier that priced it. */
 export function JoinDialog({ required, tier, contribution, disabled, onConfirm, className }: Props) {
-  const label = required !== null ? `Join · lock ${formatMst(required)} MST` : "Join";
+  const label = required !== null ? `Join and lock ${formatMst(required)} MST` : "Join the circle";
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -30,7 +30,7 @@ export function JoinDialog({ required, tier, contribution, disabled, onConfirm, 
           <AlertDialogDescription asChild>
             <div className="space-y-3 text-sm">
               <p>The contract will lock your collateral now. It covers any round you miss and is returned when the circle completes.</p>
-              <div className="rounded-xl border p-3">
+              <div className="rounded-xl border border-white/60 bg-white/40 p-3">
                 <div className="text-xs text-muted-foreground">Collateral to lock</div>
                 <MstcAmount wei={required ?? 0n} size="lg" className="text-primary" />
                 <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -43,7 +43,7 @@ export function JoinDialog({ required, tier, contribution, disabled, onConfirm, 
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Lock {formatMst(required ?? 0n)} MST &amp; join</AlertDialogAction>
+          <AlertDialogAction onClick={onConfirm}>Join and lock {formatMst(required ?? 0n)} MST</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

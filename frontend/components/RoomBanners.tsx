@@ -29,7 +29,7 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
     return (
       <Card className="flex flex-wrap items-center gap-3 border-danger/30 bg-danger/5 p-4">
         <AlertTriangle className="h-5 w-5 text-danger" aria-hidden />
-        <span className="font-medium">Didn&apos;t fill in time, withdraw your collateral</span>
+        <span className="font-medium">This circle didn&apos;t fill in time. Withdraw your collateral.</span>
         {claimable > 0n && <WithdrawDialog claimable={me!.claimable} onConfirm={onWithdraw} disabled={pending} className="ml-auto" />}
       </Card>
     );
@@ -48,9 +48,9 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
     <Card className="border-success/30 bg-success/5 p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
-        <h2 className="text-base">Circle completed</h2>
-        <span className="text-xs text-muted-foreground">· every payout is pull-only and verifiable</span>
-        {claimable > 0n && <WithdrawDialog claimable={me!.claimable} onConfirm={onWithdraw} disabled={pending} className="ml-auto" label={`Withdraw all · ${formatMst(me!.claimable)} MST`} />}
+        <h2 className="text-[17px]">Circle completed</h2>
+        <span className="text-[13px] text-muted-foreground">Every payout is pull-only and verifiable.</span>
+        {claimable > 0n && <WithdrawDialog claimable={me!.claimable} onConfirm={onWithdraw} disabled={pending} className="ml-auto" label={`Withdraw ${formatMst(me!.claimable)} MST`} />}
       </div>
       {settled.length > 0 ? (
         <RevealGroup as="ul" mode="load" className="mt-3 divide-y text-sm">
@@ -65,13 +65,13 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
           ))}
         </RevealGroup>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">Winners: {members.filter((m) => m.hasWon).map((m) => m.label ?? shortAddr(m.address)).join(", ") || "—"}. Round-by-round detail needs the backend feed.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Winners: {members.filter((m) => m.hasWon).map((m) => m.label ?? shortAddr(m.address)).join(", ") || "—"}. Round-by-round detail is temporarily unavailable.</p>
       )}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-success/20 pt-3 text-[13px] text-muted-foreground">
         {Object.keys(dividends).length > 0 && (
           <span>Dividends: {Object.entries(dividends).map(([k, v]) => `${labels[k] ?? shortAddr(k)} ${formatMst(v)}`).join(" · ")}</span>
         )}
-        <span className="tnum">Fees collected {formatMst(totalFees)} MST → reserve → treasury</span>
+        <span className="tnum">Fees collected {formatMst(totalFees)} MST, kept in the reserve and sent to the treasury at the end</span>
         <span>Reserve now <MstcAmount wei={circle.reserve} size="sm" /></span>
       </div>
     </Card>

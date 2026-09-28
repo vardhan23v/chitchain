@@ -21,7 +21,7 @@ export function AgentDecision({ log, labelFor, pot }: Props) {
     <div className="mt-3 rounded-xl bg-agent/5 p-3 text-sm" aria-live="polite">
       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
         <span className="font-medium text-agent">Agent for {labelFor(log.member)}</span>· Round {log.round} · {timeAgo(log.ts)}
-        <Badge variant="outline" className="text-[10px]">{log.source === "llm" ? "LLM" : "fallback"}</Badge>
+        <Badge variant="outline" className="text-[10px]">{log.source === "llm" ? "AI model" : "Fallback rule"}</Badge>
       </div>
       <p className="mt-1">
         {log.bidThisRound ? (

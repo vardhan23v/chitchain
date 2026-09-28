@@ -115,7 +115,7 @@ export function FeaturedCircle({ c }: { c: CircleSummary }) {
         </div>
         <span className="tnum text-xs text-muted-foreground">{clock}</span>
         <Button asChild size="sm" variant="outline" className="pointer-events-auto mt-1">
-          <Link href={`/circle/${c.id}`}>{active ? "Watch this round" : open ? "Join this circle" : "View summary"}</Link>
+          <Link href={`/circle/${c.id}`}>{active ? "Watch this round" : open ? "Join the circle" : "View the summary"}</Link>
         </Button>
       </div>
     </div>

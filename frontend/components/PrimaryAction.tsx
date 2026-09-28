@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { JoinDialog } from "@/components/JoinDialog";
 import { WithdrawDialog } from "@/components/WithdrawDialog";
@@ -33,11 +34,11 @@ export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, 
   const cls = "w-full md:w-auto md:min-w-[220px]";
   if (!hasContract) return <Button size="lg" className={cls} disabled>Contract not deployed</Button>;
   if (!wallet.hasWallet) return <Button size="lg" className={cls} asChild><a href={BRIDGEKEY_URL} target="_blank" rel="noopener noreferrer">Install BridgeKey</a></Button>;
-  if (!wallet.account) return <Button size="lg" className={cls} onClick={() => void wallet.connect()} disabled={wallet.connecting}>{wallet.connecting ? "Connecting…" : "Connect BridgeKey"}</Button>;
+  if (!wallet.account) return <Button size="lg" className={cls} onClick={() => void wallet.connect()} disabled={wallet.connecting}>{wallet.connecting && <Loader2 className="animate-spin" aria-hidden />}Connect BridgeKey</Button>;
   if (!wallet.correctChain) return <Button size="lg" variant="destructive" className={cls} onClick={() => void wallet.switchNetwork()}>Switch to MST Testnet</Button>;
 
   const claimable = BigInt(me?.claimable ?? "0");
-  const busyLabel = "Confirm in BridgeKey…";
+  const spin = pending ? <Loader2 className="animate-spin" aria-hidden /> : null;
 
   if (me?.removed) return <Button size="lg" className={cls} disabled>Removed, collateral exhausted</Button>;
   if (claimable > 0n) return <WithdrawDialog claimable={me!.claimable} disabled={pending} onConfirm={on.withdraw} className={cls} />;
@@ -47,20 +48,20 @@ export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, 
     if (me?.joined) {
       return (
         <div className="flex flex-wrap gap-2">
-          <Button size="lg" className={cls} disabled>Joined · waiting for {circle.maxMembers - circle.memberCount} more</Button>
-          <Button size="lg" variant="outline" onClick={on.leave} disabled={pending}>Leave</Button>
+          <Button size="lg" className={cls} disabled>Joined, waiting for {circle.maxMembers - circle.memberCount} more</Button>
+          <Button size="lg" variant="outline" onClick={on.leave} disabled={pending}>{spin}Leave the circle</Button>
         </div>
       );
     }
     if (now > circle.joinDeadline && circle.memberCount < circle.maxMembers) {
-      return <Button size="lg" variant="outline" className={cls} onClick={on.cancel} disabled={pending}>{pending ? busyLabel : "Cancel circle · refund collateral"}</Button>;
+      return <Button size="lg" variant="outline" className={cls} onClick={on.cancel} disabled={pending}>{spin}Cancel the circle and refund collateral</Button>;
     }
     return <JoinDialog required={viewerRequired} tier={viewerTier} contribution={circle.contribution} disabled={pending} onConfirm={on.join} className={cls} />;
   }
   if (circle.status === 1) {
     if (!me?.joined) return <Button size="lg" className={cls} disabled>Circle is full</Button>;
-    if (!me.paidThisRound && phase === "contribution") return <Button size="lg" className={cls} onClick={on.contribute} disabled={pending}>{pending ? busyLabel : `Contribute ${formatMst(circle.contribution)} MST`}</Button>;
-    if (phase === "settling") return <Button size="lg" className={cls} disabled>Round closed · waiting for settlement</Button>;
+    if (!me.paidThisRound && phase === "contribution") return <Button size="lg" className={cls} onClick={on.contribute} disabled={pending}>{spin}Contribute {formatMst(circle.contribution)} MST</Button>;
+    if (phase === "settling") return <Button size="lg" className={cls} disabled>Round closed, waiting for settlement</Button>;
     if (!me.hasWon && BigInt(me.bidThisRound || "0") === 0n) {
       return (
         <div className="flex flex-wrap gap-2">
@@ -69,7 +70,7 @@ export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, 
         </div>
       );
     }
-    return <Button size="lg" className={cls} disabled>Paid · waiting for settlement</Button>;
+    return <Button size="lg" className={cls} disabled>Paid, waiting for settlement</Button>;
   }
   if (circle.status === 3) return <Button size="lg" className={cls} disabled>{me?.joined ? "Nothing left to withdraw" : "Circle cancelled"}</Button>;
   return <Button size="lg" className={cls} disabled>{me?.joined ? "All withdrawn" : "Circle completed"}</Button>;

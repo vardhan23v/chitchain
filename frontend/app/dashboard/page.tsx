@@ -49,14 +49,14 @@ function Dashboard() {
         actions={
           <>
             {auth.user && <RoleBadge role={auth.user.role} passwordAdmin={auth.isPasswordAdmin} />}
-            {down && <Badge variant="outline" className="gap-1 text-muted-foreground"><WifiOff className="h-3 w-3" aria-hidden /> {isUnreachable(me.error) ? "backend offline" : "couldn't load overview"}</Badge>}
+            {down && <Badge variant="outline" className="gap-1 font-medium text-muted-foreground"><WifiOff className="h-3 w-3" aria-hidden /> {isUnreachable(me.error) ? "Overview temporarily unavailable" : "Overview could not be loaded"}</Badge>}
           </>
         }
       />
 
       {auth.isPasswordAdmin && (
         <InfoBanner Icon={KeyRound} tone="agent">
-          Password admin accounts have no wallet; use the <Link href="/admin" className="font-semibold text-primary hover:underline">Admin dashboard</Link>.
+          Password admin accounts have no wallet. Use the <Link href="/admin" className="font-semibold text-primary hover:underline">Admin dashboard</Link>.
         </InfoBanner>
       )}
 
@@ -67,7 +67,7 @@ function Dashboard() {
       ) : (
         <EmptyState
           Icon={CircleDot}
-          title={circles.loading && !circles.data ? "Loading your circles…" : "You're not in an active circle right now"}
+          title={circles.loading && !circles.data ? "Loading your circles" : "You're not in an active circle right now."}
           text="Join an open circle and your live round will show here."
           action={<Button asChild variant="outline"><Link href="/#circles">Browse circles</Link></Button>}
         />
@@ -75,16 +75,16 @@ function Dashboard() {
 
       <ControlPanel />
 
-      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="More">
+      <nav className="grid grid-cols-2 gap-4 sm:grid-cols-4" aria-label="More">
         {QUICK.map(({ href, label, Icon }) => (
-          <Link key={label} href={href.replace("ACCOUNT", account)} className="flex items-center gap-2 glass rounded-[22px] px-4 py-3 text-sm font-medium">
+          <Link key={label} href={href.replace("ACCOUNT", account)} className="flex items-center gap-2 glass rounded-[22px] px-4 py-3 text-[15px] font-medium transition-colors hover:text-primary">
             <Icon className="h-4 w-4 text-primary" aria-hidden /> {label} <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground/60" aria-hidden />
           </Link>
         ))}
       </nav>
 
       {list.length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-4">
           <SectionTitle Icon={CircleDot} tone="text-primary" trailing={<span className="tnum">{list.length}</span>}>My circles</SectionTitle>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map((c) => <CircleCard key={c.id} c={c} />)}</div>
         </section>

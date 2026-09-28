@@ -81,17 +81,17 @@ function Login() {
           <TestnetBadge size="xs" />
         </div>
         <h1 className="mt-4">Welcome to ChitChain</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Connect your MST wallet, sign once, and you&apos;re in. No gas, no funds move.</p>
+        <p className="mt-1 text-[15px] text-muted-foreground">Connect your MST wallet, sign once, and you&apos;re in. No gas, no funds move.</p>
         <div className="mt-5"><LoginStepper current={step} /></div>
 
         {!wallet.hasWallet ? (
           <div className="mt-6 space-y-2">
             <Button className="w-full" size="lg" asChild><a href={BRIDGEKEY_URL} target="_blank" rel="noopener noreferrer"><Wallet aria-hidden /> Install BridgeKey</a></Button>
-            <p className="text-center text-xs text-muted-foreground">No wallet detected. Install BridgeKey, then reload this page.</p>
+            <p className="text-center text-[13px] text-muted-foreground">No wallet detected. Install BridgeKey, then reload this page.</p>
           </div>
         ) : !wallet.account ? (
           <Button className="mt-6 w-full" size="lg" disabled={wallet.connecting} onClick={() => wallet.connect().catch((e) => toast.error(parseTxError(e).message))}>
-            <Wallet aria-hidden /> {wallet.connecting ? "Connecting…" : "Connect BridgeKey"}
+            {wallet.connecting ? <Loader2 className="animate-spin" aria-hidden /> : <Wallet aria-hidden />} Connect BridgeKey
           </Button>
         ) : (
           <div className="mt-6 space-y-4">
@@ -100,7 +100,7 @@ function Login() {
                 <dt className="text-xs font-medium text-muted-foreground">Wallet</dt>
                 <dd className="flex items-center gap-1.5">
                   <span className="font-mono">{shortAddr(wallet.account)}</span>
-                  <button type="button" className="rounded p-1 text-muted-foreground hover:text-foreground" aria-label="Copy address" onClick={() => navigator.clipboard.writeText(wallet.account!).then(() => toast("Address copied"))}>
+                  <button type="button" className="rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground" aria-label="Copy address" onClick={() => navigator.clipboard.writeText(wallet.account!).then(() => toast("Address copied"))}>
                     <Copy className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </dd>
@@ -120,9 +120,9 @@ function Login() {
               </div>
             </dl>
             <Button className="w-full" size="lg" disabled={!wallet.correctChain || signing || done} onClick={() => void signIn()}>
-              {done ? <><Check aria-hidden /> Wallet verified</> : signing ? <><Loader2 className="animate-spin" aria-hidden /> Confirm the signature in BridgeKey…</> : "Sign in"}
+              {done ? <><Check aria-hidden /> Signed in</> : signing ? <><Loader2 className="animate-spin" aria-hidden /> Sign in</> : "Sign in"}
             </Button>
-            {signing && <p className="text-center text-xs text-muted-foreground">Signing proves you own this wallet. It costs no gas and moves no funds.</p>}
+            {signing && <p className="text-center text-[13px] text-muted-foreground" role="status">Confirm the signature in BridgeKey. It proves you own this wallet, costs no gas and moves no funds.</p>}
           </div>
         )}
         <InfoBanner Icon={ShieldCheck} tone="success" className="mt-5">ChitChain never asks for your seed phrase or private key.</InfoBanner>

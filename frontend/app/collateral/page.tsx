@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Info, Lock } from "lucide-react";
+import { Info, Lock, WifiOff } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { InfoBanner } from "@/components/InfoBanner";
 import { Button } from "@/components/ui/button";
@@ -37,12 +37,12 @@ function Collateral() {
   const sum = (pick: (c: (typeof circles)[number]) => string) => circles.reduce((s, c) => s + big(pick(c)), 0n);
 
   const withdraw = (id: number) =>
-    void run(async () => (await getSignerContract()).withdraw(id), { success: "Withdrawn to your wallet", onMined: () => mine.refetch() });
+    void run(async () => (await getSignerContract()).withdraw(id), { success: "Withdrawn to your wallet.", onMined: () => mine.refetch() });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 md:space-y-8">
       <PageHeader eyebrow="My funds" title="My collateral" description="What the contract holds for you, per circle. Locked while a circle is active, released at completion." />
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3" aria-label="Totals">
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-3" aria-label="Totals">
         <StatTile label="Locked in contracts" Icon={Lock} iconClassName="text-primary" testnet value={<MstcAmount wei={sum((c) => c.me.collateral)} size="lg" className="text-primary" />} loading={mine.loading && !mine.data} />
         <StatTile label="Used to cover misses" testnet value={<MstcAmount wei={sum((c) => c.me.collateralUsed)} size="lg" className={sum((c) => c.me.collateralUsed) > 0n ? "text-warning" : undefined} />} loading={mine.loading && !mine.data} />
         <StatTile label="Claimable now" testnet value={<MstcAmount wei={sum((c) => c.me.claimable)} size="lg" className={sum((c) => c.me.claimable) > 0n ? "text-success" : undefined} />} loading={mine.loading && !mine.data} className="col-span-2 md:col-span-1" />
@@ -50,13 +50,13 @@ function Collateral() {
       <InfoBanner Icon={Info}>Locked collateral and holdback cannot be withdrawn while the circle is active; they are released at completion. Payouts, dividends and refunds are claimable immediately.</InfoBanner>
       <TxStepper state={state} />
       {mine.loading && !mine.data ? (
-        <div className="space-y-3">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}</div>
+        <div className="space-y-4" aria-busy="true">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className="h-36 rounded-2xl" />)}</div>
       ) : mine.error && !mine.data ? (
-        <p className="text-sm text-muted-foreground">Couldn&apos;t load your circles, backend and contract both unreachable.</p>
+        <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="Your collateral is temporarily unavailable." text="Check your connection and try again in a moment." />
       ) : circles.length === 0 ? (
         <EmptyState Icon={Lock} title="You haven't joined a circle yet" text="Collateral is locked when you join and shows up here per circle." action={<Button asChild variant="outline"><Link href="/#circles">Browse circles</Link></Button>} />
       ) : (
-        <div className="space-y-3">{circles.map((c) => <CollateralRow key={c.id} c={c} onWithdraw={withdraw} pending={pending} />)}</div>
+        <div className="space-y-4">{circles.map((c) => <CollateralRow key={c.id} c={c} onWithdraw={withdraw} pending={pending} />)}</div>
       )}
     </div>
   );

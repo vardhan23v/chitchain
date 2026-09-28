@@ -10,8 +10,8 @@ export function EmptyState({ Icon, title, text, action, className, tone = "text-
         <Icon className="h-6 w-6" />
       </span>
       <div className="space-y-1">
-        <p className="text-sm font-semibold">{title}</p>
-        {text && <p className="max-w-sm text-sm text-muted-foreground">{text}</p>}
+        <p className="text-[15px] font-semibold">{title}</p>
+        {text && <p className="max-w-sm text-[13px] text-muted-foreground">{text}</p>}
       </div>
       {action && <div className="mt-1">{action}</div>}
     </div>

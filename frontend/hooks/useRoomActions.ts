@@ -15,36 +15,36 @@ export function useRoomActions(id: number, refetch: () => Promise<void>) {
   }, [refetch]);
 
   const join = useCallback(
-    (value: bigint) => run(async () => (await getSignerContract()).join(id, { value }), { success: "Joined — collateral locked in the contract", onMined: after }),
+    (value: bigint) => run(async () => (await getSignerContract()).join(id, { value }), { success: "Joined the circle. Your collateral is locked in the contract.", onMined: after }),
     [id, run, after]
   );
   const contribute = useCallback(
-    (value: bigint) => run(async () => (await getSignerContract()).contribute(id, { value }), { success: "Contribution recorded on-chain", onMined: after }),
+    (value: bigint) => run(async () => (await getSignerContract()).contribute(id, { value }), { success: "Contributed to this round.", onMined: after }),
     [id, run, after]
   );
   const bid = useCallback(
-    (discount: bigint) => run(async () => (await getSignerContract()).placeBid(id, discount), { success: "Bid placed on-chain", onMined: after }),
+    (discount: bigint) => run(async () => (await getSignerContract()).placeBid(id, discount), { success: "Bid placed.", onMined: after }),
     [id, run, after]
   );
   const withdraw = useCallback(
-    () => run(async () => (await getSignerContract()).withdraw(id), { success: "Withdrawn to your wallet", onMined: after }),
+    () => run(async () => (await getSignerContract()).withdraw(id), { success: "Withdrawn to your wallet.", onMined: after }),
     [id, run, after]
   );
   const leave = useCallback(
-    () => run(async () => (await getSignerContract()).leave(id), { success: "Left the circle — collateral is claimable", onMined: after }),
+    () => run(async () => (await getSignerContract()).leave(id), { success: "Left the circle. Your collateral is claimable.", onMined: after }),
     [id, run, after]
   );
   const cancel = useCallback(
-    () => run(async () => (await getSignerContract()).cancel(id), { success: "Circle cancelled — collateral is claimable", onMined: after }),
+    () => run(async () => (await getSignerContract()).cancel(id), { success: "Circle cancelled. Your collateral is claimable.", onMined: after }),
     [id, run, after]
   );
   /** Settle from the connected wallet; if no wallet, ask the backend keeper. */
   const settle = useCallback(
     async (hasWallet: boolean) => {
-      if (hasWallet) return run(async () => (await getSignerContract()).settleRound(id), { success: "Round settled on-chain", onMined: after });
+      if (hasWallet) return run(async () => (await getSignerContract()).settleRound(id), { success: "Round settled.", onMined: after });
       try {
         const r = await api.settle(id);
-        toast.success("Keeper asked to settle", { description: r.txHash });
+        toast.success("Round settled by the keeper.", { description: r.txHash });
         await after();
         return r.txHash;
       } catch (e) {

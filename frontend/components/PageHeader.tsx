@@ -33,8 +33,8 @@ export function SectionTitle({ Icon, children, trailing, className, tone }: { Ic
   return (
     <div className={cn("flex items-center gap-2", className)}>
       {Icon && <Icon className={cn("h-4 w-4", tone ?? "text-muted-foreground")} aria-hidden />}
-      <h2 className="text-[17px] font-semibold leading-tight tracking-tight md:text-lg">{children}</h2>
-      {trailing && <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">{trailing}</span>}
+      <h2 className="text-[17px] font-semibold leading-tight tracking-tight">{children}</h2>
+      {trailing && <span className="ml-auto flex items-center gap-2 text-[13px] text-muted-foreground">{trailing}</span>}
     </div>
   );
 }

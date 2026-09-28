@@ -3,7 +3,9 @@
 import { useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { WifiOff } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { DefaultEventCard } from "@/components/DefaultEventCard";
 import { Feed } from "@/components/Feed";
@@ -72,14 +74,13 @@ export default function CircleRoomPage() {
   }, [data?.members]);
   const labelFor = (a: string) => labels[a.toLowerCase()] ?? shortAddr(a);
 
-  if (!Number.isFinite(id) || id < 1) return <p className="text-muted-foreground">Invalid circle id.</p>;
+  if (!Number.isFinite(id) || id < 1) return <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="That circle does not exist." text="Check the link and try again." />;
   if (!data) {
     return (
       <div className="space-y-4">
         <RoomSkeleton />
-        {room.slow && <p className="text-sm text-warning" role="status">MST testnet is slow, retrying</p>}
-        {room.error && !HAS_CONTRACT && <p className="text-sm text-muted-foreground">Backend unreachable and no contract address configured.</p>}
-        {room.error && HAS_CONTRACT && room.slow && <p className="text-sm text-muted-foreground">Circle #{id} could not be loaded: {room.error}</p>}
+        {room.slow && !room.error && <p className="text-[13px] text-warning" role="status">MST testnet is slow, retrying.</p>}
+        {room.error && (!HAS_CONTRACT || room.slow) && <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="Circle data is temporarily unavailable." text={`Circle #${id} could not be loaded. Check your connection and try again in a moment.`} />}
       </div>
     );
   }
@@ -119,15 +120,15 @@ export default function CircleRoomPage() {
   );
 
   return (
-    <RevealGroup mode="load" className="space-y-5 pb-32 md:pb-0">
+    <RevealGroup mode="load" className="space-y-6 pb-32 md:space-y-8 md:pb-0">
       <RevealItem>
         <RoomHeader circle={circle} round={round} txCount={data.txCount} onSettle={() => void actions.settle(!!wallet.account && wallet.correctChain)} settling={actions.pending} source={data.source} />
       </RevealItem>
       <RoomBanners circle={circle} me={room.me} members={members} events={feed.events} labels={labels} onWithdraw={() => void actions.withdraw()} pending={actions.pending} />
       {showLatestDefault && data.latestDefault && <DefaultEventCard d={data.latestDefault} compact />}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-5">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6">
           <div className="grid gap-4 md:grid-cols-[3fr_2fr]">
             <RevealItem className="min-w-0 space-y-3">
               <PotMeter circle={circle} round={round} />

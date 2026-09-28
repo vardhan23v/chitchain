@@ -22,7 +22,7 @@ export function OverviewTiles({ o, loading }: { o: AdminOverview | null; loading
   const L = loading && !o;
   const explorer = (o?.contract.explorer || EXPLORER_URL).replace(/\/$/, "");
   return (
-    <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Platform overview">
+    <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Platform overview">
       <StatTile label="Users" Icon={Users} value={o ? o.users.total : "—"} hint={o ? `${o.users.active} active · ${o.users.suspended} suspended · ${o.users.byRole.ORGANIZER ?? 0} organizers · ${o.users.byRole.ADMIN ?? 0} admins` : undefined} loading={L} />
       <StatTile label="Active circles" Icon={Activity} iconClassName="text-primary" value={o?.circles.active ?? "—"} hint={o ? `${o.circles.open} open · ${o.circles.demo} demo` : undefined} loading={L} />
       <StatTile label="Completed circles" value={o?.circles.completed ?? "—"} hint={o ? `${o.circles.cancelled} cancelled · ${o.circles.total} total` : undefined} loading={L} />

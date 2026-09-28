@@ -32,7 +32,7 @@ export function WithdrawDialog({ claimable, disabled, onConfirm, className, vari
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Withdraw</AlertDialogAction>
+          <AlertDialogAction onClick={onConfirm}>Withdraw {formatMst(claimable)} MST</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

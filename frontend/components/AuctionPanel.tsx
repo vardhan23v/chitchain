@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Gavel, Info } from "lucide-react";
+import { Gavel, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -121,7 +121,7 @@ export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor
           <Input
             id="accepted"
             inputMode="decimal"
-            placeholder={hasBid ? `less than ${formatMst(lowestAccepted)}` : `≥ ${formatMst(floor)}`}
+            placeholder={hasBid ? `less than ${formatMst(lowestAccepted)}` : `at least ${formatMst(floor)}`}
             value={accepted}
             onChange={(e) => setAccepted(e.target.value.replace(/[^0-9.]/g, ""))}
             disabled={!eligible}
@@ -139,10 +139,10 @@ export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor
         </p>
         <p id="accepted-hint" className={cn("text-xs", invalid ? "text-danger" : "text-muted-foreground")}>{hint}</p>
         <Button className="w-full" disabled={disabled} onClick={() => discount !== null && onBid(discount).then(() => setAccepted(""))}>
-          <Gavel aria-hidden /> {pending ? "Confirm in BridgeKey…" : "Place bid"}
+          {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Gavel aria-hidden />} Place a bid
         </Button>
       </div>
-      <p className="mt-auto pt-3 text-[11px] leading-snug text-muted-foreground">Discount = pot − accepted payout · Dividend per member = discount ÷ (active members − 1)</p>
+      <p className="mt-auto pt-3 text-[12px] leading-snug text-muted-foreground">Discount = pot − accepted payout. Dividend per member = discount ÷ (active members − 1).</p>
     </Card>
   );
 }

@@ -78,11 +78,11 @@ export function useTx() {
       clearTimers();
       if (!receipt || receipt.status !== 1) {
         set("failed", { error: "The transaction reverted on-chain." });
-        toast.error("Failed: the transaction reverted on-chain.", { id, description: createElement(TxToastLink, { hash: tx.hash }) });
+        toast.error("The transaction reverted on-chain.", { id, description: createElement(TxToastLink, { hash: tx.hash }) });
         return null;
       }
       set("confirmed");
-      toast.success(`${STAGE_LABEL.confirmed} — ${opts.success}`, { id, description: createElement(TxToastLink, { hash: tx.hash }) });
+      toast.success(opts.success, { id, description: createElement(TxToastLink, { hash: tx.hash }) });
       await opts.onMined?.(tx.hash);
       return tx.hash;
     } catch (e) {
@@ -90,7 +90,7 @@ export function useTx() {
       const ui = parseTxError(e);
       set("failed", { error: ui.message });
       if (ui.neutral) toast(ui.message, { id });
-      else toast.error(`Failed: ${ui.message}`, { id });
+      else toast.error(ui.message, { id });
       return null;
     } finally {
       later(4000, () => setState((s) => (s.stage === "confirmed" || s.stage === "failed" ? { stage: "idle", hash: null, error: null } : s)));

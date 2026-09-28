@@ -23,9 +23,9 @@ export function SupportTab() {
       {s.loading && !s.data ? (
         <Skeleton className="h-32 rounded-[22px]" />
       ) : s.error && !s.data ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load tickets, {s.error}</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground">Tickets are temporarily unavailable.<span className="mt-1 block font-mono text-[11px] text-muted-foreground/80">{s.error}</span></Card>
       ) : list.length === 0 ? (
-        <Card className="border-dashed p-6 text-center text-sm text-muted-foreground">No {status.toLowerCase()} tickets.</Card>
+        <Card className="border-dashed p-6 text-center text-sm text-muted-foreground">No {status.toLowerCase()} tickets. Nothing here yet.</Card>
       ) : (
         list.map((t) => <TicketCard key={t.id} t={t} busy={s.busy === t.id} onUpdate={(b) => s.update(t.id, b)} />)
       )}
@@ -45,11 +45,11 @@ function TicketCard({ t, busy, onUpdate }: { t: SupportTicket; busy: boolean; on
       <p className="mt-2 whitespace-pre-wrap text-sm">{t.message}</p>
       <Textarea className="mt-3" rows={2} placeholder="Admin note (visible to the member)" value={note} onChange={(e) => setNote(e.target.value)} aria-label="Admin note" />
       <div className="mt-2 flex justify-end gap-2">
-        <Button size="sm" variant="outline" disabled={busy || note === (t.adminNote ?? "")} onClick={() => void onUpdate({ adminNote: note })}>Save note</Button>
+        <Button size="sm" variant="outline" disabled={busy || note === (t.adminNote ?? "")} onClick={() => void onUpdate({ adminNote: note })}>Save the note</Button>
         {t.status === "OPEN" ? (
-          <Button size="sm" disabled={busy} onClick={() => void onUpdate({ status: "CLOSED", adminNote: note || undefined })}>Close ticket</Button>
+          <Button size="sm" disabled={busy} onClick={() => void onUpdate({ status: "CLOSED", adminNote: note || undefined })}>Close the ticket</Button>
         ) : (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void onUpdate({ status: "OPEN" })}>Reopen</Button>
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void onUpdate({ status: "OPEN" })}>Reopen the ticket</Button>
         )}
       </div>
     </Card>

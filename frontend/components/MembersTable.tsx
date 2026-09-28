@@ -79,7 +79,7 @@ export function MembersTable({ circle, members, viewer, extras, className }: Pro
               );
             })}
             {members.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">No members yet.</td></tr>
+              <tr><td colSpan={6} className="px-3 py-8 text-center text-[13px] text-muted-foreground">Nothing here yet. Members show up as they join.</td></tr>
             )}
           </tbody>
         </table>

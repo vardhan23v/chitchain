@@ -38,11 +38,11 @@ export function Countdown({ deadline, active, label, tone = "contribution", onSe
       <div className={cn("flex flex-wrap items-center gap-2", className)} aria-live="polite">
         <span className={cn(base, TONE.settling.cls)}>
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          Waiting for settlement · anyone can settle
+          Waiting for settlement, anyone can settle
         </span>
         {onSettle && (
           <Button size="sm" variant="outline" className="rounded-full" onClick={onSettle} disabled={settling || !canSettle}>
-            {settling ? "Settling…" : "Settle round"}
+            {settling && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}Settle the round
           </Button>
         )}
       </div>

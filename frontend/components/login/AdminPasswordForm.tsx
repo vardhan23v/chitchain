@@ -32,11 +32,11 @@ export function AdminPasswordForm({ signing, done, onSubmit }: Props) {
         </button>
       </p>
       {show && (
-        <Card id="admin-login" className="p-5 md:p-6">
+        <Card id="admin-login" className="p-4 md:p-5">
           <form onSubmit={(e) => void submit(e)} className="space-y-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-agent" aria-hidden />
-              <h2 className="text-base font-semibold">Admin password login</h2>
+              <h2 className="text-[17px] font-semibold">Admin password sign-in</h2>
             </div>
             <p className="text-xs text-muted-foreground">For the platform administrator only. Members and organizers sign in with their MST wallet.</p>
             <div className="space-y-1.5">
@@ -48,7 +48,7 @@ export function AdminPasswordForm({ signing, done, onSubmit }: Props) {
               <Input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={signing || done} />
             </div>
             <Button type="submit" className="w-full" disabled={signing || done || !username.trim() || !password}>
-              {done ? <><Check aria-hidden /> Admin verified.</> : signing ? <><Loader2 className="animate-spin" aria-hidden /> Checking…</> : "Sign in as admin"}
+              {done ? <><Check aria-hidden /> Signed in</> : signing ? <><Loader2 className="animate-spin" aria-hidden /> Sign in as admin</> : "Sign in as admin"}
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">Grants website admin rights only, never wallet or fund control.</p>
           </form>

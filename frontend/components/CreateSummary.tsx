@@ -35,7 +35,7 @@ export function CreateSummary({ v }: { v: CreateInput }) {
   const facts: [string, string][] = [
     ["Round length", formatDuration(roundLen)],
     ["Total duration", `${formatDuration(total)} · ${v.maxMembers} rounds`],
-    ["Fee per round", `${v.feePct}% → reserve`],
+    ["Fee per round", `${v.feePct}% to the reserve`],
     ["Max discount", `${v.maxDiscountPct}% · ${formatMst(maxDiscount)} MST`],
   ];
 

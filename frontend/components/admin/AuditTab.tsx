@@ -24,12 +24,12 @@ export function AuditTab() {
         <Input placeholder="Actor wallet" value={actor} onChange={(e) => setActor(e.target.value.trim())} className="h-9 max-w-xs font-mono text-xs" aria-label="Filter by actor" />
         <Input placeholder="Action (e.g. login, claim, settle)" value={action} onChange={(e) => setAction(e.target.value.trim())} className="h-9 max-w-xs" aria-label="Filter by action" />
       </div>
-      <p className="text-xs text-muted-foreground">Application log of website and backend actions. Blockchain events on MSTScan remain the authority for on-chain state.</p>
+      <p className="text-[13px] text-muted-foreground">Application log of website and API actions. Blockchain events on MSTScan remain the authority for on-chain state.</p>
       <Card className="overflow-hidden">
         {audit.loading && !audit.data ? (
           <div className="space-y-2 p-4">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
         ) : audit.error && !audit.data ? (
-          <p className="p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load the audit log, {audit.error}</p>
+          <p className="p-6 text-center text-sm text-muted-foreground">The audit log is temporarily unavailable.<span className="mt-1 block font-mono text-[11px] text-muted-foreground/80">{audit.error}</span></p>
         ) : (
           <TableScroll><table className="table-data w-full min-w-[820px] text-sm">
             <thead><tr><th className={TH}>When</th><th className={TH}>Actor</th><th className={TH}>Role</th><th className={TH}>Action</th><th className={TH}>Target</th><th className={TH}>Result</th><th className={TH}>Tx</th></tr></thead>

@@ -16,7 +16,7 @@ const STATUS_VARIANT = { 0: "pot", 1: "default", 2: "status-paid", 3: "status-re
 function Cell({ label, value, warn }: { label: string; value: React.ReactNode; warn?: boolean }) {
   return (
     <div>
-      <dt className="text-[11px] text-muted-foreground">{label}</dt>
+      <dt className="text-[12px] font-medium text-muted-foreground">{label}</dt>
       <dd className={`tnum text-sm font-semibold ${warn ? "text-danger" : ""}`}>{value}</dd>
     </div>
   );
@@ -29,9 +29,9 @@ export function OrganizerCircleCard({ c, onChanged }: { c: OrganizerCircle; onCh
     <Card className="flex flex-col gap-3 p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
         {c.name ? (
-          <h2 className="text-base">{c.name} <span className="font-normal text-muted-foreground">· Circle #{c.id}</span></h2>
+          <h2 className="text-[17px]">{c.name} <span className="font-normal text-muted-foreground">· Circle #{c.id}</span></h2>
         ) : (
-          <h2 className="text-base text-muted-foreground">Unnamed · Circle #{c.id}</h2>
+          <h2 className="text-[17px] text-muted-foreground">Unnamed · Circle #{c.id}</h2>
         )}
         <Badge variant={STATUS_VARIANT[c.status]}>{STATUS_LABEL[c.status]}</Badge>
         {c.isDemo && <DemoBadge />}
@@ -48,8 +48,8 @@ export function OrganizerCircleCard({ c, onChanged }: { c: OrganizerCircle; onCh
         <Cell label="Collateral total" value={`${formatMst(c.collateralTotal)} MST`} />
       </dl>
       <div className="mt-auto flex gap-2">
-        <Button asChild variant="outline" className="flex-1"><Link href={`/circle/${c.id}`}><DoorOpen aria-hidden /> Open room</Link></Button>
-        <Button asChild className="flex-1"><Link href={`/organizer/circles/${c.id}`}><BarChart3 aria-hidden /> Analytics</Link></Button>
+        <Button asChild variant="outline" className="flex-1"><Link href={`/circle/${c.id}`}><DoorOpen aria-hidden /> Open the room</Link></Button>
+        <Button asChild className="flex-1"><Link href={`/organizer/circles/${c.id}`}><BarChart3 aria-hidden /> View analytics</Link></Button>
       </div>
     </Card>
   );

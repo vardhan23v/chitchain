@@ -19,11 +19,11 @@ export function useSupport() {
       setSending(true);
       try {
         await api.supportCreate({ subject, message });
-        toast.success("Ticket sent — we'll reply here.");
+        toast.success("Ticket sent. Replies appear here.");
         await mine.refetch();
         return true;
       } catch (e) {
-        toast.error(e instanceof ApiError && e.code === "RATE_LIMITED" ? "Too many tickets — wait a minute." : e instanceof Error ? e.message : "Couldn't send the ticket");
+        toast.error(e instanceof ApiError && e.code === "RATE_LIMITED" ? "Too many tickets. Wait a minute and try again." : e instanceof Error ? e.message : "The ticket could not be sent.");
         return false;
       } finally {
         setSending(false);

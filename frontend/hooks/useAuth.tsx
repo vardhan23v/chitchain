@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (status !== "authenticated" || !user || isPasswordAdmin(user)) return; // password admins have no wallet to compare against
     if (wallet.account && !sameAddr(wallet.account, user.walletAddress)) {
       drop();
-      toast("Wallet changed — sign in again.");
+      toast("Wallet changed. Sign in again.");
     }
   }, [wallet.account, status, user, drop]);
 
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserState(null);
       setToken(null);
       setStatus("anonymous");
-      toast("Session expired — sign in again.");
+      toast("Session expired. Sign in again.");
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(r.token);
       setUserState(r.user);
       setStatus("authenticated");
-      toast.success("Wallet verified.");
+      toast.success("Signed in.");
       return r.user;
     } catch (e) {
       setStatus("anonymous");
@@ -124,13 +124,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (e instanceof ApiError) {
         const msg =
           e.code === "SUSPENDED" ? "This wallet is suspended. Contact support." :
-          e.code === "RATE_LIMITED" ? "Too many attempts — wait a minute and try again." :
+          e.code === "RATE_LIMITED" ? "Too many attempts. Wait a minute and try again." :
           e.code === "NONCE_INVALID" ? "The sign-in challenge expired. Try again." :
           e.code === "BAD_SIGNATURE" ? "The signature didn't match this wallet." :
-          isUnreachable(e) ? "Backend unreachable — sign-in needs the ChitChain API." : e.message;
+          isUnreachable(e) ? "Sign-in is temporarily unavailable. Try again in a moment." : e.message;
         toast.error(msg);
       } else if (ui.neutral) toast(ui.message);
-      else toast.error(e instanceof Error && e.message ? ui.message : "Backend unreachable — sign-in needs the ChitChain API.");
+      else toast.error(e instanceof Error && e.message ? ui.message : "Sign-in is temporarily unavailable. Try again in a moment.");
       return null;
     } finally {
       signing.current = false;
@@ -147,19 +147,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(r.token);
       setUserState(r.user);
       setStatus("authenticated");
-      toast.success("Admin verified.");
+      toast.success("Signed in as admin.");
       return r.user;
     } catch (e) {
       setStatus("anonymous");
       if (e instanceof ApiError) {
         const msg =
           e.code === "BAD_CREDENTIALS" ? "Invalid username or password." :
-          e.code === "NOT_ENABLED" ? "Admin password login is not enabled on this backend." :
+          e.code === "NOT_ENABLED" ? "Password sign-in is not enabled." :
           e.code === "SUSPENDED" ? "This admin account is suspended." :
-          e.code === "RATE_LIMITED" ? "Too many attempts — wait a minute and try again." :
-          isUnreachable(e) ? "Backend unreachable — sign-in needs the ChitChain API." : e.message;
+          e.code === "RATE_LIMITED" ? "Too many attempts. Wait a minute and try again." :
+          isUnreachable(e) ? "Sign-in is temporarily unavailable. Try again in a moment." : e.message;
         toast.error(msg);
-      } else toast.error("Backend unreachable — sign-in needs the ChitChain API.");
+      } else toast.error("Sign-in is temporarily unavailable. Try again in a moment.");
       return null;
     } finally {
       signing.current = false;
