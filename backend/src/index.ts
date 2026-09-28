@@ -18,6 +18,9 @@ import { me } from "./routes/me";
 import { organizer } from "./routes/organizer";
 import { support } from "./routes/support";
 import { admin } from "./routes/admin";
+import { auction } from "./routes/auction";
+import { aiBidding } from "./routes/aiBidding";
+import { startAiBidding } from "./ai/loop";
 import { ipOf, rateLimit } from "./auth/ratelimit";
 import { errorMiddleware, wrap } from "./routes/util";
 
@@ -55,6 +58,8 @@ app.use(me);
 app.use(organizer);
 app.use(support);
 app.use(admin);
+app.use(auction);   // v4 public auction reads
+app.use(aiBidding); // v4 autonomous AI bidding (SSE stream included)
 app.use((_req, res) => { res.status(404).json({ error: "not found", code: "NOT_FOUND" }); });
 app.use(errorMiddleware);
 
@@ -83,6 +88,7 @@ async function main(): Promise<void> {
     void startIndexer();
     startKeeper();
     startAutopilot();
+    startAiBidding();
   });
 }
 void main();

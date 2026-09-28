@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AgentPanel } from "@/components/AgentPanel";
-import { useAgentLogs } from "@/hooks/useAgentLogs";
+import { AiBiddingPanel } from "@/components/ai/AiBiddingPanel";
 import { sameAddr, shortAddr } from "@/lib/format";
 import type { Mandate, MemberInfo } from "@/lib/types";
 
 interface Props {
   circleId: number;
+  circleName?: string | null;
   me: MemberInfo | null;
   members: MemberInfo[];
+  /** Legacy one-shot mandates; kept in the props so the room shape is unchanged. */
   mandates: Mandate[];
   labelFor: (addr: string) => string;
   backendDown: boolean;
@@ -20,13 +21,11 @@ interface Props {
 
 export const isDemoMember = (m: MemberInfo | null) => !!m && (m.custodial === true || !!m.label);
 
-/** Agent panel + "drive the agent for a demo wallet" picker for non-demo viewers. */
-export function AgentSection({ circleId, me, members, mandates, labelFor, backendDown, pot, onChanged }: Props) {
+/** Autonomous AI bidding panel + "drive the agent for a demo wallet" picker for non-demo viewers. */
+export function AgentSection({ circleId, circleName, me, members, labelFor, backendDown, pot, onChanged }: Props) {
   const [pick, setPick] = useState<string>("");
-  const agentLogs = useAgentLogs(circleId, !backendDown);
   const demoMembers = members.filter(isDemoMember);
   const agentMember: MemberInfo | null = isDemoMember(me) ? me : demoMembers.find((m) => sameAddr(m.address, pick)) ?? null;
-  const mandate = mandates.find((x) => agentMember && sameAddr(x.member, agentMember.address) && x.active) ?? null;
 
   return (
     <div className="space-y-2">
@@ -39,19 +38,17 @@ export function AgentSection({ circleId, me, members, mandates, labelFor, backen
           </Select>
         </div>
       )}
-      <AgentPanel
+      <AiBiddingPanel
         circleId={circleId}
+        circleName={circleName}
         member={agentMember}
         isDemoWallet={isDemoMember(agentMember)}
-        logs={agentLogs.data ? agentLogs.data.filter((l) => !agentMember || sameAddr(l.member, agentMember.address)) : null}
-        mandate={mandate}
+        members={[]}
+        onMemberChange={isDemoMember(me) ? undefined : setPick}
         labelFor={labelFor}
-        onChanged={() => {
-          void agentLogs.refetch();
-          onChanged();
-        }}
         backendDown={backendDown}
         pot={pot}
+        onChanged={onChanged}
       />
     </div>
   );

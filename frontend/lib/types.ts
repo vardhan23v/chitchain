@@ -297,3 +297,97 @@ export function roundNo(c: { round: number | RoundInfo | null | undefined }): nu
   const r = c.round;
   return typeof r === "number" ? r : r?.round ?? 0;
 }
+
+/* ───────── v4, autonomous AI bidding agent ───────── */
+
+export type AgentStatus = "ACTIVE" | "PAUSED" | "STOPPED" | "DONE" | "ERROR";
+export type AgentDecisionKind = "WAIT" | "BID" | "STOP";
+export type AgentEventKind =
+  | "REFRESH" | "BID_SEEN" | "EVALUATED" | "DECISION" | "RISK_PASSED" | "RISK_BLOCKED"
+  | "TX_SUBMITTED" | "TX_CONFIRMED" | "TX_FAILED" | "PAUSED" | "STOPPED" | "DONE" | "RIVAL_BID" | "INFO";
+
+/** One autonomous bidding strategy for a custodial demo wallet (API.md v4). Wei values are decimal strings. */
+export interface BidAgent {
+  id: string;
+  userWallet: string;
+  circleId: number;
+  member: string;
+  goal: string;
+  desiredPayout: string | null;
+  maxDiscount: string;
+  maxDiscountPct: number;
+  urgency: Level;
+  riskTolerance: Level;
+  durationSec: number | null;
+  autonomous: boolean;
+  demoMode: boolean;
+  status: AgentStatus;
+  statusReason: string | null;
+  lastDecision: AgentDecisionKind | null;
+  lastReason: string | null;
+  lastBid: string | null;
+  lastTxHash: string | null;
+  failures: number;
+  startedAt: number;
+  expiresAt: number | null;
+  updatedAt: number;
+}
+
+export interface AgentEventData {
+  discount?: string;
+  payout?: string;
+  txHash?: string;
+  block?: number;
+  ts?: number;
+  confidence?: number;
+  reasonCode?: string;
+  simulated?: boolean;
+  demoRival?: boolean;
+  [k: string]: unknown;
+}
+
+export interface AgentEvent {
+  id: number;
+  agentId: string;
+  ts: number;
+  kind: AgentEventKind;
+  text: string;
+  reason: string | null;
+  data: AgentEventData | null;
+}
+
+export type AuctionStatus = "CONTRIBUTION" | "BIDDING" | "SETTLING" | "INACTIVE";
+
+/** Public auction snapshot (`GET /auction/:circleId`). Wei strings plus `*Mst` numbers. */
+export interface AuctionSnapshot {
+  circleId: number;
+  round: number;
+  roundsTotal: number;
+  status: AuctionStatus;
+  expectedPot: string;
+  collected: string;
+  maxDiscount: string;
+  bestDiscount: string;
+  bestBidder: string;
+  bestPayout: string;
+  biddingDeadline: number;
+  contributionDeadline: number;
+  secondsRemaining: number;
+  bidCount: number;
+  expectedPotMst?: number;
+  collectedMst?: number;
+  maxDiscountMst?: number;
+  bestDiscountMst?: number;
+  bestPayoutMst?: number;
+}
+
+export interface AuctionBid {
+  round: number;
+  member: string;
+  label: string | null;
+  discount: string;
+  payout: string;
+  txHash: string;
+  block: number;
+  ts: number;
+}

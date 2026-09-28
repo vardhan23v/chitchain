@@ -207,6 +207,7 @@ test/         ChitChain.test.ts (12 cases from ARCHITECTURE §3.7 + INTERFACE §
 scripts/      ping · deploy · export-abi · seed-demo
 deployments/  mstTestnet.json (address, deploy tx, block)
 backend/      Express + Prisma/PostgreSQL: indexer, keeper, risk engine, bidding agent, demo autopilot
+agent/        Python 3.12 + CrewAI + FastAPI: AI bidding crew (decides only; Node guards and executes)
 frontend/     Next.js 14 + Tailwind + shadcn/ui
 ```
 
@@ -227,6 +228,8 @@ keeper ── settleRound ──► chain          agent ── placeBid ──�
 | `Event` | `events` | every contract event, decoded args as JSON, tx hash + block + timestamp | `@@unique(txHash, logIndex)` makes re-indexing idempotent |
 | `AgentLog` | `agent_logs` | each bidding-agent decision (bid or skip), reason, source (llm/fallback), tx hash | indexed by circle |
 | `Mandate` | `mandates` | a member's plain-language goal for the agent, optional max discount | `@@id(circleId, member)` |
+| `BidAgent` | `bid_agents` | v4 autonomous bidding strategy per circle + custodial wallet: limits, permission, status, last decision / bid / tx | indexed by circle + status |
+| `AgentEvent` | `agent_events` | v4 activity lines of a BidAgent (kind, text, user-facing reason, JSON data), streamed over SSE | indexed by agent + id, cascade delete |
 | `RiskCache` | `risk_cache` | cached risk result JSON per address (30 s TTL) | address |
 | `DemoSkip` | `demo_skip` | demo console "skip payment" toggle per wallet | address |
 | `DemoCircle` | `demo_circles` | circles the demo autopilot manages | circleId |
@@ -284,7 +287,7 @@ Demo flow: open `/demo` → **Fund wallets** → **Assess all** (D becomes High,
 ## Running tests
 ```bash
 npx hardhat test                 # 29 contract cases incl. balance invariant after every step
-(cd backend && npm test)         # risk score + agent guardrails unit tests
+(cd backend && npm test)         # risk score, agent guardrails, v4 risk guard + fallback unit tests
 ```
 Contract cases cover: creation and parameter validation, joining, Low/Medium/High/Unassessed and custom collateral multipliers, correct / wrong / duplicate contributions, valid / too-high / not-higher / non-member / after-deadline bids, winner selection, payout, discount, dividends and dust, default detection with full, partial and reserve-assisted coverage, double-default prevention, holdback (tier floor, flat %, release), withdrawal restrictions, unauthorised oracle/treasury calls, re-entrancy, settlement timing and multi-round completion.
 
@@ -294,6 +297,33 @@ Open `/demo` (or use the API):
 4. In the room, ask the agent for B: "I need money this month". Its bid appears in the feed with a reason.
 5. Toggle **skip** on D. At the next settlement the contract emits `DefaultDetected` for D: 0.1 MST taken from D's collateral, pot still full. The Default event card shows required / used / remaining / status and links to MSTScan.
 6. Open **Round history** for pot, payout, discount, dividends per member and holdback of every settled round.
+
+## AI bidding agent (CrewAI)
+
+An autonomous bidding agent (v4) watches one auction for one custodial demo wallet and bids within the limits the user set. The AI only proposes; a deterministic Risk Guard and the Node backend execute. Experimental, testnet only.
+
+```
+ MONITOR ──► ANALYZE ──► DECIDE ──► VALIDATE ──► BID ──► VERIFY ──► CONTINUE
+ snapshot    Auction      Bidding    Risk Guard   placeBid  1 conf.   next tick
+ every 4 s   Analyst      Strategist (12 checks,  from the  TX_CON-   (or DONE
+ REFRESH /   (CrewAI)     (CrewAI)   pure, unit-  custodial FIRMED    when the
+ BID_SEEN                 WAIT|BID|  tested)      wallet    + feed    round ends)
+                          STOP
+```
+
+**Architecture.** `agent/` is a Python 3.12 FastAPI service built on CrewAI: a `BiddingFlow` (`load_strategy → fetch_auction → analyse → strategise → clamp`) with two agents, the Auction Analyst and the Bidding Strategist, whose tools read the Node public endpoints `GET /auction/:id` and `GET /auction/:id/bids`. The strategist's output is a Pydantic `BidDecision` (`WAIT | BID | STOP`, discount in MST, reason code, reason, confidence), clamped deterministically in Python. The Node backend (`backend/src/ai/`) runs the loop, asks the crew (`POST /evaluate`, 20 s timeout), falls back to the same deterministic rules when the crew is unavailable, re-validates every proposal with the Risk Guard, and only then sends `placeBid` from the custodial demo wallet. Every step is an `AgentEvent` streamed over SSE to the room (`/ai/bidding/stream/:agentId`). Full endpoint list in [API.md](API.md) (v4).
+
+**Safety.**
+- The crew has no wallet and no write access; it cannot execute anything.
+- Risk Guard, in order: `MAX_BID_EXCEEDED`, `MAX_DISCOUNT_PCT_EXCEEDED`, `ABOVE_CONTRACT_MAX`, `NOT_HIGHER_THAN_BEST`, `AUCTION_NOT_ACTIVE`, `WRONG_CIRCLE`, `WRONG_ROUND`, `STRATEGY_EXPIRED`, `AGENT_NOT_ENABLED`, `WALLET_UNAUTHORIZED`, `INSUFFICIENT_BALANCE` (0.02 MST gas reserve), `NOT_ELIGIBLE`.
+- Autonomous bidding is an explicit permission; without it the agent pauses with "Needs your approval" and the user approves each bid.
+- Hard caps: maximum discount in MST and in % of pot; a bid is never above them, never above the circle's max, and always beats the current best.
+- After 3 failed transactions the agent pauses; expiry and round end finish it. Only custodial demo wallets A–E, only MST testnet, no real funds.
+- Activity lines carry short operational text and a user-facing reason, never chain-of-thought. No fabricated bids, hashes or state.
+
+**Demo mode.** With `demoMode` on, 25 s after activation (while bidding is open and once per round) another eligible custodial demo wallet places a **real** small bid on testnet (best + 2 % of pot, capped at 10 % of pot). It appears as "Demo rival (wallet C) bid 0.20 MST" with `simulated: false`, so the WAIT → new bid → BID story happens on-chain.
+
+**Env.** Backend: `AI_AGENT_URL` (URL of the `ai-agent` Railway service; empty → deterministic fallback only). Agent service (`agent/`): `GROQ_API_KEY`, `CHITCHAIN_API_URL`, `MODEL` (default `groq/qwen/qwen3.8-27b` via LiteLLM), `PORT`. Local run: `cd agent && python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt && GROQ_API_KEY=… CHITCHAIN_API_URL=http://localhost:4000 .venv/bin/uvicorn main:app --port 8000`.
 
 ## MSTScan verification
 Every action in the UI links to `https://testnet.mstscan.com/tx/<hash>`. Open the contract page, tab **Logs**, to see `DefaultDetected`, `HoldbackApplied`, `RoundSettled` and `DividendCredited` with their decoded arguments. Only hashes returned by the MST network are ever displayed.

@@ -5,6 +5,7 @@ import { now } from "./auth";
 export { prisma } from "./client";
 export * from "./auth";
 export * from "./meta";
+export * from "./ai";
 
 
 /** Connects and runs a trivial query so a bad DATABASE_URL fails fast at boot. Schema is applied by `prisma db push` (npm start). */

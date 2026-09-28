@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import type { AgentEventApi, BidAgentApi } from "./db/ai";
 
 /** In-process event bus so keeper/indexer can trigger agent + autopilot without circular imports. */
 export interface BusEvents {
@@ -8,6 +9,10 @@ export interface BusEvents {
   biddingPhase: (circleId: number) => void;
   /** A decoded contract event was inserted by the indexer. */
   chainEvent: (name: string, circleId: number | null, args: Record<string, string | number | boolean>) => void;
+  /** v4: a BidAgent wrote an activity line (SSE fan-out). */
+  agentEvent: (agentId: string, event: AgentEventApi) => void;
+  /** v4: a BidAgent row changed status / decision fields. */
+  agentStatus: (agentId: string, agent: BidAgentApi) => void;
 }
 class Bus extends EventEmitter {
   override emit<K extends keyof BusEvents>(ev: K, ...args: Parameters<BusEvents[K]>): boolean { return super.emit(ev, ...args); }

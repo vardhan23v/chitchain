@@ -55,6 +55,8 @@ const schema = z.object({
   LLM_API_KEY: z.string().default(""),
   LLM_BASE_URL: z.string().default("https://generativelanguage.googleapis.com/v1beta/openai"),
   LLM_MODEL: z.string().default("gemini-2.0-flash"),
+  // v4: Python CrewAI decision service (agent/). Empty → deterministic fallback only.
+  AI_AGENT_URL: z.string().trim().default("").transform((s) => s.replace(/\/+$/, "")),
 
   PORT: intWithDefault(4000),
   FRONTEND_ORIGIN: z.string().default("http://localhost:3000"),

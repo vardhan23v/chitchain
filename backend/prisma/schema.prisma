@@ -201,3 +201,50 @@ model SupportTicket {
   @@index([status])
   @@map("support_tickets")
 }
+
+// ───────────── v4: autonomous AI bidding agent (crew proposes, Node guards and executes) ─────────────
+/// One autonomous bidding strategy for a custodial demo wallet in one circle. Amounts are wei strings.
+model BidAgent {
+  id             String       @id @default(cuid())
+  userWallet     String       @map("user_wallet") // session user (lowercase) who activated it
+  circleId       Int          @map("circle_id")
+  member         String // custodial demo wallet address (lowercase)
+  goal           String
+  desiredPayout  String?      @map("desired_payout") // wei string
+  maxDiscount    String       @map("max_discount") // wei string (hard cap on any bid)
+  maxDiscountPct Float        @map("max_discount_pct") // 0-50
+  urgency        String // low|medium|high
+  riskTolerance  String       @map("risk_tolerance") // low|medium|high
+  durationSec    Int?         @map("duration_sec") // null = until the auction ends
+  autonomous     Boolean      @default(false) // user granted auto-bid permission
+  demoMode       Boolean      @default(false) @map("demo_mode")
+  status         String       @default("ACTIVE") // ACTIVE|PAUSED|STOPPED|DONE|ERROR
+  statusReason   String?      @map("status_reason")
+  lastDecision   String?      @map("last_decision") // WAIT|BID|STOP
+  lastReason     String?      @map("last_reason")
+  lastBid        String?      @map("last_bid") // wei
+  lastTxHash     String?      @map("last_tx_hash")
+  failures       Int          @default(0)
+  startedAt      Int          @map("started_at")
+  expiresAt      Int?         @map("expires_at")
+  updatedAt      Int          @map("updated_at")
+  events         AgentEvent[]
+
+  @@index([circleId, status])
+  @@map("bid_agents")
+}
+
+/// Activity line for a BidAgent (short operational text + user-facing reason; never chain-of-thought).
+model AgentEvent {
+  id      Int      @id @default(autoincrement())
+  agentId String   @map("agent_id")
+  agent   BidAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  ts      Int
+  kind    String // REFRESH|BID_SEEN|EVALUATED|DECISION|RISK_PASSED|RISK_BLOCKED|TX_SUBMITTED|TX_CONFIRMED|TX_FAILED|PAUSED|STOPPED|DONE|RIVAL_BID|INFO
+  text    String
+  reason  String?
+  data    Json?
+
+  @@index([agentId, id])
+  @@map("agent_events")
+}

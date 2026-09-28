@@ -45,7 +45,7 @@ export function RoomTabs({ data, me, viewer, events, labelFor, onChanged }: Prop
     tab === "live" ? (
       <div className="min-w-0 space-y-5">
         <MembersGrid circle={circle} members={members} viewer={viewer} events={events} rounds={rounds} />
-        <AgentSection circleId={circle.id} me={me} members={members} mandates={data.mandates} labelFor={labelFor} backendDown={backendDown} pot={circle.status === 1 ? round.expectedPot : null} onChanged={onChanged} />
+        <AgentSection circleId={circle.id} circleName={circle.name} me={me} members={members} mandates={data.mandates} labelFor={labelFor} backendDown={backendDown} pot={circle.status === 1 ? round.expectedPot : null} onChanged={onChanged} />
       </div>
     ) : tab === "history" ? (
       <RoundHistory rounds={history.data?.rounds ?? null} loading={history.loading} labelFor={labelFor} source={history.data?.source} />

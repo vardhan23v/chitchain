@@ -1,7 +1,7 @@
 import { API_URL } from "@/lib/chain";
 import { clearSession, emitSessionExpired, sessionToken } from "@/lib/session";
 import type {
-  AdminOverview, AdminUser, AgentLog, AuditRow, CircleAnalytics, CircleRoom, CircleSummary, DefaultRecord, DemoState, FeedEvent, Invite, Level, LoopStatus,
+  AdminOverview, AdminUser, AgentEvent, AgentLog, AuctionBid, AuctionSnapshot, AuditRow, BidAgent, CircleAnalytics, CircleRoom, CircleSummary, DefaultRecord, DemoState, FeedEvent, Invite, Level, LoopStatus,
   Mandate, MeOverview, MyCircle, OrganizerCircle, RiskResult, Role, RoundHistoryRow, Stats, SupportTicket, User, UserStatus,
 } from "@/lib/types";
 
@@ -69,6 +69,21 @@ export interface MandateBody {
   maxDiscountPct?: number;
   urgency?: Level;
   riskTolerance?: Level;
+}
+
+/** `POST /ai/bidding/start` (API.md v4). MST amounts are decimal strings; the backend converts to wei. */
+export interface AiStartBody {
+  circleId: number;
+  member: string;
+  goal: string;
+  desiredPayout?: string;
+  maxDiscount: string;
+  maxDiscountPct: number;
+  urgency: Level;
+  riskTolerance: Level;
+  durationSec?: number | null;
+  autonomous: boolean;
+  demoMode?: boolean;
 }
 
 export interface DemoNewCircleBody {
@@ -147,6 +162,17 @@ export const api = {
   adminSupport: (status?: string) => request<{ tickets: SupportTicket[] }>(`/admin/support${qs({ status })}`),
   adminUpdateTicket: (id: number, body: { status?: "OPEN" | "CLOSED"; adminNote?: string }) => patch<{ ticket: SupportTicket }>(`/admin/support/${id}`, body),
   adminConfig: () => request<Record<string, unknown>>("/admin/config"),
+  /* ── v4 autonomous AI bidding ── */
+  aiStart: (body: AiStartBody) => post<{ agent: BidAgent }>("/ai/bidding/start", body, 20_000),
+  aiPause: (agentId: string) => post<{ agent: BidAgent }>("/ai/bidding/pause", { agentId }),
+  aiResume: (agentId: string, autonomous?: boolean) => post<{ agent: BidAgent }>("/ai/bidding/resume", autonomous === undefined ? { agentId } : { agentId, autonomous }),
+  aiStop: (agentId: string) => post<{ agent: BidAgent }>("/ai/bidding/stop", { agentId }),
+  aiStatus: (agentId: string) => request<{ agent: BidAgent; auction: AuctionSnapshot | null }>(`/ai/bidding/status/${agentId}`),
+  aiActivity: (agentId: string, since?: number, limit = 100) => request<{ events: AgentEvent[] }>(`/ai/bidding/activity/${agentId}${qs({ since, limit })}`),
+  aiMine: (circleId: number) => request<{ agents: BidAgent[] }>(`/ai/bidding/mine${qs({ circleId })}`),
+  aiEvaluate: (agentId: string) => post<{ decision: unknown }>("/ai/bidding/evaluate", { agentId }, 30_000),
+  auction: (circleId: number) => request<AuctionSnapshot>(`/auction/${circleId}`),
+  auctionBids: (circleId: number, limit = 50) => request<{ bids: AuctionBid[] }>(`/auction/${circleId}/bids${qs({ limit })}`),
   healthLoops: () => request<{ loops?: LoopStatus[] }>("/health", undefined, 4000),
 };
 

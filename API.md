@@ -161,3 +161,72 @@ interface AdminOverview {
 Notes: `PATCH /admin/users/:addr` with `status: "SUSPENDED"` revokes the user's sessions; a role change does not (the role is re-read from the database per request, so existing tokens pick it up immediately). All `/auth/*` requests share a 60/min per-IP limiter on top of the 10/min nonce limits.
 
 Audit rows are written for: logins (ok/denied), every admin mutation, organizer meta/invites, circle claims, member assess, support tickets, demo actions, keeper settlements, autopilot contributions, agent bids, oracle tier updates. The audit log is an application log; blockchain events remain the authority for blockchain state.
+
+---
+
+# v4 · Autonomous AI bidding
+
+## Principle
+The AI **decides**, the backend **executes**, and a deterministic **Risk Guard** sits between them. The decision service (`agent/`, Python + CrewAI, Railway service `ai-agent`) receives a strategy brief, the auction snapshot and recent activity, and returns one of `WAIT | BID | STOP` with a discount in MST. It has no wallet. The Node loop (`backend/src/ai/loop.ts`, listed in `/health` as `aiBidding`, 4 s) re-validates every proposal with the Risk Guard and only then sends `placeBid(circleId, discount)` from the custodial demo wallet. If the crew is down, slow (> 20 s) or rate-limited, Node uses the same deterministic rules on its own (`fallback.ts`). Testnet only, MST only, custodial demo wallets A–E only. Nothing is simulated: demo mode places a **real** rival bid from another custodial demo wallet, labelled "Demo rival".
+
+A "bid" is the **discount** (wei) the member gives up; **desired payout** = pot − discount. `maxDiscount` (MST) and `maxDiscountPct` (% of pot) are hard caps on any bid.
+
+## Shapes
+```ts
+interface BidAgent {
+  id: string; userWallet: string; circleId: number; member: string /* custodial demo wallet, lowercase */; goal: string;
+  desiredPayout: string|null /* wei */; maxDiscount: string /* wei */; maxDiscountPct: number /* 0-50 */;
+  urgency: "low"|"medium"|"high"; riskTolerance: "low"|"medium"|"high"; durationSec: number|null /* null = until this auction (round) ends */;
+  autonomous: boolean; demoMode: boolean; status: "ACTIVE"|"PAUSED"|"STOPPED"|"DONE"|"ERROR"; statusReason: string|null;
+  lastDecision: "WAIT"|"BID"|"STOP"|null; lastReason: string|null; lastBid: string|null /* wei */; lastTxHash: string|null;
+  failures: number; startedAt: number; expiresAt: number|null; updatedAt: number;
+}
+interface AgentEvent { id: number; agentId: string; ts: number; kind: AgentEventKind; text: string; reason: string|null; data: Record<string,unknown>|null; }
+type AgentEventKind = "REFRESH"|"BID_SEEN"|"EVALUATED"|"DECISION"|"RISK_PASSED"|"RISK_BLOCKED"|"TX_SUBMITTED"|"TX_CONFIRMED"|"TX_FAILED"|"PAUSED"|"STOPPED"|"DONE"|"RIVAL_BID"|"INFO";
+interface AuctionSnapshot {
+  circleId: number; round: number; roundsTotal: number; status: "CONTRIBUTION"|"BIDDING"|"SETTLING"|"INACTIVE";
+  expectedPot: string; collected: string; maxDiscount: string; bestDiscount: string; bestPayout: string /* wei */;
+  bestBidder: string|null /* lowercase; null when nobody has bid */; bestBidderLabel: string|null /* "A".."E" for demo wallets */;
+  biddingDeadline: number; contributionDeadline: number; secondsRemaining: number /* in the current phase */; bidCount: number;
+  expectedPotMst: number; collectedMst: number; maxDiscountMst: number; bestDiscountMst: number; bestPayoutMst: number; nowSec: number;
+}
+interface AuctionBid { round: number|null; member: string; label: string|null; discount: string; payout: string|null /* wei, null if the round's pot is unknown */; txHash: string; block: number; ts: number; }
+interface Decision { decision: "WAIT"|"BID"|"STOP"; discount: string|null /* wei */; discountMst: number|null; payout: string|null; reasonCode: string; reason: string; confidence: number; source: "crew"|"fallback"; analyst: Record<string,unknown>|null; }
+```
+
+## Endpoints
+| Method | Path | Access | Response |
+|---|---|---|---|
+| POST | `/ai/bidding/start` `{circleId, member, goal, desiredPayout?: "4.5", maxDiscount: "1.0", maxDiscountPct: 20, urgency, riskTolerance, durationSec?: number\|null, autonomous: boolean, demoMode?: boolean}` (MST decimal strings) | organizer of the circle or ADMIN; `member` must be a custodial demo wallet (400 `NOT_DEMO_WALLET`) | `{agent}`; 409 `AGENT_EXISTS` when an ACTIVE/PAUSED agent exists for the same circle + member. Writes INFO "Agent activated". |
+| POST | `/ai/bidding/pause` `{agentId}` | owner or ADMIN | `{agent}` (409 `BAD_STATE` unless ACTIVE) |
+| POST | `/ai/bidding/resume` `{agentId, autonomous?: true}` | owner or ADMIN | `{agent}`; `autonomous: true` grants auto-bidding (the "Approve" button after "Needs your approval") |
+| POST | `/ai/bidding/stop` `{agentId}` | owner or ADMIN | `{agent}` with status STOPPED, reason "Stopped by user" |
+| GET | `/ai/bidding/status/:agentId` | public | `{agent, auction: AuctionSnapshot\|null}` |
+| GET | `/ai/bidding/activity/:agentId?since=<eventId>&limit=100` | public | `{events: AgentEvent[]}` ascending by id |
+| GET | `/ai/bidding/stream/:agentId` | public | SSE: `event: agent` `{agent}` on status change, `event: activity` `{event}` per new AgentEvent, `: ping` every 15 s. The last 50 events are replayed on connect. |
+| GET | `/ai/bidding/mine?circleId=` | signed in | `{agents}` of the session user, newest first |
+| POST | `/ai/bidding/evaluate` `{agentId}` | owner or ADMIN | `{decision: Decision\|null, agent}`: runs one tick now (409 `AGENT_BUSY` while a tick is running) |
+| GET | `/auction/:circleId` | public | `AuctionSnapshot` |
+| GET | `/auction/:circleId/bids?limit=50` | public | `{bids: AuctionBid[]}` from indexed `BidPlaced` events, newest first |
+
+There is **no** `/ai/bidding/execute` route. Execution is only reachable through the loop, after the Risk Guard.
+
+## Loop (per ACTIVE agent, every 4 s)
+1. `expiresAt` passed → DONE "Strategy expired"; circle not Active → DONE "Circle is no longer active"; round advanced with `durationSec = null` → DONE "Auction ended" (with a duration, the agent keeps monitoring the next round).
+2. Snapshot; REFRESH only when best discount / bid count / 30 s time bucket changed; BID_SEEN when the best discount changed ("New bid detected: 0.40 MST discount by C").
+3. Not BIDDING → WAIT without an LLM call; agent already `bestBidder` → WAIT "You hold the winning bid".
+4. Decision: `POST ${AI_AGENT_URL}/evaluate` (timeout 20 s), else `fallbackDecide()`. The crew's number is clamped (never above the caps, never below best + 1 % of pot). Events EVALUATED then DECISION ("Decision: BID 0.45 MST" / "Decision: WAIT"). LLM calls at most once per 20 s per agent unless the best discount changed.
+5. BID with `autonomous = false` → DECISION "Autonomous bidding is off; bid not submitted", status PAUSED "Needs your approval".
+6. Risk Guard → RISK_PASSED / RISK_BLOCKED (blocked → WAIT; `MAX_*` → DONE "Your maximum has been reached").
+7. `preflight` + `sendTx` from the custodial wallet → TX_SUBMITTED `{txHash}` → 1 confirmation → TX_CONFIRMED `{txHash, block, ts, discount, payout}`; also an `agent_logs` row (room feed) and an audit row `ai.bid`.
+8. TX_FAILED with the decoded revert; backoff 8 s × 2^failures; after 3 → PAUSED "Repeated transaction failures".
+9. Demo mode: 25 s after activation, while ACTIVE in BIDDING and once per round, another eligible custodial demo wallet places a real bid (best + 2 % of pot, capped at 10 % of pot) → RIVAL_BID "Demo rival (wallet C) bid 0.20 MST" with `data.simulated = false, demoRival = true`.
+
+## Risk Guard reasons (checked in this order; `backend/src/ai/riskGuard.ts`, pure and unit-tested)
+`MAX_BID_EXCEEDED` (discount > `maxDiscount`), `MAX_DISCOUNT_PCT_EXCEEDED` (> `maxDiscountPct` of the expected pot), `ABOVE_CONTRACT_MAX` (> the round's `maxDiscount`), `NOT_HIGHER_THAN_BEST`, `AUCTION_NOT_ACTIVE` (status ≠ BIDDING), `WRONG_CIRCLE`, `WRONG_ROUND`, `STRATEGY_EXPIRED`, `AGENT_NOT_ENABLED` (status ≠ ACTIVE or `autonomous = false`), `WALLET_UNAUTHORIZED` (member is not a custodial demo wallet), `INSUFFICIENT_BALANCE` (wallet balance < 0.02 MST gas reserve, read with `provider.getBalance`), `NOT_ELIGIBLE` (not joined, already won, removed, or unpaid this round).
+
+## Decision reason codes
+Crew / fallback: `NOT_BIDDING`, `MAX_REACHED`, `PAYOUT_UNREACHABLE`, `PAYOUT_ACCEPTABLE`, `DESIRED_PAYOUT`, `URGENT`, `LOW_URGENCY`, `TIME_REMAINS`, `NEAR_EXPIRY`, `NO_AMOUNT`; the loop adds `QUIET` (non-bidding phases / holding the best bid) and a Risk Guard reason when blocked.
+
+## Env
+Backend: `AI_AGENT_URL` (Python service base URL; empty → deterministic fallback only). Agent service: `GROQ_API_KEY`, `CHITCHAIN_API_URL`, `MODEL` (default `groq/qwen/qwen3.8-27b`), `PORT`, optional `REASONING_EFFORT`, `LLM_RETRIES`, `EVALUATE_TIMEOUT_SEC`.
