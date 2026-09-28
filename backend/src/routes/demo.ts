@@ -29,7 +29,7 @@ demo.get("/demo/state", wrap(async (_req, res) => {
   res.json({ wallets, txCount, contract: contractAddress, circleId });
 }));
 
-/** POST /demo/fund — top up every demo wallet below 1 MST to 2 MST from the deployer. */
+/** POST /demo/fund — top up every demo wallet below 0.3 MST to 0.6 MST from the deployer (skips when the deployer cannot afford it). */
 demo.post("/demo/fund", wrap(async (_req, res) => {
   requireDemo(); requireDeployer();
   const txHashes: string[] = [];

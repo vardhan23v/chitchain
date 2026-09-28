@@ -14,15 +14,21 @@ const CONTRIBUTE_DELAY_SEC = 5;
 const busy = new Set<string>(); // wallet addresses with a tx in flight
 const done = new Set<string>(); // `${circleId}:${round}:${addr}` already handled
 
-export const MIN_BALANCE = parseEther("1");
-export const TOP_UP_TO = parseEther("2");
+export const MIN_BALANCE = parseEther("0.3");
+export const TOP_UP_TO = parseEther("0.6");
 
 /** Tops up a demo wallet from the deployer if below MIN_BALANCE. Returns the tx hash or null. */
 export async function ensureFunded(address: string, min = MIN_BALANCE, target = TOP_UP_TO): Promise<string | null> {
   if (!deployer) throw new Error("DEPLOYER_PRIVATE_KEY not configured");
   const bal = await provider.getBalance(address);
   if (bal >= min) return null;
-  const tx = await deployer.sendTransaction({ to: address, value: target - bal });
+  const need = target - bal;
+  const deployerBal = await provider.getBalance(deployer.address);
+  if (deployerBal < need + parseEther("0.05")) {
+    console.warn(`[demo] cannot fund ${address}: deployer has ${deployerBal} wei, needs ${need} — claim faucet MST for the deployer`);
+    return null; // never block the demo on a top-up the deployer cannot afford
+  }
+  const tx = await deployer.sendTransaction({ to: address, value: need });
   console.log(`[demo] funding ${address} sent ${tx.hash}`);
   await tx.wait(1);
   console.log(`[demo] funded ${address} txHash ${tx.hash}`);
