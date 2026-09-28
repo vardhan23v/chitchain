@@ -9,7 +9,7 @@ export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:400
 export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CHITCHAIN_ADDRESS || "").trim();
 export const HAS_CONTRACT = /^0x[0-9a-fA-F]{40}$/.test(CONTRACT_ADDRESS);
 export const FAUCET_URL = "https://faucet.masterstroke.academy";
-export const BRIDGEKEY_URL = "https://mstblockchain.com"; // VERIFY: BridgeKey install page
+export const BRIDGEKEY_URL = "https://chromewebstore.google.com/detail/bridgekey/bfjojdcfenehemjgjlepdjomkpginlkg"; // Chrome Web Store listing
 
 /** Polling intervals (ms). Backend is primary; contract views are the fallback. */
 export const POLL_API_MS = 2500;
