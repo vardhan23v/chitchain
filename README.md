@@ -276,7 +276,7 @@ Demo flow: open `/demo` → **Fund wallets** → **Assess all** (D becomes High,
 
 ## CI/CD
 - **CI** (`.github/workflows/ci.yml`) on every push and pull request: Hardhat compile + 29 contract tests + ABI-sync check; backend Prisma validate, typecheck and unit tests; frontend typecheck, lint, build and a guard that no `MSTC`/fiat symbols remain.
-- **CD** (`.github/workflows/deploy.yml`): uploads `backend/` then `frontend/` to Railway with the Railway CLI and smoke-checks `/health`. Currently **manual** (Actions → Deploy to Railway → Run workflow) and needs the repository secret `RAILWAY_TOKEN` (Railway → project → Settings → Tokens, which requires a verified Railway account). Until then deploys are done with `railway up` from a developer machine.
+- **CD** (`.github/workflows/deploy.yml`): uploads `backend/` then `frontend/` to Railway with the Railway CLI and smoke-checks `/health`. Runs automatically when CI succeeds on `main` (and manually from the Actions tab). Needs the repository secret `RAILWAY_TOKEN` (Railway → project → Settings → Tokens → project token for `production`).
 
 ## Wallet setup
 1. Install BridgeKey from the Chrome Web Store link above and create a wallet.
