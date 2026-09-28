@@ -5,6 +5,7 @@ import {
 } from "./chain";
 import { addDemoCircle, demoCircleIds, getSkip } from "./db";
 import { loop } from "./bus";
+import { auditSystem } from "./auth/audit";
 
 /**
  * Demo autopilot: for circles created via /demo/new-circle, contribute for every custodial demo wallet
@@ -32,6 +33,7 @@ export async function ensureFunded(address: string, min = MIN_BALANCE, target = 
   console.log(`[demo] funding ${address} sent ${tx.hash}`);
   await tx.wait(1);
   console.log(`[demo] funded ${address} txHash ${tx.hash}`);
+  auditSystem("AUTOPILOT", "autopilot.fund", address.toLowerCase(), "ok", tx.hash, { amount: need.toString() });
   return tx.hash;
 }
 
@@ -70,12 +72,14 @@ async function contributeFor(circleId: number, round: number, label: string, wal
     try {
       await preflight(contract, "contribute", [circleId], { value: contribution });
       // custodial demo wallet — contribute from the member's own key
-      await sendTx(`autopilot ${label} circle ${circleId} round ${round}`, wallet, () => contract.contribute(circleId, { value: contribution }));
+      const rc = await sendTx(`autopilot ${label} circle ${circleId} round ${round}`, wallet, () => contract.contribute(circleId, { value: contribution }));
       done.add(key);
+      auditSystem("AUTOPILOT", "autopilot.contribute", `circle:${circleId}`, "ok", rc.hash, { round, member: wallet.address, label, amount: contribution.toString() });
     } catch (e) {
       const msg = errorMessage(e);
       if (/AlreadyPaid|ContributionClosed|NotActive|MemberRemoved/.test(msg)) done.add(key);
       console.error(`[autopilot] ${label} circle ${circleId} round ${round}: ${msg}`);
+      auditSystem("AUTOPILOT", "autopilot.contribute", `circle:${circleId}`, "failed", null, { round, member: wallet.address, label, error: msg });
     }
   });
 }

@@ -15,14 +15,26 @@ class Bus extends EventEmitter {
 }
 export const bus = new Bus();
 
-/** Runs `fn` on an interval, serialised (no overlapping runs), never throwing out of the timer. */
+export interface LoopStatus { name: string; everyMs: number; ticks: number; errors: number; lastTickAt: number | null; lastOkAt: number | null; lastError: string | null; busy: boolean }
+const loops = new Map<string, LoopStatus>();
+/** Health snapshot of every registered loop (indexer / keeper / autopilot). Timestamps are unix seconds. */
+export function loopStatus(): LoopStatus[] { return [...loops.values()].map((l) => ({ ...l })); }
+
+/** Runs `fn` on an interval, serialised (no overlapping runs), never throwing out of the timer. Registers itself for loopStatus(). */
 export function loop(name: string, everyMs: number, fn: () => Promise<void>): NodeJS.Timeout {
-  let busy = false;
+  const st: LoopStatus = { name, everyMs, ticks: 0, errors: 0, lastTickAt: null, lastOkAt: null, lastError: null, busy: false };
+  loops.set(name, st);
   const tick = async () => {
-    if (busy) return;
-    busy = true;
-    try { await fn(); } catch (e) { console.error(`[${name}] loop error: ${e instanceof Error ? e.message : String(e)}`); }
-    finally { busy = false; }
+    if (st.busy) return;
+    st.busy = true;
+    st.ticks += 1;
+    st.lastTickAt = Math.floor(Date.now() / 1000);
+    try { await fn(); st.lastOkAt = Math.floor(Date.now() / 1000); }
+    catch (e) {
+      st.errors += 1;
+      st.lastError = e instanceof Error ? e.message : String(e);
+      console.error(`[${name}] loop error: ${st.lastError}`);
+    } finally { st.busy = false; }
   };
   void tick();
   return setInterval(() => { void tick(); }, everyMs);

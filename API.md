@@ -102,17 +102,17 @@ Roles: everyone is `MEMBER` on first login; addresses listed in `PLATFORM_ADMIN_
 | Public | `GET /health`, `GET /circles*`, `GET /stats`, `GET /feed`, `GET /members/:addr/{activity,circles,risk}`, `GET /agent/logs`, `GET /demo/state`, `POST /circles/:id/settle` (anyone can settle on-chain; 5/min per IP) |
 | Signed in | `GET /auth/me`, `POST /auth/logout`, `GET /me`, `GET /me/circles`, `GET /me/invites`, `PATCH /me`, `POST /support`, `GET /support/mine`, `POST /circles/:id/claim` |
 | Self or ADMIN | `POST /members/:addr/assess` |
-| Organizer of the circle or ADMIN | `POST/DELETE /agent/mandate`, `POST /organizer/circles/:id/meta`, `POST/DELETE /organizer/circles/:id/invites[/:addr]`, `GET /organizer/circles/:id/analytics` |
+| Organizer of the circle or ADMIN | `POST/DELETE /agent/mandate`, `POST /organizer/circles/:id/meta`, `GET/POST/DELETE /organizer/circles/:id/invites[/:addr]`, `GET /organizer/circles/:id/analytics` |
 | ORGANIZER or ADMIN | `GET /organizer/circles` |
 | ADMIN | `POST /demo/{fund,assess-all,skip,new-circle,withdraw}`, everything under `/admin` |
 
 ## New shapes
 ```ts
 interface CircleSummary { /* v2 fields */ name: string|null; organizerWallet: string|null; }
-interface MeOverview { user: User; balance: string /* wei */; risk: RiskResult|null; totals: { contributions: string; payouts: string; dividends: string; defaults: number; circles: number }; activeCircle: (CircleSummary & { me: MemberInfo; round: RoundInfo }) | null; }
-interface Invite { circleId: number; circle: CircleSummary|null; invitedBy: string; createdAt: number; }
-interface OrganizerCircle extends CircleSummary { members: MemberInfo[]; round: RoundInfo; pendingContributions: number; defaults: number; collateralTotal: string; lowestAcceptedPayout: string; }
-interface CircleAnalytics { circle: CircleSummary; round: RoundInfo; members: MemberInfo[]; rounds: RoundHistoryRow[]; defaults: (DefaultInfo & {member,label})[]; contributionRate: number /* 0..1 this round */; agentDecisions: number; recentEvents: FeedEvent[]; }
+interface MeOverview { user: User; balance: string /* wei */; risk: RiskResult|null; totals: { contributions: string; payouts: string; dividends: string; defaults: number; circles: number }; activeCircle: (Omit<CircleSummary,"round"> & { roundNumber: number; round: RoundInfo; me: MemberInfo }) | null; }
+interface Invite { circleId: number; walletAddress: string /* invitee, lowercase */; circle: CircleSummary|null; invitedBy: string; createdAt: number; }
+interface OrganizerCircle extends Omit<CircleSummary,"round"> { roundNumber: number; round: RoundInfo; members: MemberInfo[]; pendingContributions: number; defaults: number; collateralTotal: string; lowestAcceptedPayout: string; }
+interface CircleAnalytics { circle: CircleSummary; roundNumber: number; round: RoundInfo; members: MemberInfo[]; rounds: RoundHistoryRow[]; defaults: (DefaultInfo & {member,label})[]; contributionRate: number /* 0..1 this round */; agentDecisions: number; recentEvents: FeedEvent[]; }
 interface AuditRow { id: number; ts: number; actorWallet: string|null; role: string /* MEMBER|ORGANIZER|ADMIN|SYSTEM|KEEPER|AGENT|AUTOPILOT|ORACLE */; action: string; target: string|null; result: string; txHash: string|null; meta: Record<string,unknown>|null; }
 interface SupportTicket { id: number; userWallet: string; subject: string; message: string; status: "OPEN"|"CLOSED"; adminNote: string|null; createdAt: number; updatedAt: number; }
 interface LoopStatus { name: string; everyMs: number; ticks: number; errors: number; lastTickAt: number|null; lastOkAt: number|null; lastError: string|null; busy: boolean; }
@@ -136,9 +136,10 @@ interface AdminOverview {
 | GET | `/me/circles` | `{ circles: (CircleSummary & { me: MemberInfo })[] }` |
 | GET | `/me/invites` | `{ invites: Invite[] }` |
 | PATCH | `/me` `{ displayName }` | `{ user }` |
-| POST | `/circles/:id/claim` `{ name, description?, txHash? }` | `{ circle: CircleSummary, user }` — caller must be the on-chain creator; promotes MEMBER → ORGANIZER |
+| POST | `/circles/:id/claim` `{ name, description?, txHash? }` | `{ circle: CircleSummary, user }` — caller must be the on-chain creator (403 `NOT_CREATOR`); promotes MEMBER → ORGANIZER |
 | GET | `/organizer/circles` | `{ circles: OrganizerCircle[] }` (ADMIN: all circles) |
 | POST | `/organizer/circles/:id/meta` `{ name, description? }` | `{ circle }` |
+| GET | `/organizer/circles/:id/invites` | `{ invites: Invite[] }` |
 | POST | `/organizer/circles/:id/invites` `{ addresses: string[] }` | `{ invites: Invite[] }` |
 | DELETE | `/organizer/circles/:id/invites/:addr` | `{ ok }` |
 | GET | `/organizer/circles/:id/analytics` | `CircleAnalytics` |
@@ -152,5 +153,7 @@ interface AdminOverview {
 | PATCH | `/admin/support/:id` `{ status?, adminNote? }` | `{ ticket }` |
 | GET | `/admin/config` | safe config subset (never keys, never DATABASE_URL) |
 | GET | `/health` | adds `loops: LoopStatus[]`, `tx`, `indexerHealthy` |
+
+Notes: `PATCH /admin/users/:addr` with `status: "SUSPENDED"` revokes the user's sessions; a role change does not (the role is re-read from the database per request, so existing tokens pick it up immediately). All `/auth/*` requests share a 60/min per-IP limiter on top of the 10/min nonce limits.
 
 Audit rows are written for: logins (ok/denied), every admin mutation, organizer meta/invites, circle claims, member assess, support tickets, demo actions, keeper settlements, autopilot contributions, agent bids, oracle tier updates. The audit log is an application log; blockchain events remain the authority for blockchain state.

@@ -90,3 +90,114 @@ model Meta {
 
   @@map("meta")
 }
+
+// ───────────── v3: wallet login, roles, audit, support ─────────────
+enum Role {
+  MEMBER
+  ORGANIZER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TicketStatus {
+  OPEN
+  CLOSED
+}
+
+/// One row per wallet that has signed in (address stored lowercase). Role is re-read on every request.
+model User {
+  walletAddress String     @id @map("wallet_address")
+  role          Role       @default(MEMBER)
+  status        UserStatus @default(ACTIVE)
+  displayName   String?    @map("display_name")
+  createdAt     Int        @map("created_at")
+  lastLogin     Int?       @map("last_login")
+
+  @@map("users")
+}
+
+/// One-time login nonce (SIWE-style). Consumed by setting used_at.
+model AuthNonce {
+  nonce         String @id
+  walletAddress String @map("wallet_address")
+  issuedAt      Int    @map("issued_at")
+  expiresAt     Int    @map("expires_at")
+  usedAt        Int?   @map("used_at")
+
+  @@index([walletAddress, issuedAt])
+  @@map("auth_nonces")
+}
+
+/// Bearer session; id = JWT jti. Logout / suspension set revoked_at.
+model Session {
+  id            String @id
+  walletAddress String @map("wallet_address")
+  role          Role
+  createdAt     Int    @map("created_at")
+  expiresAt     Int    @map("expires_at")
+  revokedAt     Int?   @map("revoked_at")
+
+  @@index([walletAddress])
+  @@map("sessions")
+}
+
+/// Off-chain metadata for a circle (name, organizer). The contract remains the authority for funds/state.
+model CircleMeta {
+  circleId        Int     @id @map("circle_id")
+  name            String
+  description     String?
+  organizerWallet String  @map("organizer_wallet")
+  demo            Boolean @default(false)
+  createdAt       Int     @map("created_at")
+
+  @@index([organizerWallet])
+  @@map("circle_meta")
+}
+
+model CircleInvite {
+  circleId      Int    @map("circle_id")
+  walletAddress String @map("wallet_address")
+  invitedBy     String @map("invited_by")
+  createdAt     Int    @map("created_at")
+
+  @@id([circleId, walletAddress])
+  @@index([walletAddress])
+  @@map("circle_invites")
+}
+
+/// Application audit log (who did what on the website/backend). Blockchain events remain the authority for chain state.
+model AuditLog {
+  id          Int     @id @default(autoincrement())
+  ts          Int
+  actorWallet String? @map("actor_wallet")
+  role        String
+  action      String
+  target      String?
+  result      String
+  txHash      String? @map("tx_hash")
+  metaJson    String? @map("meta_json")
+
+  @@index([ts])
+  @@index([actorWallet])
+  @@index([action])
+  @@map("audit_log")
+}
+
+model SupportTicket {
+  id         Int          @id @default(autoincrement())
+  userWallet String       @map("user_wallet")
+  subject    String
+  message    String
+  status     TicketStatus @default(OPEN)
+  adminNote  String?      @map("admin_note")
+  createdAt  Int          @map("created_at")
+  updatedAt  Int          @map("updated_at")
+
+  @@index([userWallet])
+  @@index([status])
+  @@map("support_tickets")
+}

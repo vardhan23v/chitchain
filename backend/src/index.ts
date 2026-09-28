@@ -1,21 +1,28 @@
 import express from "express";
 import cors from "cors";
 import { config } from "./config";
-import { contractAddress, keeper, provider } from "./chain";
+import { contractAddress, keeper, provider, txStats } from "./chain";
 import { getLastBlock, initDb } from "./db";
 import { startIndexer } from "./indexer";
 import { startKeeper } from "./keeper";
 import { startAutopilot } from "./autopilot";
 import { planRound } from "./agent/bidder";
-import { bus } from "./bus";
+import { bus, loopStatus } from "./bus";
 import { circles } from "./routes/circles";
 import { feed } from "./routes/feed";
 import { members } from "./routes/members";
 import { agent } from "./routes/agent";
 import { demo } from "./routes/demo";
+import { auth } from "./routes/auth";
+import { me } from "./routes/me";
+import { organizer } from "./routes/organizer";
+import { support } from "./routes/support";
+import { admin } from "./routes/admin";
+import { ipOf, rateLimit } from "./auth/ratelimit";
 import { errorMiddleware, wrap } from "./routes/util";
 
 const app = express();
+app.set("trust proxy", 1); // Railway / reverse proxy: req.ip = X-Forwarded-For (rate limits are per client IP)
 const origins = new Set([config.FRONTEND_ORIGIN, "http://localhost:3000", "http://127.0.0.1:3000"]);
 app.use(cors({
   origin: (origin, cb) => cb(null, !origin || origins.has(origin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)),
@@ -26,16 +33,27 @@ app.use((req, _res, next) => { if (req.method !== "GET") console.log(`[api] ${re
 app.get("/health", wrap(async (_req, res) => {
   let latestBlock: number | null = null;
   try { latestBlock = await provider.getBlockNumber(); } catch { /* rpc down */ }
+  const loops = loopStatus();
+  const indexer = loops.find((l) => l.name === "indexer");
+  const nowSec = Math.floor(Date.now() / 1000);
   res.json({
     ok: latestBlock !== null, chainId: config.MST_CHAIN_ID, latestBlock, lastIndexedBlock: await getLastBlock(),
     contract: contractAddress, keeper: keeper?.address ?? null, explorer: config.EXPLORER,
+    loops, tx: txStats(),
+    indexerHealthy: !!indexer && indexer.lastOkAt !== null && nowSec - indexer.lastOkAt <= 30,
   });
 }));
+app.use("/auth", rateLimit({ perMinute: 60, keys: (req) => [`auth:${ipOf(req)}`] }));
+app.use(auth);
 app.use(circles);
 app.use(feed);
 app.use(members);
 app.use(agent);
 app.use(demo);
+app.use(me);
+app.use(organizer);
+app.use(support);
+app.use(admin);
 app.use((_req, res) => { res.status(404).json({ error: "not found", code: "NOT_FOUND" }); });
 app.use(errorMiddleware);
 

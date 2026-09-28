@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { contractAs, demoWallet, errorMessage, getCircle, getMember, getMembers, getRound, isConfigured, preflight, roundPhase, sendTx, type Tier } from "../chain";
 import { activeMandates, agentLogForRound, insertAgentLog, type AgentLogRow, type MandateRow } from "../db";
+import { auditSystem } from "../auth/audit";
 import { chatJSON } from "../llm";
 import { asMst, asPct, decideBid, effectiveCap, lowestAcceptedPayout, type Plan, type RoundFacts } from "./guardrails";
 
@@ -82,10 +83,12 @@ export async function decideForMandate(m: MandateRow, force = false): Promise<Ag
     try {
       await preflight(contract, "placeBid", [m.circle_id, d.bid]); // never send a bid that would revert
       const rc = await sendTx(`agent ${wallet.label} circle ${m.circle_id} round ${round.round}`, wallet.wallet, () => contract.placeBid(m.circle_id, d.bid));
+      auditSystem("AGENT", "agent.bid", `circle:${m.circle_id}`, "ok", rc.hash, { round: round.round, member: wallet.address, label: wallet.label, discount: d.bid.toString(), source: d.source });
       return insertAgentLog({ ...base, bidThisRound: true, discount: d.bid, reason: d.reason, txHash: rc.hash, error: null });
     } catch (e) {
       const err = errorMessage(e);
       console.error(`[agent] circle ${m.circle_id} round ${round.round} ${wallet.label}: bid failed: ${err}`);
+      auditSystem("AGENT", "agent.bid", `circle:${m.circle_id}`, "failed", null, { round: round.round, member: wallet.address, label: wallet.label, discount: d.bid.toString(), error: err });
       return insertAgentLog({ ...base, bidThisRound: true, discount: d.bid, reason: d.reason, txHash: null, error: err });
     }
   } finally {

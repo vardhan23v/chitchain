@@ -1,5 +1,6 @@
 import { contractAs, errorMessage, getCircle, getCircleCount, isConfigured, keeper, preflight, revertName, sendTx } from "./chain";
 import { bus, loop } from "./bus";
+import { auditSystem } from "./auth/audit";
 
 const pending = new Set<string>(); // `${circleId}:${round}` while a settle tx is in flight
 const finished = new Set<number>(); // Completed / Cancelled circles — no need to re-read every tick
@@ -17,7 +18,14 @@ export async function settleNow(circleId: number, ctx = "keeper"): Promise<strin
   try {
     const contract = contractAs(keeper);
     await preflight(contract, "settleRound", [circleId]); // never send a tx that would revert
-    const rc = await sendTx(`${ctx} circle ${circleId} round ${c.round}`, keeper, () => contract.settleRound(circleId));
+    let rc;
+    try {
+      rc = await sendTx(`${ctx} circle ${circleId} round ${c.round}`, keeper, () => contract.settleRound(circleId));
+    } catch (e) {
+      auditSystem(ctx === "keeper" ? "KEEPER" : "SYSTEM", "keeper.settle", `circle:${circleId}`, "failed", null, { round: c.round, error: errorMessage(e), ctx });
+      throw e;
+    }
+    auditSystem(ctx === "keeper" ? "KEEPER" : "SYSTEM", "keeper.settle", `circle:${circleId}`, "ok", rc.hash, { round: c.round, ctx });
     bus.emit("roundStarted", circleId);
     return rc.hash;
   } finally {

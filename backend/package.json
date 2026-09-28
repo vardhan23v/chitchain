@@ -14,7 +14,8 @@
     "prisma:validate": "prisma validate",
     "db:smoke": "tsx scripts/db-smoke.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/risk/score.test.ts src/agent/guardrails.test.ts"
+    "test": "node --import tsx --test src/risk/score.test.ts src/agent/guardrails.test.ts src/auth/jwt.test.ts src/auth/message.test.ts src/auth/ratelimit.test.ts src/auth/middleware.test.ts",
+    "auth:smoke": "tsx scripts/auth-smoke.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

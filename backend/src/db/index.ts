@@ -1,9 +1,11 @@
 import type { AgentLog as PAgentLog, Event as PEvent, Mandate as PMandate } from "@prisma/client";
 import { prisma } from "./client";
+import { now } from "./auth";
 
 export { prisma } from "./client";
+export * from "./auth";
+export * from "./meta";
 
-export const now = (): number => Math.floor(Date.now() / 1000);
 
 /** Connects and runs a trivial query so a bad DATABASE_URL fails fast at boot. Schema is applied by `prisma db push` (npm start). */
 export async function initDb(): Promise<void> {

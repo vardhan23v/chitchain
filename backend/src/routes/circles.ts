@@ -4,8 +4,15 @@ import {
   contractAddress, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, getRound, getRoundHistory, isConfigured, labelOf, provider,
   roundPhase, toJson, type CircleView, type MemberView, type RoundView,
 } from "../chain";
-import { activeMandates, countDistinctTx, countEventsForCircle, eventsForCircleByName, isDemoCircle, type EventRow } from "../db";
+import { z } from "zod";
+import {
+  activeMandates, circleNames, countDistinctTx, countEventsForCircle, eventsForCircleByName, getCircleMeta, getUser, isDemoCircle, updateUser, upsertCircleMeta,
+  type CircleMetaRow, type EventRow,
+} from "../db";
 import { settleNow } from "../keeper";
+import { audit } from "../auth/audit";
+import { ipOf, rateLimit } from "../auth/ratelimit";
+import { optionalAuth, requireAuth } from "../auth/middleware";
 import { defaultInfoFrom, mandateToApi, type ContributionStatus, type DefaultInfo } from "./feedShape";
 import { ApiError, parseId, wrap } from "./util";
 
@@ -13,8 +20,15 @@ export const circles = Router();
 
 function requireContract(): void { if (!isConfigured()) throw new ApiError(503, "CHITCHAIN_ADDRESS not configured", "NO_CONTRACT"); }
 
-/** CircleSummary = contract CircleView (v2) + id + isDemo. bigint → string at the JSON edge. */
-export function circleSummary(id: number, c: CircleView, isDemo: boolean): unknown { return toJson({ id, ...c, isDemo }); }
+/** CircleSummary = contract CircleView (v2) + id + isDemo + v3 name / organizerWallet (from CircleMeta, null when unclaimed). bigint → string at the JSON edge. */
+export function circleSummary(id: number, c: CircleView, isDemo: boolean, meta?: CircleMetaRow | null): Record<string, unknown> {
+  return toJson({ id, ...c, isDemo, name: meta?.name ?? null, organizerWallet: meta?.organizerWallet ?? null }) as Record<string, unknown>;
+}
+/** circleSummary with its own CircleMeta lookup (use circleNames() to batch when listing). */
+export async function circleSummaryOf(id: number, c: CircleView): Promise<Record<string, unknown>> {
+  const [isDemo, meta] = await Promise.all([isDemoCircle(id), getCircleMeta(id)]);
+  return circleSummary(id, c, isDemo, meta);
+}
 
 /** RoundInfo = contract RoundView + phase + lowestAcceptedPayout (expectedPot − bestDiscount). */
 export function roundInfo(r: RoundView, nowSec = Math.floor(Date.now() / 1000)): unknown {
@@ -22,11 +36,17 @@ export function roundInfo(r: RoundView, nowSec = Math.floor(Date.now() / 1000)):
   return toJson({ ...r, lowestAcceptedPayout: lowest, phase: roundPhase(r, nowSec) });
 }
 
-async function allCircles(): Promise<{ id: number; c: CircleView }[]> {
+const ALL_CACHE_MS = 5000;
+let allCache: { at: number; list: { id: number; c: CircleView }[] } | null = null;
+/** Every circle's CircleView (ascending id), cached 5 s. Pass `fresh` to bypass the cache. */
+export async function allCircles(fresh = false): Promise<{ id: number; c: CircleView }[]> {
+  if (!fresh && allCache && Date.now() - allCache.at < ALL_CACHE_MS) return allCache.list;
   const count = await getCircleCount();
   const ids = Array.from({ length: count }, (_, i) => i + 1);
   const views = await Promise.all(ids.map((id) => getCircle(id)));
-  return ids.map((id, i) => ({ id, c: views[i] }));
+  const list = ids.map((id, i) => ({ id, c: views[i] }));
+  allCache = { at: Date.now(), list };
+  return list;
 }
 
 async function requireCircle(id: number): Promise<void> {
@@ -70,8 +90,9 @@ export async function memberInfo(circleId: number, address: string, circleRound:
 
 circles.get("/circles", wrap(async (_req, res) => {
   requireContract();
-  const list = await allCircles();
-  const out = await Promise.all(list.reverse().map(async ({ id, c }) => circleSummary(id, c, await isDemoCircle(id))));
+  const list = [...(await allCircles())].reverse();
+  const names = await circleNames(list.map((x) => x.id));
+  const out = await Promise.all(list.map(async ({ id, c }) => circleSummary(id, c, await isDemoCircle(id), names.get(id))));
   res.json({ circles: out });
 }));
 
@@ -79,7 +100,7 @@ circles.get("/circles/:id", wrap(async (req, res) => {
   requireContract();
   const id = parseId(req.params.id);
   await requireCircle(id);
-  const [c, round, addrs, isDemo, defaults] = await Promise.all([getCircle(id), getRound(id), getMembers(id), isDemoCircle(id), defaultsOf(id)]);
+  const [c, round, addrs, isDemo, defaults, meta] = await Promise.all([getCircle(id), getRound(id), getMembers(id), isDemoCircle(id), defaultsOf(id), getCircleMeta(id)]);
   const [members, txCount, mandates] = await Promise.all([
     Promise.all(addrs.map((address) => memberInfo(id, address, c.round, defaults.latestByMember.get(address.toLowerCase())))),
     countEventsForCircle(id),
@@ -93,17 +114,14 @@ circles.get("/circles/:id", wrap(async (req, res) => {
     latestDefault = { ...info, remainingCollateral: state ? String(state.collateral) : "0", label: labelOf(info.member) };
   }
   res.json({
-    circle: circleSummary(id, c, isDemo), round: roundInfo(round), members, txCount, mandates: mandates.map(mandateToApi), latestDefault,
+    circle: circleSummary(id, c, isDemo, meta), round: roundInfo(round), members, txCount, mandates: mandates.map(mandateToApi), latestDefault,
   });
 }));
 
-/** GET /circles/:id/rounds — settled rounds ascending from getRoundHistory + indexed RoundSettled / DividendCredited. */
-circles.get("/circles/:id/rounds", wrap(async (req, res) => {
-  requireContract();
-  const id = parseId(req.params.id);
-  await requireCircle(id);
-  const [c, addrs, events] = await Promise.all([getCircle(id), getMembers(id), eventsForCircleByName(id, ["RoundSettled", "DividendCredited"])]);
-  const settledUpTo = c.status === 2 ? c.round : c.status === 1 ? c.round - 1 : 0;
+/** Settled rounds ascending (RoundHistoryRow[]) from getRoundHistory + indexed RoundSettled / DividendCredited. */
+export async function roundsOf(id: number, c?: CircleView): Promise<unknown[]> {
+  const [circle, addrs, events] = await Promise.all([c ?? getCircle(id), getMembers(id), eventsForCircleByName(id, ["RoundSettled", "DividendCredited"])]);
+  const settledUpTo = circle.status === 2 ? circle.round : circle.status === 1 ? circle.round - 1 : 0;
   const settledTx = new Map<number, string>();
   const dividendCount = new Map<number, number>();
   for (const e of events) {
@@ -133,7 +151,15 @@ circles.get("/circles/:id/rounds", wrap(async (req, res) => {
       settledAt: h.settledAt, txHash: settledTx.get(r) ?? null,
     }));
   }
-  res.json({ rounds });
+  return rounds;
+}
+
+/** GET /circles/:id/rounds */
+circles.get("/circles/:id/rounds", wrap(async (req, res) => {
+  requireContract();
+  const id = parseId(req.params.id);
+  await requireCircle(id);
+  res.json({ rounds: await roundsOf(id) });
 }));
 
 /** GET /circles/:id/defaults — every indexed DefaultDetected for the circle, newest first. */
@@ -154,14 +180,46 @@ circles.get("/circles/:id/defaults", wrap(async (req, res) => {
   res.json({ defaults: out });
 }));
 
-circles.post("/circles/:id/settle", wrap(async (req, res) => {
+/** POST /circles/:id/settle — public (settlement is permissionless on-chain); 5/min per IP; audited with the caller if signed in. */
+const settleLimiter = rateLimit({ perMinute: 5, keys: (req) => [`settle:${ipOf(req)}`] });
+circles.post("/circles/:id/settle", settleLimiter, optionalAuth(), wrap(async (req, res) => {
   requireContract();
   const id = parseId(req.params.id);
   const c = await getCircle(id);
   if (c.status !== 1) throw new ApiError(409, "circle is not active", "NotActive");
   if (Math.floor(Date.now() / 1000) <= c.roundDeadline) throw new ApiError(409, "bidding deadline has not passed", "BiddingNotOver");
-  const txHash = await settleNow(id, "api settle");
+  let txHash: string;
+  try { txHash = await settleNow(id, "api settle"); } catch (e) {
+    audit(req, "circle.settle", `circle:${id}`, "failed", { meta: { round: c.round, error: e instanceof Error ? e.message : String(e) } });
+    throw e;
+  }
+  audit(req, "circle.settle", `circle:${id}`, "ok", { txHash, meta: { round: c.round } });
   res.json({ txHash });
+}));
+
+const claimBody = z.object({
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(1000).nullable().optional(),
+  txHash: z.string().trim().regex(/^0x[0-9a-fA-F]{64}$/).optional(),
+});
+/** POST /circles/:id/claim — the on-chain creator names their circle and becomes its organizer (MEMBER → ORGANIZER). */
+circles.post("/circles/:id/claim", requireAuth(), wrap(async (req, res) => {
+  requireContract();
+  const id = parseId(req.params.id);
+  await requireCircle(id);
+  const parsed = claimBody.safeParse(req.body ?? {});
+  if (!parsed.success) throw new ApiError(400, "body must be { name, description?, txHash? }", "BAD_BODY");
+  const me = req.auth!.address;
+  const c = await getCircle(id);
+  if (c.creator.toLowerCase() !== me) {
+    audit(req, "circle.claim", `circle:${id}`, "denied", { meta: { creator: c.creator.toLowerCase() } });
+    throw new ApiError(403, "only the on-chain creator can claim this circle", "NOT_CREATOR");
+  }
+  const meta = await upsertCircleMeta(id, { name: parsed.data.name, description: parsed.data.description ?? null, organizerWallet: me });
+  let user = await getUser(me);
+  if (user && user.role === "MEMBER") user = await updateUser(me, { role: "ORGANIZER" });
+  audit(req, "circle.claim", `circle:${id}`, "ok", { txHash: parsed.data.txHash ?? null, meta: { name: meta.name } });
+  res.json({ circle: circleSummary(id, c, await isDemoCircle(id), meta), user });
 }));
 
 circles.get("/stats", wrap(async (_req, res) => {

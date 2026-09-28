@@ -4,6 +4,8 @@ import { z } from "zod";
 import { demoWallet, getCircle, getCircleCount, isConfigured } from "../chain";
 import { deactivateMandate, listAgentLogs, upsertMandate } from "../db";
 import { AGENT_ONLY_DEMO, decideForMandate } from "../agent/bidder";
+import { audit } from "../auth/audit";
+import { assertOrganizer, requireAuth } from "../auth/middleware";
 import { agentLogToApi, mandateToApi } from "./feedShape";
 import { ApiError, optionalInt, parseAddress, wrap } from "./util";
 
@@ -19,8 +21,8 @@ const mandateBody = z.object({
   riskTolerance: z.enum(["low", "medium", "high"]).nullable().optional(),
 });
 
-/** POST /agent/mandate — store the goal and run one decision now if the circle is Active. */
-agent.post("/agent/mandate", wrap(async (req, res) => {
+/** POST /agent/mandate — organizer of the circle (or ADMIN): store the goal and run one decision now if the circle is Active. */
+agent.post("/agent/mandate", requireAuth(), wrap(async (req, res) => {
   const parsed = mandateBody.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "), "BAD_BODY");
   const { circleId, goal } = parsed.data;
@@ -28,6 +30,7 @@ agent.post("/agent/mandate", wrap(async (req, res) => {
   if (!demoWallet(member)) throw new ApiError(400, AGENT_ONLY_DEMO, "NOT_DEMO_WALLET"); // custodial demo wallet only
   if (!isConfigured()) throw new ApiError(503, "CHITCHAIN_ADDRESS not configured", "NO_CONTRACT");
   if (circleId > (await getCircleCount())) throw new ApiError(404, "circle not found", "NOT_FOUND");
+  await assertOrganizer(req, circleId);
   let desiredPayout: bigint | null = null;
   if (parsed.data.desiredPayout) {
     try { desiredPayout = parseEther(parsed.data.desiredPayout); } catch { throw new ApiError(400, "desiredPayout: invalid MST amount", "BAD_BODY"); }
@@ -39,14 +42,18 @@ agent.post("/agent/mandate", wrap(async (req, res) => {
   });
   const circle = await getCircle(circleId);
   const decision = circle.status === 1 ? await decideForMandate(row, true) : null;
+  audit(req, "agent.mandate.set", `circle:${circleId}`, "ok", { meta: { member: member.toLowerCase(), goal } });
   res.json({ mandate: mandateToApi(row), decision: decision ? agentLogToApi(decision) : null });
 }));
 
-agent.delete("/agent/mandate", wrap(async (req, res) => {
+agent.delete("/agent/mandate", requireAuth(), wrap(async (req, res) => {
   const circleId = optionalInt(req.query.circleId);
   if (circleId === undefined) throw new ApiError(400, "circleId required", "BAD_QUERY");
   const member = parseAddress(String(req.query.member ?? ""));
-  res.json({ ok: await deactivateMandate(circleId, member) });
+  await assertOrganizer(req, circleId);
+  const ok = await deactivateMandate(circleId, member);
+  audit(req, "agent.mandate.delete", `circle:${circleId}`, ok ? "ok" : "noop", { meta: { member: member.toLowerCase() } });
+  res.json({ ok });
 }));
 
 agent.get("/agent/logs", wrap(async (req, res) => {

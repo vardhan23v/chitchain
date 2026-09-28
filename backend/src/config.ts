@@ -2,6 +2,7 @@ import { z } from "zod";
 import * as dotenv from "dotenv";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { randomBytes } from "node:crypto";
 
 /**
  * Env loading order: ENV_FILE (explicit path) → ../.env (repo root) → backend/.env.
@@ -59,9 +60,22 @@ const schema = z.object({
   FRONTEND_ORIGIN: z.string().default("http://localhost:3000"),
   // PostgreSQL connection string, e.g. postgres://user:pass@host:5432/dbname (append ?sslmode=require for TLS hosts)
   DATABASE_URL: z.string().trim().min(1, "required — postgres://user:pass@host:5432/dbname"),
+
+  // ── auth (v3) ──
+  SESSION_SECRET: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().min(32, "at least 32 characters").optional()),
+  PLATFORM_ADMIN_ADDRESSES: z
+    .string()
+    .default("")
+    .transform((s) => s.split(",").map((a) => a.trim().toLowerCase()).filter(Boolean))
+    .pipe(z.array(z.string().regex(/^0x[0-9a-f]{40}$/, "must be a 20-byte hex address"))),
+  AUTH_DOMAIN: z.string().trim().default(""),
+  SESSION_TTL_SEC: intWithDefault(86_400),
+  NONCE_TTL_SEC: intWithDefault(300),
+  NODE_ENV: z.string().default(""),
+  RAILWAY_ENVIRONMENT: z.string().default(""),
 });
 
-export type Config = z.infer<typeof schema> & { backendDir: string };
+export type Config = Omit<z.infer<typeof schema>, "SESSION_SECRET"> & { backendDir: string; SESSION_SECRET: string; sessionSecretEphemeral: boolean };
 
 function load(): Config {
   const parsed = schema.safeParse(process.env);
@@ -73,7 +87,23 @@ function load(): Config {
   const cfg = parsed.data;
   if (!cfg.CHITCHAIN_ADDRESS) console.warn("[config] CHITCHAIN_ADDRESS is empty — indexer/keeper/agent idle until set");
   if (cfg.AGENT_WALLET_KEYS.length === 0) console.warn("[config] AGENT_WALLET_KEYS empty — demo wallets/agent unavailable");
-  return { ...cfg, backendDir };
+  const production = cfg.NODE_ENV === "production" || cfg.RAILWAY_ENVIRONMENT !== "";
+  let sessionSecret = cfg.SESSION_SECRET;
+  let sessionSecretEphemeral = false;
+  if (!sessionSecret) {
+    if (production) {
+      console.error("[config] SESSION_SECRET is required in production (>= 32 chars, e.g. `openssl rand -hex 32`)");
+      process.exit(1);
+    }
+    sessionSecret = randomBytes(32).toString("hex");
+    sessionSecretEphemeral = true;
+    console.warn("[config] SESSION_SECRET empty — using a random per-boot secret (sessions will not survive a restart)");
+  }
+  if (cfg.PLATFORM_ADMIN_ADDRESSES.length === 0) console.warn("[config] PLATFORM_ADMIN_ADDRESSES empty — nobody will be ADMIN");
+  if (!cfg.AUTH_DOMAIN) {
+    try { cfg.AUTH_DOMAIN = new URL(cfg.FRONTEND_ORIGIN).host; } catch { cfg.AUTH_DOMAIN = cfg.FRONTEND_ORIGIN; }
+  }
+  return { ...cfg, backendDir, SESSION_SECRET: sessionSecret, sessionSecretEphemeral };
 }
 
 export const config: Config = load();

@@ -143,6 +143,11 @@ export function toJson(v: unknown): Json {
 }
 
 // ───────────── tx helper ─────────────
+export interface TxStats { total: number; sent: number; mined: number; failed: number; lastFailure: string | null }
+const tx = { total: 0, sent: 0, mined: 0, failed: 0, lastFailure: null as string | null };
+/** Counters for every sendTx() in this process (total attempts, sent to the RPC, mined ok, failed). */
+export function txStats(): TxStats { return { ...tx }; }
+
 /**
  * Dry-runs a state-changing call so we never send a tx that would revert.
  * Uses the `pending` block (correct timestamp on Hardhat/automine chains); falls back to `latest` if the RPC rejects the tag.
@@ -163,19 +168,23 @@ export async function preflight(contract: Contract, method: string, args: unknow
  * On a nonce error the signer's local nonce is reset and the send retried once.
  */
 export async function sendTx(ctx: string, signer: ManagedWallet, send: () => Promise<ContractTransactionResponse>): Promise<ContractTransactionReceipt> {
-  let tx: ContractTransactionResponse;
+  tx.total += 1;
+  const fail = (e: unknown): never => { tx.failed += 1; tx.lastFailure = `${ctx}: ${errorMessage(e)}`; throw e; };
+  let res: ContractTransactionResponse;
   try {
-    tx = await send();
+    res = await send();
   } catch (e) {
-    if (!/nonce/i.test(errorMessage(e))) throw e;
+    if (!/nonce/i.test(errorMessage(e))) return fail(e);
     console.warn(`[${ctx}] nonce error, resetting and retrying once`);
     signer.reset();
-    tx = await send();
+    try { res = await send(); } catch (e2) { return fail(e2); }
   }
-  console.log(`[${ctx}] sent ${tx.hash}`);
-  const rc = await tx.wait(1);
-  if (!rc || rc.status !== 1) throw new Error(`[${ctx}] tx ${tx.hash} reverted`);
-  console.log(`[${ctx}] mined block ${rc.blockNumber} txHash ${tx.hash}`);
+  tx.sent += 1;
+  console.log(`[${ctx}] sent ${res.hash}`);
+  const rc = await res.wait(1).catch(fail);
+  if (!rc || rc.status !== 1) return fail(new Error(`[${ctx}] tx ${res.hash} reverted`));
+  tx.mined += 1;
+  console.log(`[${ctx}] mined block ${rc.blockNumber} txHash ${res.hash}`);
   return rc;
 }
 
