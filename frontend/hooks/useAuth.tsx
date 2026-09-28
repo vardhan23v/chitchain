@@ -8,7 +8,7 @@ import { parseTxError } from "@/lib/errors";
 import { sameAddr } from "@/lib/format";
 import { clearSession, readSession, SESSION_EXPIRED_EVENT, writeSession } from "@/lib/session";
 import { readAccounts, signMessage } from "@/lib/wallet";
-import type { Role, User } from "@/lib/types";
+import { isPasswordAdmin, type Role, type User } from "@/lib/types";
 
 export type AuthStatus = "anonymous" | "signing" | "authenticated";
 
@@ -19,12 +19,16 @@ export interface AuthState {
   /** True until the stored session has been validated with /auth/me (avoids a redirect flash). */
   ready: boolean;
   signIn: () => Promise<User | null>;
+  /** Platform-admin password fallback (`/auth/admin-login`). Website admin rights only — no wallet. */
+  signInAdmin: (username: string, password: string) => Promise<User | null>;
   signOut: () => Promise<void>;
   /** Replace the user after a backend response that returns an updated user (e.g. claim → ORGANIZER). */
   setUser: (u: User) => void;
   hasRole: (...roles: Role[]) => boolean;
   isAdmin: boolean;
   isOrganizer: boolean;
+  /** Signed in with the admin password (walletAddress `admin:<username>`), not a wallet. */
+  isPasswordAdmin: boolean;
   /** Home page for the user's role. */
   home: string;
 }
@@ -75,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Wallet switched to a different address than the signed-in one → session no longer belongs to the active wallet.
   useEffect(() => {
-    if (status !== "authenticated" || !user) return;
+    if (status !== "authenticated" || !user || isPasswordAdmin(user)) return; // password admins have no wallet to compare against
     if (wallet.account && !sameAddr(wallet.account, user.walletAddress)) {
       drop();
       toast("Wallet changed — sign in again.");
@@ -133,6 +137,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [wallet]);
 
+  const signInAdmin = useCallback(async (username: string, password: string): Promise<User | null> => {
+    if (signing.current) return null;
+    signing.current = true;
+    setStatus("signing");
+    try {
+      const r = await api.adminLogin(username.trim().toLowerCase(), password);
+      writeSession({ token: r.token, user: r.user, expiresAt: r.expiresAt });
+      setToken(r.token);
+      setUserState(r.user);
+      setStatus("authenticated");
+      toast.success("Admin verified.");
+      return r.user;
+    } catch (e) {
+      setStatus("anonymous");
+      if (e instanceof ApiError) {
+        const msg =
+          e.code === "BAD_CREDENTIALS" ? "Invalid username or password." :
+          e.code === "NOT_ENABLED" ? "Admin password login is not enabled on this backend." :
+          e.code === "SUSPENDED" ? "This admin account is suspended." :
+          e.code === "RATE_LIMITED" ? "Too many attempts — wait a minute and try again." :
+          isUnreachable(e) ? "Backend unreachable — sign-in needs the ChitChain API." : e.message;
+        toast.error(msg);
+      } else toast.error("Backend unreachable — sign-in needs the ChitChain API.");
+      return null;
+    } finally {
+      signing.current = false;
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       if (readSession()) await api.authLogout();
@@ -157,14 +190,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: status === "authenticated" ? token : null,
       ready,
       signIn,
+      signInAdmin,
       signOut,
       setUser,
       hasRole: (...roles: Role[]) => !!role && roles.includes(role),
       isAdmin: role === "ADMIN",
       isOrganizer: role === "ORGANIZER" || role === "ADMIN",
+      isPasswordAdmin: status === "authenticated" && isPasswordAdmin(user),
       home: roleHome(role),
     };
-  }, [status, user, token, ready, signIn, signOut, setUser]);
+  }, [status, user, token, ready, signIn, signInAdmin, signOut, setUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

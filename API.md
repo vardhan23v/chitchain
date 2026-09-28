@@ -27,7 +27,7 @@ interface Mandate { circleId: number; member: string; goal: string; desiredPayou
 ## Endpoints
 | Method | Path | Response |
 |---|---|---|
-| GET | `/health` | `{ ok, chainId, latestBlock, lastIndexedBlock, contract, keeper, explorer }` |
+| GET | `/health` | `{ ok, chainId, latestBlock, lastIndexedBlock, contract, keeper, explorer, adminPasswordLogin }` |
 | GET | `/stats` | `{ circlesLive, circlesTotal, mstcInContract (string wei), txCount }` |
 | GET | `/circles` | `{ circles: CircleSummary[] }` newest first |
 | GET | `/circles/:id` | `{ circle: CircleSummary, round: RoundInfo, members: MemberInfo[], txCount, mandates: Mandate[], latestDefault: (DefaultInfo & {member, label}) | null }` |
@@ -78,6 +78,10 @@ interface User { walletAddress: string /* lowercase */; role: Role; status: "ACT
 | POST | `/auth/verify` | `{ address, nonce, signature }` → `{ token, expiresAt, user }` (401 `NONCE_INVALID` / `BAD_SIGNATURE`, 403 `SUSPENDED`) |
 | GET | `/auth/me` | bearer → `{ user, session: { id, expiresAt } }` |
 | POST | `/auth/logout` | bearer → `{ ok }` (revokes the session) |
+| POST | `/auth/admin-login` | `{ username, password }` → `{ token, expiresAt, user }` — **platform-admin fallback only** (rate-limited 5/min per IP; 401 `BAD_CREDENTIALS`, 403 `SUSPENDED`, 404 `NOT_ENABLED` when the feature is off) |
+
+### Admin password fallback
+For the case where the platform administrator's wallet is unavailable. Enabled only when **both** `ADMIN_LOGIN_USER` (3–40 chars, lowercase `a-z0-9._-`) and `ADMIN_LOGIN_PASSWORD_HASH` (`scrypt$<saltHex>$<hashHex>`, N=16384 r=8 p=1 keylen 64 — generate with `cd backend && npm run hash-password -- '<password>'`) are set; `GET /health` then reports `adminPasswordLogin: true` and `GET /admin/config` shows `auth.adminPasswordLogin`. Credentials are compared in constant time; every attempt is audited as `auth.admin_login` ok/denied. On success the backend upserts a `User` with `walletAddress = "admin:<username>"` (**not** an on-chain address), role `ADMIN`, status `ACTIVE`, and issues a normal bearer session; `GET /auth/me`, `requireAuth` and the ADMIN checks work unchanged. Such a session has no wallet: `GET /me` returns `balance: "0"`, `risk: null`, zero totals and `activeCircle: null`; `GET /me/circles` returns `[]`. It grants website admin rights only — it can never sign transactions or move funds. Members and organizers always sign in with their wallet; there is no password login for them.
 
 The client signs exactly the `message` string with `personal_sign` and never sends the message back; the server rebuilds it from the stored nonce. Message text:
 ```

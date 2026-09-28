@@ -1,4 +1,4 @@
-import { Shield, UserRound, Users, type LucideIcon } from "lucide-react";
+import { KeyRound, Shield, UserRound, Users, type LucideIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -9,9 +9,12 @@ export const ROLE_META: Record<Role, { label: string; tip: string; Icon: LucideI
   ADMIN: { label: "Platform admin", tip: "Manages the ChitChain platform", Icon: Shield, cls: "border-agent/40 bg-agent/10 text-agent" },
 };
 
+/** Shown for password-admin sessions (walletAddress `admin:<username>`): website admin rights only, no wallet. */
+const PASSWORD_ADMIN_META = { label: "Platform admin (password)", tip: "Signed in with the admin password — website admin rights only, no wallet", Icon: KeyRound, cls: ROLE_META.ADMIN.cls };
+
 /** MEMBER / CIRCLE ORGANIZER / PLATFORM ADMIN chip with a one-line tooltip. Roles only gate website actions, never funds. */
-export function RoleBadge({ role, className, size = "sm" }: { role: Role; className?: string; size?: "xs" | "sm" }) {
-  const m = ROLE_META[role] ?? ROLE_META.MEMBER;
+export function RoleBadge({ role, passwordAdmin = false, className, size = "sm" }: { role: Role; passwordAdmin?: boolean; className?: string; size?: "xs" | "sm" }) {
+  const m = passwordAdmin ? PASSWORD_ADMIN_META : ROLE_META[role] ?? ROLE_META.MEMBER;
   return (
     <Tooltip>
       <TooltipTrigger asChild>

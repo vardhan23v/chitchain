@@ -81,7 +81,7 @@ export interface DemoNewCircleBody {
 }
 
 export const api = {
-  health: () => request<{ ok: boolean; chainId: number; latestBlock: number; lastIndexedBlock: number; contract: string; keeper: string; explorer: string }>("/health", undefined, 4000),
+  health: () => request<{ ok: boolean; chainId: number; latestBlock: number; lastIndexedBlock: number; contract: string; keeper: string; explorer: string; adminPasswordLogin?: boolean }>("/health", undefined, 4000),
   stats: () => request<Stats>("/stats"),
   circles: () => request<{ circles: CircleSummary[] }>("/circles"),
   circle: (id: number) => request<CircleRoom>(`/circles/${id}`),
@@ -115,6 +115,9 @@ export const api = {
   authNonce: (address: string) => post<{ nonce: string; message: string; expiresAt: number }>("/auth/nonce", { address }),
   authVerify: (address: string, nonce: string, signature: string) =>
     post<{ token: string; expiresAt: number; user: User }>("/auth/verify", { address, nonce, signature }),
+  /** Platform-admin password fallback (401 BAD_CREDENTIALS, 404 NOT_ENABLED, 429 RATE_LIMITED). */
+  adminLogin: (username: string, password: string) =>
+    post<{ token: string; expiresAt: number; user: User }>("/auth/admin-login", { username, password }),
   authMe: () => request<{ user: User; session: { id: string; expiresAt: number } }>("/auth/me", undefined, 6000),
   authLogout: () => post<{ ok: boolean }>("/auth/logout"),
 

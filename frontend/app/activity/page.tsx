@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
 import { formatMst, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { isEvmAddress } from "@/lib/types";
 
 const TH = "px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
 
@@ -28,7 +29,7 @@ export default function ActivityPage() {
 function Activity() {
   const auth = useAuth();
   const wallet = useWallet();
-  const act = useActivity(auth.user?.walletAddress ?? wallet.account);
+  const act = useActivity(isEvmAddress(auth.user?.walletAddress) ? auth.user!.walletAddress : wallet.account);
   const events = act.data ?? [];
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { WifiOff } from "lucide-react";
+import { KeyRound, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CircleCard } from "@/components/CircleCard";
@@ -35,10 +35,17 @@ function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground">My dashboard</h1>
-        {auth.user && <RoleBadge role={auth.user.role} />}
+        {auth.user && <RoleBadge role={auth.user.role} passwordAdmin={auth.isPasswordAdmin} />}
         <TestnetBadge />
         {down && <Badge variant="outline" className="gap-1 text-muted-foreground"><WifiOff className="h-3 w-3" aria-hidden /> {isUnreachable(me.error) ? "backend offline" : "couldn't load overview"}</Badge>}
       </div>
+
+      {auth.isPasswordAdmin && (
+        <Card className="flex flex-wrap items-center gap-2 rounded-2xl border-agent/40 bg-agent/5 p-4 text-sm">
+          <KeyRound className="h-4 w-4 shrink-0 text-agent" aria-hidden />
+          <span>Password admin accounts have no wallet; use the <Link href="/admin" className="font-semibold text-primary hover:underline">Admin dashboard</Link>.</span>
+        </Card>
+      )}
 
       <MeTiles me={me.data} circles={list} account={account} loading={me.loading} />
 

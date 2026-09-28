@@ -164,6 +164,9 @@ Because of this, adding Organizer/Admin roles required **no contract change**: t
 5. You are redirected by role: MEMBER → `/dashboard`, ORGANIZER → `/organizer`, ADMIN → `/admin`.
 No passwords, no seed phrases, no private keys: ChitChain never asks for them and never stores them.
 
+Admin fallback: the platform administrator can optionally sign in with a username + password (`ADMIN_LOGIN_USER` / `ADMIN_LOGIN_PASSWORD_HASH`, hash generated with `npm run hash-password`) when their wallet is unavailable; the link appears on `/login` only when the backend has it enabled.
+That password session is an `admin:<username>` account with no wallet: it grants website admin rights only (users, support, audit, config) and can never sign transactions or control wallets or funds. Members and organizers always sign in with their MST wallet.
+
 ### Who operates ChitChain
 The ChitChain platform team runs the website, backend API, database, AI services, keeper and monitoring. Website administrators can see everything and support users, but cannot change blockchain financial state.
 

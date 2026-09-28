@@ -39,6 +39,7 @@ app.get("/health", wrap(async (_req, res) => {
   res.json({
     ok: latestBlock !== null, chainId: config.MST_CHAIN_ID, latestBlock, lastIndexedBlock: await getLastBlock(),
     contract: contractAddress, keeper: keeper?.address ?? null, explorer: config.EXPLORER,
+    adminPasswordLogin: config.adminPasswordLogin,
     loops, tx: txStats(),
     indexerHealthy: !!indexer && indexer.lastOkAt !== null && nowSec - indexer.lastOkAt <= 30,
   });

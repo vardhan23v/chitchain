@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
 import { getSignerContract } from "@/lib/contract";
 import { big, formatMst } from "@/lib/format";
+import { isEvmAddress } from "@/lib/types";
 
 export default function CollateralPage() {
   return (
@@ -27,7 +28,7 @@ export default function CollateralPage() {
 function Collateral() {
   const auth = useAuth();
   const wallet = useWallet();
-  const mine = useMyCircles(auth.user?.walletAddress ?? wallet.account);
+  const mine = useMyCircles(isEvmAddress(auth.user?.walletAddress) ? auth.user!.walletAddress : wallet.account);
   const { run, pending, state } = useTx();
   const circles = mine.data?.circles ?? [];
   const sum = (pick: (c: (typeof circles)[number]) => string) => circles.reduce((s, c) => s + big(pick(c)), 0n);

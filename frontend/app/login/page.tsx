@@ -3,11 +3,14 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Copy, KeyRound, Loader2, ShieldCheck, Wallet } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TestnetBadge } from "@/components/TestnetBadge";
 import { roleHome, useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
 import { useWallet } from "@/hooks/useWallet";
 import { BRIDGEKEY_URL, CHAIN_NAME } from "@/lib/chain";
 import { parseTxError } from "@/lib/errors";
@@ -33,8 +36,19 @@ function Login() {
   const wallet = useWallet();
   const auth = useAuth();
   const [done, setDone] = useState(false);
+  // Platform-admin password fallback: shown only when the backend reports it enabled (GET /health.adminPasswordLogin).
+  const [adminLoginAvailable, setAdminLoginAvailable] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   const go = (u: User) => router.replace(next ?? roleHome(u.role));
+
+  useEffect(() => {
+    let alive = true;
+    api.health().then((h) => { if (alive) setAdminLoginAvailable(!!h.adminPasswordLogin); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, []);
 
   // Already signed in → straight to the destination.
   useEffect(() => {
@@ -47,6 +61,15 @@ function Login() {
     if (u) {
       setDone(true);
       setTimeout(() => go(u), 600);
+    }
+  };
+  const signInAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const u = await auth.signInAdmin(username, password);
+    if (u) {
+      setPassword("");
+      setDone(true);
+      setTimeout(() => router.replace(next ?? "/admin"), 600);
     }
   };
   const signing = auth.status === "signing";
@@ -99,6 +122,39 @@ function Login() {
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
         ChitChain never asks for your seed phrase or private key.
       </p>
+
+      {adminLoginAvailable && (
+        <div className="space-y-3">
+          <p className="text-center">
+            <button type="button" className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" aria-expanded={showAdmin} aria-controls="admin-login" onClick={() => setShowAdmin((v) => !v)}>
+              Platform admin? Sign in with password
+            </button>
+          </p>
+          {showAdmin && (
+            <Card id="admin-login" className="rounded-2xl p-6">
+              <form onSubmit={(e) => void signInAdmin(e)} className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-agent" aria-hidden />
+                  <h2 className="text-base font-semibold">Admin password login</h2>
+                </div>
+                <p className="text-xs text-muted-foreground">Password login is for the platform administrator only. Members and organizers sign in with their MST wallet.</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="admin-username">Username</Label>
+                  <Input id="admin-username" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value)} required disabled={signing || done} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="admin-password">Password</Label>
+                  <Input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={signing || done} />
+                </div>
+                <Button type="submit" className="w-full" disabled={signing || done || !username.trim() || !password}>
+                  {done ? <><Check aria-hidden /> Admin verified.</> : signing ? <><Loader2 className="animate-spin" aria-hidden /> Checking…</> : "Sign in as admin"}
+                </Button>
+                <p className="text-center text-[11px] text-muted-foreground">Grants website admin rights only — never wallet or fund control.</p>
+              </form>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }

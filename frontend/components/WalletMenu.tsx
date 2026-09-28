@@ -26,6 +26,39 @@ export function WalletMenu() {
   const balance = useBalance(account);
   const signedIn = auth.status === "authenticated" && !!auth.user;
 
+  // Password-admin session (`admin:<username>`): no wallet, so only website items and Sign out.
+  if (signedIn && auth.isPasswordAdmin && auth.user) {
+    const name = auth.user.displayName || auth.user.walletAddress.slice("admin:".length);
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline" className="gap-1.5">
+            <span className="font-mono">{name}</span>
+            <RoleBadge role="ADMIN" passwordAdmin size="xs" className="hidden sm:inline-flex" />
+            <ChevronDown className="h-3 w-3" aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-semibold">{name}</span>
+              <RoleBadge role="ADMIN" passwordAdmin size="xs" />
+            </div>
+            <div className="text-[11px] font-normal text-muted-foreground">No wallet — website admin rights only. This account cannot move funds.</div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <Item href="/admin" Icon={Shield} label="Admin dashboard" />
+          <Item href="/organizer" Icon={Users} label="Organizer dashboard" />
+          <Item href="/support" Icon={LifeBuoy} label="Support" />
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => void auth.signOut()}>
+            <LogOut className="mr-2 h-4 w-4" aria-hidden /> Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
   if (!hasWallet) {
     return (
       <Button asChild size="sm" variant="outline">

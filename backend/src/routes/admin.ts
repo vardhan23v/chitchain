@@ -10,7 +10,7 @@ import {
 import { audit } from "../auth/audit";
 import { requireAuth, requireRole } from "../auth/middleware";
 import { allCircles } from "./circles";
-import { ApiError, optionalInt, parseAddress, wrap } from "./util";
+import { ApiError, optionalInt, parseUserId, wrap } from "./util";
 
 export const admin = Router();
 admin.use("/admin", requireAuth(), requireRole("ADMIN"));
@@ -73,7 +73,7 @@ admin.get("/admin/users", wrap(async (req, res) => {
 const userPatch = z.object({ role: roleEnum.optional(), status: statusEnum.optional(), displayName: z.string().trim().max(40).nullable().optional() });
 /** PATCH /admin/users/:addr { role?, status?, displayName? } → { user } (400 CANNOT_EDIT_SELF_ROLE, 409 LAST_ADMIN) */
 admin.patch("/admin/users/:addr", wrap(async (req, res) => {
-  const addr = parseAddress(req.params.addr).toLowerCase();
+  const addr = parseUserId(req.params.addr).toLowerCase();
   const parsed = userPatch.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, "body: { role?: MEMBER|ORGANIZER|ADMIN, status?: ACTIVE|SUSPENDED, displayName?: string|null }", "BAD_BODY");
   const before = await getUser(addr);
@@ -92,7 +92,7 @@ admin.patch("/admin/users/:addr", wrap(async (req, res) => {
 
 /** GET /admin/audit?limit&actor&action&since → { rows } newest first */
 admin.get("/admin/audit", wrap(async (req, res) => {
-  const actor = typeof req.query.actor === "string" && req.query.actor ? parseAddress(req.query.actor).toLowerCase() : undefined;
+  const actor = typeof req.query.actor === "string" && req.query.actor ? parseUserId(req.query.actor).toLowerCase() : undefined;
   const action = typeof req.query.action === "string" && req.query.action ? req.query.action : undefined;
   res.json({ rows: await listAudit({ limit: optionalInt(req.query.limit), actor, action, since: optionalInt(req.query.since) }) });
 }));
@@ -120,7 +120,7 @@ admin.get("/admin/config", wrap(async (_req, res) => {
   res.json({
     chain: { rpcUrl: config.MST_RPC_URL, chainId: config.MST_CHAIN_ID, explorer: config.EXPLORER, contract: contractAddress, startBlock: config.START_BLOCK },
     wallets: { deployer: deployer?.address ?? null, keeper: keeper?.address ?? null, oracle: oracle?.address ?? null, treasury: config.TREASURY_ADDRESS ?? null, demo: demoWallets.map((w) => ({ label: w.label, address: w.address })) },
-    auth: { domain: config.AUTH_DOMAIN, sessionTtlSec: config.SESSION_TTL_SEC, nonceTtlSec: config.NONCE_TTL_SEC, platformAdmins: config.PLATFORM_ADMIN_ADDRESSES, sessionSecretEphemeral: config.sessionSecretEphemeral },
+    auth: { domain: config.AUTH_DOMAIN, sessionTtlSec: config.SESSION_TTL_SEC, nonceTtlSec: config.NONCE_TTL_SEC, platformAdmins: config.PLATFORM_ADMIN_ADDRESSES, sessionSecretEphemeral: config.sessionSecretEphemeral, adminPasswordLogin: config.adminPasswordLogin, adminLoginUser: config.ADMIN_LOGIN_USER ?? null },
     llm: { configured: config.LLM_API_KEY !== "", baseUrl: config.LLM_BASE_URL, model: config.LLM_MODEL },
     server: { port: config.PORT, frontendOrigin: config.FRONTEND_ORIGIN, nodeEnv: config.NODE_ENV || null, railway: config.RAILWAY_ENVIRONMENT || null, database: "configured" },
   });

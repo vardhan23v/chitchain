@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { KeyRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { RoleBadge } from "@/components/RoleBadge";
 import { useAdminUsers } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { sameAddr, timeAgo } from "@/lib/format";
-import type { AdminUser, Role } from "@/lib/types";
+import { isPasswordAdmin, type AdminUser, type Role } from "@/lib/types";
 
 const TH = "px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
 const ROLES: Role[] = ["MEMBER", "ORGANIZER", "ADMIN"];
@@ -54,7 +55,12 @@ export function UsersTab() {
                 const self = sameAddr(u.walletAddress, auth.user?.walletAddress);
                 return (
                   <tr key={u.walletAddress} className="border-t">
-                    <td className="px-3 py-2"><AddressPill address={u.walletAddress} />{self && <span className="ml-1 text-[10px] font-bold text-primary">YOU</span>}</td>
+                    <td className="px-3 py-2">
+                      {isPasswordAdmin(u) ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-agent/40 bg-agent/10 px-2 py-0.5 font-mono text-[13px]" title="Signed in with the admin password — no wallet"><KeyRound className="h-3 w-3" aria-hidden /> {u.walletAddress.slice("admin:".length)} <span className="text-[10px] font-sans font-semibold uppercase tracking-wide text-agent">password admin</span></span>
+                      ) : <AddressPill address={u.walletAddress} />}
+                      {self && <span className="ml-1 text-[10px] font-bold text-primary">YOU</span>}
+                    </td>
                     <td className="px-3 py-2">{u.displayName ?? <span className="text-muted-foreground">—</span>}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">

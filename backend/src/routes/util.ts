@@ -19,6 +19,15 @@ export function parseAddress(raw: string): string {
   if (!isAddress(raw)) throw new ApiError(400, "invalid address", "BAD_ADDRESS");
   return getAddress(raw);
 }
+/** True for a 20-byte hex address. Password-admin sessions use `admin:<username>` as their walletAddress, which is NOT an on-chain address. */
+export const isEvmAddress = (v: string): boolean => /^0x[0-9a-fA-F]{40}$/.test(v);
+export const ADMIN_LOGIN_PREFIX = "admin:";
+/** A User id: a checksummed EVM address, or a password-admin id `admin:<username>` (returned lowercase). */
+export function parseUserId(raw: string): string {
+  const v = raw.trim().toLowerCase();
+  if (/^admin:[a-z0-9._-]{3,40}$/.test(v)) return v;
+  return parseAddress(raw);
+}
 export function optionalInt(raw: unknown): number | undefined {
   if (raw === undefined || raw === "") return undefined;
   const n = Number(raw);

@@ -9,7 +9,8 @@ import { signJwt } from "../auth/jwt";
 import { buildLoginMessage } from "../auth/message";
 import { requireAuth } from "../auth/middleware";
 import { ipOf, rateLimit } from "../auth/ratelimit";
-import { ApiError, parseAddress, wrap } from "./util";
+import { safeEqualString, verifyPassword } from "../auth/password";
+import { ADMIN_LOGIN_PREFIX, ApiError, parseAddress, wrap } from "./util";
 
 export const auth = Router();
 const nowSec = (): number => Math.floor(Date.now() / 1000);
@@ -65,6 +66,43 @@ auth.post("/auth/verify", wrap(async (req, res) => {
   const token = signJwt({ sub: lower, role: user.role, jti, iat, exp }, config.SESSION_SECRET);
   req.auth = { address: lower, role: user.role, jti, exp };
   audit(req, "auth.login", lower, "ok", { meta: { role: user.role, ip: ipOf(req) } });
+  res.json({ token, expiresAt: exp, user });
+}));
+
+/** API.md v3: /auth/admin-login is limited 5/min per IP (on top of the shared /auth limiter). */
+const adminLoginLimiter = rateLimit({ perMinute: 5, keys: (req) => [`admin-login:ip:${ipOf(req)}`] });
+const adminLoginBody = z.object({ username: z.string().trim().min(1).max(80), password: z.string().min(1).max(512) });
+/**
+ * POST /auth/admin-login { username, password } → { token, expiresAt, user }.
+ * Platform-admin fallback when the admin's wallet is unavailable. Enabled only when ADMIN_LOGIN_USER + ADMIN_LOGIN_PASSWORD_HASH are set.
+ * The resulting User has walletAddress `admin:<username>` (not an on-chain address), role ADMIN. Grants website admin rights only — never wallet/fund control.
+ */
+auth.post("/auth/admin-login", adminLoginLimiter, wrap(async (req, res) => {
+  if (!config.adminPasswordLogin) throw new ApiError(404, "admin password login is not enabled", "NOT_ENABLED");
+  const parsed = adminLoginBody.safeParse(req.body);
+  if (!parsed.success) throw new ApiError(400, "body must be { username, password }", "BAD_BODY");
+  const username = parsed.data.username.toLowerCase();
+  const id = `${ADMIN_LOGIN_PREFIX}${username}`;
+  // Always run both compares so timing does not reveal whether the username matched.
+  const userOk = safeEqualString(username, config.ADMIN_LOGIN_USER!);
+  const passOk = verifyPassword(parsed.data.password, config.ADMIN_LOGIN_PASSWORD_HASH!);
+  if (!(userOk && passOk)) {
+    audit(req, "auth.admin_login", id, "denied", { meta: { code: "BAD_CREDENTIALS", ip: ipOf(req) } });
+    throw new ApiError(401, "invalid username or password", "BAD_CREDENTIALS");
+  }
+  const existing = await getUser(id);
+  if (existing?.status === "SUSPENDED") {
+    audit(req, "auth.admin_login", id, "denied", { meta: { code: "SUSPENDED" } });
+    throw new ApiError(403, "account suspended", "SUSPENDED");
+  }
+  const user: UserRow = await upsertUserOnLogin(id, true);
+  const iat = nowSec();
+  const exp = iat + config.SESSION_TTL_SEC;
+  const jti = randomUUID();
+  await createSession(jti, id, user.role, iat, exp);
+  const token = signJwt({ sub: id, role: user.role, jti, iat, exp }, config.SESSION_SECRET);
+  req.auth = { address: id, role: user.role, jti, exp };
+  audit(req, "auth.admin_login", id, "ok", { meta: { role: user.role, ip: ipOf(req) } });
   res.json({ token, expiresAt: exp, user });
 }));
 

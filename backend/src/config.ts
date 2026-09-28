@@ -71,11 +71,14 @@ const schema = z.object({
   AUTH_DOMAIN: z.string().trim().default(""),
   SESSION_TTL_SEC: intWithDefault(86_400),
   NONCE_TTL_SEC: intWithDefault(300),
+  // platform-admin password fallback (enabled only when BOTH are set); hash from `npm run hash-password -- '<pw>'`
+  ADMIN_LOGIN_USER: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().trim().min(3).max(40).regex(/^[a-z0-9._-]+$/, "lowercase letters, digits, . _ - only").optional()),
+  ADMIN_LOGIN_PASSWORD_HASH: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().trim().regex(/^scrypt\$[0-9a-f]{16,64}\$[0-9a-f]{128}$/, "must be scrypt$<saltHex>$<hashHex> (npm run hash-password)").optional()),
   NODE_ENV: z.string().default(""),
   RAILWAY_ENVIRONMENT: z.string().default(""),
 });
 
-export type Config = Omit<z.infer<typeof schema>, "SESSION_SECRET"> & { backendDir: string; SESSION_SECRET: string; sessionSecretEphemeral: boolean };
+export type Config = Omit<z.infer<typeof schema>, "SESSION_SECRET"> & { backendDir: string; SESSION_SECRET: string; sessionSecretEphemeral: boolean; adminPasswordLogin: boolean };
 
 function load(): Config {
   const parsed = schema.safeParse(process.env);
@@ -99,11 +102,14 @@ function load(): Config {
     sessionSecretEphemeral = true;
     console.warn("[config] SESSION_SECRET empty — using a random per-boot secret (sessions will not survive a restart)");
   }
-  if (cfg.PLATFORM_ADMIN_ADDRESSES.length === 0) console.warn("[config] PLATFORM_ADMIN_ADDRESSES empty — nobody will be ADMIN");
+  const adminPasswordLogin = !!cfg.ADMIN_LOGIN_USER && !!cfg.ADMIN_LOGIN_PASSWORD_HASH;
+  if (cfg.PLATFORM_ADMIN_ADDRESSES.length === 0 && !adminPasswordLogin) console.warn("[config] PLATFORM_ADMIN_ADDRESSES empty — nobody will be ADMIN");
+  if ((!!cfg.ADMIN_LOGIN_USER) !== (!!cfg.ADMIN_LOGIN_PASSWORD_HASH)) console.warn("[config] ADMIN_LOGIN_USER and ADMIN_LOGIN_PASSWORD_HASH must both be set — admin password login disabled");
+  if (adminPasswordLogin) console.log(`[config] admin password login enabled for "${cfg.ADMIN_LOGIN_USER}"`);
   if (!cfg.AUTH_DOMAIN) {
     try { cfg.AUTH_DOMAIN = new URL(cfg.FRONTEND_ORIGIN).host; } catch { cfg.AUTH_DOMAIN = cfg.FRONTEND_ORIGIN; }
   }
-  return { ...cfg, backendDir, SESSION_SECRET: sessionSecret, sessionSecretEphemeral };
+  return { ...cfg, backendDir, SESSION_SECRET: sessionSecret, sessionSecretEphemeral, adminPasswordLogin };
 }
 
 export const config: Config = load();

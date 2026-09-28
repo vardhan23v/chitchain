@@ -7,7 +7,7 @@ import { audit } from "../auth/audit";
 import { requireAuth } from "../auth/middleware";
 import { circleSummary, roundInfo } from "./circles";
 import { circlesForAddress } from "./members";
-import { ApiError, wrap } from "./util";
+import { ApiError, isEvmAddress, wrap } from "./util";
 
 export const me = Router();
 me.use("/me", requireAuth());
@@ -35,6 +35,11 @@ export function totalsFromEvents(rows: EventRow[], addr: string): { contribution
 me.get("/me", wrap(async (req, res) => {
   const addr = req.auth!.address;
   const user = await getUser(addr);
+  if (!isEvmAddress(addr)) {
+    // password-admin session (`admin:<username>`): no wallet, no chain state
+    res.json({ user, balance: "0", risk: null, totals: { contributions: "0", payouts: "0", dividends: "0", defaults: 0, circles: 0 }, activeCircle: null });
+    return;
+  }
   const [balance, risk, rows] = await Promise.all([
     provider.getBalance(addr).catch(() => 0n),
     assessRisk(addr).catch(() => null),
@@ -60,7 +65,10 @@ me.get("/me", wrap(async (req, res) => {
 }));
 
 /** GET /me/circles → { circles: (CircleSummary & { me })[] } */
-me.get("/me/circles", wrap(async (req, res) => { res.json({ circles: await circlesForAddress(req.auth!.address) }); }));
+me.get("/me/circles", wrap(async (req, res) => {
+  const addr = req.auth!.address;
+  res.json({ circles: isEvmAddress(addr) ? await circlesForAddress(addr) : [] });
+}));
 
 /** GET /me/invites → { invites: Invite[] } */
 me.get("/me/invites", wrap(async (req, res) => {
