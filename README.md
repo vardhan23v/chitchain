@@ -2,6 +2,7 @@
 
 [![Live app](https://img.shields.io/badge/live%20app-Railway-7C3AED?logo=railway&logoColor=white)](https://frontend-production-d322.up.railway.app)
 [![Backend](https://img.shields.io/badge/backend-health-16A34A?logo=express&logoColor=white)](https://backend-production-64738.up.railway.app/health)
+[![Contract](https://img.shields.io/badge/contract-0xe53a…81d5-C0392B?logo=ethereum&logoColor=white)](https://testnet.mstscan.com/address/0xe53a0C78def8046ce1199D90EB8D2F81bb5A81d5)
 [![MST Testnet](https://img.shields.io/badge/MST%20Testnet-chain%2091562037-C0392B)](https://testnet.mstscan.com)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity&logoColor=white)](contracts/ChitChain.sol)
 [![Hardhat tests](https://img.shields.io/badge/Hardhat%20tests-12%20passing-F7DF1E?logo=ethereum&logoColor=black)](test/ChitChain.test.ts)
@@ -22,19 +23,25 @@ Built in 24 h for **MST Blockchain × NEWRRO Buildathon 2026 — MST Blockchain 
 
 ## MST Blockchain integration
 - Network: **MST Testnet** (chain ID `91562037`, RPC `https://testnetrpc.mstblockchain.com`)
-- Contract: `ChitChain` at `<address>` → `https://testnet.mstscan.com/address/<address>`
+- Contract: `ChitChain` at `0xe53a0C78def8046ce1199D90EB8D2F81bb5A81d5` → https://testnet.mstscan.com/address/0xe53a0C78def8046ce1199D90EB8D2F81bb5A81d5 (deployed at block 5783283)
 - What runs on-chain and why: custody of pot + collateral + reserve, contributions, discount auction, settlement, post-win holdback, default coverage, member removal, dividends, reputation counters. Everything that moves money is a contract rule, so it can be verified on MSTScan.
 - Wallet: **BridgeKey** (EIP-1193) · SDK: ethers v6 (same library `@mstblockchain/mst-sdk` wraps) · Scaffold structure from MST VibeKit (Hardhat + Next.js)
 - Verified facts: `eth_chainId` on the testnet RPC returns `0x5752035` = 91562037; explorer is Blockscout at `testnet.mstscan.com` with `/tx/<hash>` and `/address/<addr>`.
 
 ## Verifiable transactions
-| Action | Tx hash |
+| Action | Tx |
 |---|---|
-| Deploy | `<hash>` |
-| Join (High tier, 2× collateral) | `<hash>` |
-| Agent bid | `<hash>` |
-| settleRound | `<hash>` |
-| Missed payment covered | `<hash>` |
+| Deploy `ChitChain` | [`0x2388ead3…092fc5`](https://testnet.mstscan.com/tx/0x2388ead3969d462c88f6dfd2f3cf59dfe5c0d161a2d17206a0428cd479092fc5) |
+| `setRiskTier(D, High)` by the risk oracle | [`0xeb66b371…be5ccf`](https://testnet.mstscan.com/tx/0xeb66b371020a4085540cc4fc20774506843e38d413ed08bd9910dae8a3be5ccf) |
+| `setRiskTier(A, Low)` | [`0x1e2806f4…2ad2be`](https://testnet.mstscan.com/tx/0x1e2806f48a8ec24923dd88f1e18e38461c08f1923191efbd8fa008566e2ad2be) |
+| `createCircle` (5 members, 60 s rounds, 0.1 MSTC) | [`0x914db368…ea506f`](https://testnet.mstscan.com/tx/0x914db368d572dedee25ae5cd7f76faa457d7cfc68ff84ee28464c83e95ea506f) |
+| Join — D (High tier, locks 2× = 0.20 MSTC) | [`0xc2dced24…6e26f3`](https://testnet.mstscan.com/tx/0xc2dced24c712387be668dd53357e31ace9f5d15cf02ec93dee6db8f82f6e26f3) |
+| Join — A (Low tier, locks 0.5× = 0.05 MSTC) | [`0xa9761efc…14f0a4`](https://testnet.mstscan.com/tx/0xa9761efcc6bb4de383d7a05e0cec699c8c2c3caabccfc6f9bc21c4ae6214f0a4) |
+| Agent bid for B ("I need money this month", 5 % of pot) | [`0xd73eef9b…781b6d`](https://testnet.mstscan.com/tx/0xd73eef9b8e109754a67b7a4c1cf5fa300578393f0952e816e7bc46f28f781b6d) |
+| `settleRound` #1 — B wins, **D's missed payment covered from collateral**, holdback 0.20 applied, pot still 0.50 | [`0x05e3c2a1…635826`](https://testnet.mstscan.com/tx/0x05e3c2a1fa8ba24fd10f92fe60413129209ae53b3fb19b44ddb317426b635826) |
+| Withdraw — B pulls 0.27 MSTC payout | [`0x59f853a5…4c9508`](https://testnet.mstscan.com/tx/0x59f853a5fc6a6417ff88ec9d75a9cf945f9fa22eb9d177429015cf25554c9508) |
+
+All on MST Testnet, circle #1 at the contract below. Every event in the live app links to the same explorer.
 
 ## Architecture
 ![architecture](architecture.png)
