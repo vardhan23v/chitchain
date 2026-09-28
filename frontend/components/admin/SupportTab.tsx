@@ -21,11 +21,11 @@ export function SupportTab() {
         <TabsList aria-label="Ticket status"><TabsTrigger value="OPEN">Open</TabsTrigger><TabsTrigger value="CLOSED">Closed</TabsTrigger></TabsList>
       </Tabs>
       {s.loading && !s.data ? (
-        <Skeleton className="h-32 rounded-2xl" />
+        <Skeleton className="h-32 rounded-[22px]" />
       ) : s.error && !s.data ? (
-        <Card className="rounded-2xl p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load tickets, {s.error}</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load tickets, {s.error}</Card>
       ) : list.length === 0 ? (
-        <Card className="rounded-2xl border-dashed p-6 text-center text-sm text-muted-foreground">No {status.toLowerCase()} tickets.</Card>
+        <Card className="border-dashed p-6 text-center text-sm text-muted-foreground">No {status.toLowerCase()} tickets.</Card>
       ) : (
         list.map((t) => <TicketCard key={t.id} t={t} busy={s.busy === t.id} onUpdate={(b) => s.update(t.id, b)} />)
       )}

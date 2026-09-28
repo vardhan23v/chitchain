@@ -64,7 +64,7 @@ function Demo() {
         <Button variant="outline" disabled={!!d.busy || !s} onClick={() => void d.assessAll()}><Spin k="assess" />Assess all</Button>
       </div>
 
-      <Card className="rounded-2xl p-4">
+      <Card className="p-4">
         <h2 className="text-base">New demo circle</h2>
         <p className="text-xs text-muted-foreground">Creates a circle and joins all five demo wallets. The autopilot contributes and the agent bids each round.</p>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -94,9 +94,9 @@ function Demo() {
         </div>
       </Card>
 
-      <Card className="overflow-x-auto rounded-2xl">
+      <Card className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+          <thead className="bg-white/50 text-left text-xs text-muted-foreground">
             <tr><th className="p-3">Label</th><th className="p-3">Address</th><th className="p-3">Balance</th><th className="p-3">Tier</th><th className="p-3">Skip payment</th><th className="p-3">Withdraw</th></tr>
           </thead>
           <tbody>

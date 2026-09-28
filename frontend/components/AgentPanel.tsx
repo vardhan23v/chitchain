@@ -78,7 +78,7 @@ export function AgentPanel({ circleId, member, isDemoWallet, logs, mandate, labe
         Tell the agent your goal. Each round it re-reads the auction and bids on-chain from {member && isDemoWallet ? `${labelFor(member.address)}'s` : "the member's"} custodial demo wallet. Real BridgeKey wallets bid manually.
       </p>
       {!signedIn ? (
-        <div className="mt-3 rounded-xl border border-dashed bg-card p-4 text-center text-sm text-muted-foreground">
+        <div className="mt-3 rounded-xl border border-dashed bg-white/40 p-4 text-center text-sm text-muted-foreground">
           Sign in as the circle organizer or admin to drive the agent.
           <div className="mt-2"><Button asChild size="sm" variant="outline"><Link href={`/login?next=/circle/${circleId}`}>Sign in</Link></Button></div>
         </div>

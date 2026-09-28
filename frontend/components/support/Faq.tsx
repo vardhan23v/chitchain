@@ -50,8 +50,8 @@ export function Faq() {
   return (
     <div className="space-y-2">
       {FAQ.map((f) => (
-        <details key={f.q} className="group rounded-2xl border bg-card shadow-sm transition-colors open:border-primary/30">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+        <details key={f.q} className="glass group rounded-[22px] transition-colors open:border-primary/30">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[22px] px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-90" aria-hidden />
             {f.q}
           </summary>

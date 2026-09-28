@@ -73,7 +73,7 @@ export function PotMeter({ circle, round }: { circle: CircleSummary; round: Roun
       </SectionTitle>
       <div className="relative mt-3 flex flex-wrap items-baseline gap-x-2">
         <ConfettiLite trigger={confetti} />
-        <span className="tnum whitespace-nowrap text-[44px] font-extrabold leading-none tracking-tight text-pot md:text-5xl" aria-label={`${formatMstFull(collected)} MST`} title={`${formatMstFull(collected)} MST`}>
+        <span className="tnum whitespace-nowrap text-[32px] font-semibold leading-none tracking-tight text-pot md:text-[40px]" aria-label={`${formatMstFull(collected)} MST`} title={`${formatMstFull(collected)} MST`}>
           <CountUpMst wei={collected} />
         </span>
         <span className="tnum text-lg font-semibold text-muted-foreground" aria-label={`of ${formatMst(expected)} MST expected`}>

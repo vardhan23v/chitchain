@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 type Tone = "info" | "chain" | "warning" | "danger" | "success" | "agent";
 const TONES: Record<Tone, { box: string; icon: string }> = {
-  info: { box: "border-border bg-muted/40", icon: "text-muted-foreground" },
+  info: { box: "border-white/60 bg-white/45 backdrop-blur-sm", icon: "text-muted-foreground" },
   chain: { box: "border-chain/25 bg-chain/5", icon: "text-chain" },
   warning: { box: "border-warning/30 bg-warning/5", icon: "text-warning" },
   danger: { box: "border-danger/30 bg-danger/5", icon: "text-danger" },

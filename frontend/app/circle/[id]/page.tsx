@@ -38,13 +38,13 @@ function RoomSkeleton() {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5">
           <div className="grid gap-4 md:grid-cols-[3fr_2fr]">
-            <Skeleton className="h-56 rounded-2xl" />
-            <Skeleton className="h-72 rounded-2xl md:h-auto" />
+            <Skeleton className="h-56 rounded-[22px]" />
+            <Skeleton className="h-72 rounded-[22px] md:h-auto" />
           </div>
           <Skeleton className="h-9 w-64 rounded-full" />
-          <Skeleton className="h-48 rounded-2xl" />
+          <Skeleton className="h-48 rounded-[22px]" />
         </div>
-        <Skeleton className="h-[420px] rounded-2xl" />
+        <Skeleton className="h-[420px] rounded-[22px]" />
       </div>
     </div>
   );
@@ -164,7 +164,7 @@ export default function CircleRoomPage() {
         {!bidFocused && (
           <motion.div
             key="mobile-primary"
-            className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t bg-background/95 p-3 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] backdrop-blur md:hidden"
+            className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] glass-strong z-30 rounded-t-3xl border-b-0 p-3 md:hidden"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}

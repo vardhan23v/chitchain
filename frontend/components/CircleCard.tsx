@@ -29,7 +29,7 @@ export function CircleCard({ c }: { c: CircleSummary }) {
 
   return (
     <RevealItem className="flex min-w-0">
-    <Card className={cn("flex w-full flex-col gap-4 p-4 md:p-5", done && "bg-card/70")}>
+    <Card className={cn("flex w-full flex-col gap-4 p-4 md:p-5", done && "opacity-80")}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-base font-semibold" title={c.name ? `${c.name} · Circle #${c.id}` : undefined}>{c.name ?? `Circle #${c.id}`}</div>

@@ -31,9 +31,14 @@ const config: Config = {
         agent: { DEFAULT: "hsl(var(--agent))", foreground: "hsl(var(--agent-foreground))" },
       },
       borderRadius: {
+        "2xl": "calc(var(--radius) + 6px)",
+        xl: "calc(var(--radius) + 2px)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        glass: "inset 0 0 0 1px rgba(255,255,255,0.5), 0 8px 30px -12px rgba(46,74,125,0.25)",
       },
       keyframes: {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },

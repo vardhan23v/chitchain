@@ -37,7 +37,7 @@ export function OrganizerCircleCard({ c, onChanged }: { c: OrganizerCircle; onCh
         {c.isDemo && <DemoBadge />}
       </div>
       {!c.name && <NameCircleForm id={c.id} onSaved={onChanged} />}
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-muted/40 p-3 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-white/40 p-3 sm:grid-cols-4">
         <Cell label="Members" value={`${joined} / ${c.maxMembers}`} />
         <Cell label="Round" value={c.status === 1 ? `${roundNo(c)} / ${c.maxMembers}` : "—"} />
         <Cell label="Current pot" value={c.round ? `${formatMst(c.round.collected)} / ${formatMst(c.round.expectedPot)} MST` : "—"} />

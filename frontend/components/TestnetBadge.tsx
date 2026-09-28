@@ -6,7 +6,7 @@ export function TestnetBadge({ className, size = "sm" }: { className?: string; s
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border bg-muted/40 font-semibold text-muted-foreground",
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-white/70 bg-white/40 font-semibold backdrop-blur-sm text-muted-foreground",
         size === "xs" ? "px-1.5 py-px text-[9px]" : "px-2 py-0.5 text-[10px]",
         className
       )}

@@ -26,7 +26,7 @@ interface Props {
 
 function Count({ n }: { n: number }) {
   if (!n) return null;
-  return <span className="tnum rounded-full bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground">{n}</span>;
+  return <span className="tnum rounded-full bg-white/50 px-1.5 text-[10px] font-semibold text-current">{n}</span>;
 }
 
 type Tab = "live" | "history" | "defaults";
@@ -54,7 +54,7 @@ export function RoomTabs({ data, me, viewer, events, labelFor, onChanged }: Prop
         {backendDown ? (
           <EmptyState Icon={Bot} tone="bg-muted text-muted-foreground" title="Default details need the backend indexer" />
         ) : defaults.loading && !defaults.data ? (
-          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-[22px]" />
         ) : !defaults.data?.length ? (
           <EmptyState Icon={ShieldHalf} tone="bg-success/10 text-success" title="No missed contributions" text="Every round so far was paid in full." />
         ) : (

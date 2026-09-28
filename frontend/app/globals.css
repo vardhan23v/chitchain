@@ -5,26 +5,30 @@
 /* DESIGN.md §3 colour tokens as HSL triples (shadcn convention). */
 @layer base {
   :root {
-    --background: 210 40% 98%;        /* #F8FAFC */
-    --foreground: 222 47% 11%;        /* #0F172A */
-    --card: 0 0% 100%;                /* #FFFFFF */
-    --card-foreground: 222 47% 11%;
+    /* Navy + ice blue glass theme. Base #EEF3FA; the gradient scene sits on body::before. */
+    --background: 215 55% 96%;        /* #EEF3FA */
+    --foreground: 222 45% 16%;        /* #16213A */
+    --card: 0 0% 100%;                /* #FFFFFF, drawn at 62% through .glass */
+    --card-foreground: 222 45% 16%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 243 75% 59%;           /* #4F46E5 */
+    --popover-foreground: 222 45% 16%;
+    --primary: 219 46% 34%;           /* #2E4A7D navy */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;  /* #64748B */
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --secondary: 216 60% 90%;         /* #D7E3F5 ice */
+    --secondary-foreground: 222 45% 16%;
+    --muted: 216 60% 90%;
+    --muted-foreground: 218 16% 50%;  /* #6B7A93 */
+    --accent: 216 60% 90%;
+    --accent-foreground: 222 45% 16%;
     --destructive: 0 72% 51%;         /* #DC2626 */
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;            /* #E2E8F0 */
-    --input: 214 32% 91%;
-    --ring: 243 75% 59%;
-    --radius: 0.75rem;
+    --border: 219 38% 87%;            /* navy at 12% over white, #CFDAEB */
+    --input: 219 38% 87%;
+    --ring: 219 46% 34%;
+    --radius: 1rem;
+    --glass: 0 0% 100%;
+    --glass-alpha: 0.62;
+    --glass-strong-alpha: 0.78;
 
     --pot: 199 89% 48%;               /* #0EA5E9 */
     --pot-foreground: 0 0% 100%;
@@ -76,8 +80,22 @@
   }
 
   * { @apply border-border; }
-  html { -webkit-tap-highlight-color: transparent; }
-  body { @apply bg-background text-foreground antialiased; font-size: 15px; overflow-x: hidden; }
+  html { -webkit-tap-highlight-color: transparent; background: #EEF3FA; }
+  body { @apply text-foreground antialiased; background: #EEF3FA; font-size: 15px; overflow-x: hidden; }
+  /* Fixed gradient scene: ice blue top-left, white haze centre, faint navy bottom-right, one soft blob. Cards blur this, so it never scrolls. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: #EEF3FA;
+    background-image:
+      radial-gradient(60% 55% at 12% 8%, #DCE8F7 0%, rgba(220, 232, 247, 0) 70%),
+      radial-gradient(45% 45% at 55% 45%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 70%),
+      radial-gradient(55% 50% at 92% 95%, #C9D7EC 0%, rgba(201, 215, 236, 0) 70%),
+      radial-gradient(28% 32% at 78% 18%, rgba(46, 74, 125, 0.14) 0%, rgba(46, 74, 125, 0) 70%);
+  }
   h1 { @apply text-2xl font-bold tracking-tight md:text-3xl; }
   h2 { @apply text-xl font-semibold tracking-tight; }
   .tnum { font-variant-numeric: tabular-nums; }
@@ -88,14 +106,12 @@
 @layer utilities {
   /* Sentence-case meta line above a page title (DESIGN §4 small/meta). */
   .eyebrow { @apply text-[13px] font-medium text-muted-foreground; }
-  /* Card lift on hover, 150 ms. */
-  .{ @apply transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-md; }
   /* Horizontal-scroll wrapper with a visible right edge fade on small screens. */
   .edge-fade { -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent); mask-image: linear-gradient(to right, black calc(100% - 28px), transparent); }
   @screen md { .edge-fade { -webkit-mask-image: none; mask-image: none; } }
   /* Data tables: zebra rows, sticky header, right-aligned numbers via .num. */
-  .table-data thead th { @apply sticky top-0 z-10 bg-muted/70 backdrop-blur; }
-  .table-data tbody tr:nth-child(even) { @apply bg-muted/30; }
+  .table-data thead th { @apply sticky top-0 z-10 bg-white/50 backdrop-blur; }
+  .table-data tbody tr:nth-child(even) { @apply bg-white/30; }
   .table-data tbody tr { @apply border-t transition-colors hover:bg-primary/[0.04]; }
   .striped-primary {
     background-image: repeating-linear-gradient(
@@ -103,6 +119,81 @@
       hsl(var(--primary)) 0 4px,
       hsl(var(--primary) / 0.45) 4px 8px
     );
+  }
+
+  /* Frosted surfaces. The inset ring is the specular edge; the shadow is soft navy. */
+  .glass {
+    background-color: hsl(var(--glass) / var(--glass-alpha));
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), 0 8px 30px -12px rgba(46, 74, 125, 0.25);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: blur(20px) saturate(1.2);
+  }
+  .glass-strong {
+    background-color: hsl(var(--glass) / var(--glass-strong-alpha));
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55), 0 8px 30px -12px rgba(46, 74, 125, 0.25);
+    -webkit-backdrop-filter: blur(28px) saturate(1.2);
+    backdrop-filter: blur(28px) saturate(1.2);
+  }
+
+  /* Liquid glass buttons: translucent fill + blur, ::before top specular highlight, ::after soft inner shadow. Pseudo-elements never take clicks. */
+  .liquid {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    backdrop-filter: blur(12px) saturate(1.3);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  }
+  .liquid::before,
+  .liquid::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  /* z-index -1 inside the isolated stacking context: above the button background, below its text and icons. */
+  .liquid::before {
+    z-index: -1;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 45%, rgba(255, 255, 255, 0) 46%);
+  }
+  .liquid::after {
+    z-index: -1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 2px rgba(22, 33, 58, 0.12);
+  }
+  .liquid:active:not(:disabled) { transform: scale(0.98); }
+  .liquid-navy {
+    background-color: hsl(var(--primary) / 0.85);
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 6px 18px -8px rgba(46, 74, 125, 0.55);
+  }
+  .liquid-navy:hover:not(:disabled) { background-color: hsl(var(--primary) / 0.95); }
+  .liquid-navy::before { background: linear-gradient(to bottom, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0) 46%); }
+  .liquid-navy::after { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 2px rgba(22, 33, 58, 0.35); }
+  .liquid-clear {
+    background-color: rgba(255, 255, 255, 0.45);
+    color: hsl(var(--primary));
+    box-shadow: 0 4px 14px -8px rgba(46, 74, 125, 0.35);
+  }
+  .liquid-clear:hover:not(:disabled) { background-color: rgba(255, 255, 255, 0.7); }
+  .liquid-danger {
+    background-color: hsl(var(--danger) / 0.85);
+    color: hsl(var(--danger-foreground));
+    box-shadow: 0 6px 18px -8px rgba(220, 38, 38, 0.5);
+  }
+  .liquid-danger:hover:not(:disabled) { background-color: hsl(var(--danger) / 0.95); }
+  .liquid-danger::before { background: linear-gradient(to bottom, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0) 46%); }
+  .liquid-danger::after { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 2px rgba(22, 33, 58, 0.3); }
+
+  /* Solid fallbacks when backdrop-filter is unsupported. */
+  @supports not (backdrop-filter: blur(1px)) {
+    .glass { background-color: rgba(255, 255, 255, 0.92); }
+    .glass-strong { background-color: rgba(255, 255, 255, 0.96); }
+    .liquid-navy { background-color: hsl(var(--primary)); }
+    .liquid-clear { background-color: rgba(255, 255, 255, 0.92); }
+    .liquid-danger { background-color: hsl(var(--danger)); }
   }
 }
 

@@ -15,7 +15,7 @@ import type { Role } from "@/lib/types";
 export function ForbiddenCard({ title = "This page isn't for your role", detail }: { title?: string; detail?: string }) {
   const auth = useAuth();
   return (
-    <Card className="mx-auto max-w-md rounded-2xl p-8 text-center">
+    <Card className="mx-auto max-w-md p-8 text-center">
       <ShieldOff className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
       <h1 className="mt-3 text-2xl">{title}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{detail ?? "Roles only gate website actions, the smart contract still holds every pot."}</p>
@@ -49,13 +49,13 @@ export function RequireAuth({ roles, children }: { roles?: Role[]; children: Rea
     return (
       <div className="space-y-3" aria-busy="true">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 rounded-2xl" />
+        <Skeleton className="h-32 rounded-[22px]" />
       </div>
     );
   }
   if (anonymous) {
     return (
-      <Card className="rounded-2xl p-8 text-center text-sm text-muted-foreground">
+      <Card className="p-8 text-center text-sm text-muted-foreground">
         Redirecting to sign in… <Link href={`/login?next=${encodeURIComponent(path || "/")}`} className="text-primary hover:underline">Sign in</Link>
       </Card>
     );

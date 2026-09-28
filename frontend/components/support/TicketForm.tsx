@@ -60,7 +60,7 @@ export function TicketForm() {
       <section className="space-y-2">
         <SectionTitle Icon={Inbox} trailing={tickets.length ? <span className="tnum">{tickets.length}</span> : undefined}>My tickets</SectionTitle>
         {s.loading && !s.data ? (
-          <Skeleton className="h-16 rounded-2xl" />
+          <Skeleton className="h-16 rounded-[22px]" />
         ) : s.error && !s.data ? (
           <p className="text-sm text-muted-foreground">Couldn&apos;t load your tickets, backend unreachable.</p>
         ) : tickets.length === 0 ? (
@@ -74,7 +74,7 @@ export function TicketForm() {
                 <span className="ml-auto text-xs text-muted-foreground">{timeAgo(t.createdAt)}</span>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{t.message}</p>
-              {t.adminNote && <p className="mt-2 rounded-xl bg-muted/50 p-2 text-sm"><span className="font-medium">Reply:</span> {t.adminNote}</p>}
+              {t.adminNote && <p className="mt-2 rounded-xl bg-white/40 p-2 text-sm"><span className="font-medium">Reply:</span> {t.adminNote}</p>}
             </Card>
           ))
         )}
