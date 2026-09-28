@@ -10,6 +10,8 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)](frontend)
 [![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?logo=prisma&logoColor=white)](backend/prisma/schema.prisma)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Railway-4169E1?logo=postgresql&logoColor=white)](backend/prisma/schema.prisma)
+[![CI](https://github.com/vardhan23v/chitchain/actions/workflows/ci.yml/badge.svg)](https://github.com/vardhan23v/chitchain/actions/workflows/ci.yml)
+[![Deploy](https://github.com/vardhan23v/chitchain/actions/workflows/deploy.yml/badge.svg)](https://github.com/vardhan23v/chitchain/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ChitChain is a trust-minimised chit fund on **MST Blockchain**. Members lock collateral and pay into a pot that lives inside a smart contract. Each round the contract runs a reverse auction, pays the winner, covers missed payments from the defaulter's collateral, and holds back part of early winners' payouts as security for their future dues. An AI risk engine prices each member's collateral (Low 0.5× · Medium 1× · High/Unassessed 2× by default) and an AI bidding agent bids for members based on a plain-language goal. Nobody, not the organiser and not the AI, ever holds the money.
@@ -271,6 +273,10 @@ Env vars (`.env` at the repo root; never committed):
 | `NEXT_PUBLIC_*` | frontend: contract address, chain id 91562037, RPC, API URL, explorer |
 
 Demo flow: open `/demo` → **Fund wallets** → **Assess all** (D becomes High, A Low) → **New demo circle (30 s rounds)** → open the room → ask the agent for B "I need money this month" → toggle **skip** on D → watch the keeper settle, D's collateral cover the miss, and the pot stay full.
+
+## CI/CD
+- **CI** (`.github/workflows/ci.yml`) on every push and pull request: Hardhat compile + 29 contract tests + ABI-sync check; backend Prisma validate, typecheck and unit tests; frontend typecheck, lint, build and a guard that no `MSTC`/fiat symbols remain.
+- **CD** (`.github/workflows/deploy.yml`): when CI succeeds on `main`, uploads `backend/` then `frontend/` to Railway with the Railway CLI and smoke-checks `/health`. Needs one repository secret, `RAILWAY_TOKEN` (Railway → project → Settings → Tokens → project token for `production`). Can also be run manually from the Actions tab.
 
 ## Wallet setup
 1. Install BridgeKey from the Chrome Web Store link above and create a wallet.
