@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Gavel, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Flash } from "@/components/motion/Flash";
+import { EASE } from "@/components/motion/Reveal";
 import { MstcAmount } from "@/components/MstcAmount";
 import { SectionTitle } from "@/components/PageHeader";
 import { ZERO_ADDRESS } from "@/lib/contract";
@@ -26,13 +29,17 @@ interface Props {
   /** Receives the on-chain DISCOUNT (= pot − accepted payout). */
   onBid: (discountWei: bigint) => Promise<unknown>;
   pending: boolean;
+  /** Increment to pulse a ring around the bid input (the page does this when "Place bid" scrolls here). */
+  highlight?: number;
+  /** Reports whether the bid input has focus so the mobile action bar can get out of the keyboard's way. */
+  onFocusChange?: (focused: boolean) => void;
 }
 
 /**
  * Bids are stored on-chain as a discount, but presented as "the payout I'd accept".
  * accepted = expectedPot − discount; the lowest accepted payout wins.
  */
-export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor, onBid, pending }: Props) {
+export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor, onBid, pending, highlight = 0, onFocusChange }: Props) {
   const [accepted, setAccepted] = useState("");
   const pot = big(round.expectedPot);
   const maxDiscount = big(round.maxDiscount);
@@ -90,13 +97,27 @@ export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor
         <div className="flex items-center justify-between gap-2 py-1.5"><dt className="text-muted-foreground">Pot</dt><dd><MstcAmount wei={pot} size="sm" className="text-pot" /></dd></div>
         <div className="flex items-center justify-between gap-2 py-1.5">
           <dt className="text-muted-foreground">Lowest accepted payout</dt>
-          <dd className="text-right">{hasBid ? <><MstcAmount wei={lowestAccepted} size="sm" /> <span className="text-xs text-muted-foreground">by {labelFor(round.bestBidder)}</span></> : <span className="text-muted-foreground">No bids yet</span>}</dd>
+          <dd className="text-right">
+            <Flash value={`${round.bestBidder}:${round.bestDiscount}`}>
+              {hasBid ? <><MstcAmount wei={lowestAccepted} size="sm" /> <span className="text-xs text-muted-foreground">by {labelFor(round.bestBidder)}</span></> : <span className="text-muted-foreground">No bids yet</span>}
+            </Flash>
+          </dd>
         </div>
         <div className="flex items-center justify-between gap-2 py-1.5"><dt className="text-muted-foreground">Max discount</dt><dd><MstcAmount wei={maxDiscount} size="sm" /></dd></div>
       </dl>
       <div className="mt-4 space-y-2">
         <Label htmlFor="accepted">Payout I&apos;d accept</Label>
         <div className="relative">
+          {highlight > 0 && (
+            <motion.span
+              key={highlight}
+              aria-hidden
+              className="pointer-events-none absolute -inset-1 rounded-lg ring-2 ring-primary/60"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: [0, 1, 0], scale: [0.98, 1, 1.02] }}
+              transition={{ duration: 0.5, ease: EASE }}
+            />
+          )}
           <Input
             id="accepted"
             inputMode="decimal"
@@ -104,7 +125,9 @@ export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor
             value={accepted}
             onChange={(e) => setAccepted(e.target.value.replace(/[^0-9.]/g, ""))}
             disabled={!eligible}
-            className={cn("tnum h-10 pr-14", invalid && "border-danger focus-visible:ring-danger/30")}
+            onFocus={() => onFocusChange?.(true)}
+            onBlur={() => onFocusChange?.(false)}
+            className={cn("tnum relative h-10 pr-14", invalid && "border-danger focus-visible:ring-danger/30")}
             aria-describedby="accepted-hint"
             aria-invalid={invalid || undefined}
           />

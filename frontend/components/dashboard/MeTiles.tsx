@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/Countdown";
 import { ScoreGauge, scoreBand } from "@/components/ScoreGauge";
 import { MstcAmount } from "@/components/MstcAmount";
+import { RevealGroup } from "@/components/motion/Reveal";
 import { StatTile } from "@/components/StatTile";
 import { ContributionChip } from "@/components/StatusChip";
 import { TierChip } from "@/components/TierChip";
@@ -33,15 +34,15 @@ export function MeTiles({ me, circles, account, loading }: Props) {
   const t = me?.totals;
 
   return (
-    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="My overview">
+    <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="My overview">
       <StatTile label="Wallet" Icon={Wallet} value={<span className="font-mono text-lg">{shortAddr(account)}</span>} hint={me?.user.displayName ?? "no display name"} />
-      <StatTile label="Available MST" testnet value={me ? <MstcAmount wei={me.balance} size="lg" /> : "—"} loading={loading && !me} hint="testnet coins, no monetary value" />
-      <StatTile label="Locked collateral" Icon={Lock} iconClassName="text-primary" testnet value={<MstcAmount wei={locked} size="lg" />} hint={`across ${circles.length} circle${circles.length === 1 ? "" : "s"}`} />
+      <StatTile label="Available MST" testnet value={me ? <MstcAmount wei={me.balance} size="lg" animate /> : "—"} loading={loading && !me} hint="testnet coins, no monetary value" />
+      <StatTile label="Locked collateral" Icon={Lock} iconClassName="text-primary" testnet value={<MstcAmount wei={locked} size="lg" animate />} hint={`across ${circles.length} circle${circles.length === 1 ? "" : "s"}`} />
       <StatTile label="Current contribution" value={ac ? <ContributionChip status={ac.me.contributionStatus} className="text-xs" /> : "—"} hint={ac ? `${formatMst(ac.contribution)} MST per round` : "no active circle"} />
       <StatTile label="Risk score" Icon={ShieldCheck} value={r ? <span className="flex items-center gap-3"><ScoreGauge score={r.score} /><TierChip tier={r.tier} /></span> : "—"} hint={r ? `${scoreBand(r.score)} · Demo heuristic risk model` : "Demo heuristic risk model · not assessed yet"} loading={loading && !me} />
       <StatTile label="Default count" value={t?.defaults ?? "—"} hint="missed contributions, all circles" className={t?.defaults ? "border-danger/40" : undefined} />
-      <StatTile label="Payouts" Icon={Trophy} iconClassName="text-success" testnet value={t ? <MstcAmount wei={t.payouts} size="lg" className="text-success" /> : "—"} hint="won pots, all circles" />
-      <StatTile label="Dividends" Icon={Coins} iconClassName="text-success" testnet value={t ? <MstcAmount wei={t.dividends} size="lg" /> : "—"} hint="your share of every discount" />
+      <StatTile label="Payouts" Icon={Trophy} iconClassName="text-success" testnet value={t ? <MstcAmount wei={t.payouts} size="lg" className="text-success" animate /> : "—"} hint="won pots, all circles" />
+      <StatTile label="Dividends" Icon={Coins} iconClassName="text-success" testnet value={t ? <MstcAmount wei={t.dividends} size="lg" animate /> : "—"} hint="your share of every discount" />
       <StatTile label="Current bid" Icon={Gavel} testnet value={ac && bid > 0n ? <MstcAmount wei={big(ac.round.expectedPot) - bid} size="lg" /> : "No bid"} hint={ac && bid > 0n ? "the payout you'd accept this round" : ac ? `pot ${formatMst(ac.round.expectedPot)} MST` : "no active circle"} />
       <StatTile
         label="Current circle"
@@ -58,6 +59,6 @@ export function MeTiles({ me, circles, account, loading }: Props) {
           </div>
         )}
       </StatTile>
-    </section>
+    </RevealGroup>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { Activity, CircleDot, Coins, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,13 +10,14 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CircleCard } from "@/components/CircleCard";
 import { EmptyState } from "@/components/EmptyState";
 import { HowItWorks } from "@/components/HowItWorks";
+import { CountUp, CountUpMst } from "@/components/motion/CountUp";
+import { EASE, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { FeaturedCircle, pickFeatured } from "@/components/FeaturedCircle";
 import { SectionTitle } from "@/components/PageHeader";
 import { RolesStrip } from "@/components/RolesStrip";
 import { StatTile } from "@/components/StatTile";
 import { TestnetBadge } from "@/components/TestnetBadge";
 import { useCircles } from "@/hooks/useCircles";
-import { formatMst } from "@/lib/format";
 import type { Status } from "@/lib/types";
 
 type Filter = "all" | "open" | "active" | "done";
@@ -37,31 +39,36 @@ export default function HomePage() {
 
   return (
     <div className="space-y-12">
-      <section className="grid items-center gap-8 pt-2 md:grid-cols-[3fr_2fr] md:pt-6">
+      {/* One load sequence: eyebrow, headline, copy, CTAs, then the featured circle. */}
+      <RevealGroup as="section" mode="load" className="grid items-center gap-8 pt-2 md:grid-cols-[3fr_2fr] md:pt-6">
         <div>
-          <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
+          <RevealItem className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
             <span>Chit funds on MST Blockchain</span>
             <TestnetBadge size="xs" />
-          </div>
-          <h1 className="mt-3 text-[34px] font-extrabold leading-[1.08] tracking-tight md:text-5xl">
-            The pot sits in a contract,<br className="hidden sm:block" /> not in anyone&apos;s account.
-          </h1>
-          <p className="mt-4 max-w-xl text-[15px] text-muted-foreground md:text-lg">Contributions, auctions, payouts and penalties are enforced by code. Every step is verifiable on MSTScan.</p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          </RevealItem>
+          <RevealItem>
+            <h1 className="mt-3 text-[34px] font-extrabold leading-[1.08] tracking-tight md:text-5xl">
+              The pot sits in a contract,<br className="hidden sm:block" /> not in anyone&apos;s account.
+            </h1>
+          </RevealItem>
+          <RevealItem>
+            <p className="mt-4 max-w-xl text-[15px] text-muted-foreground md:text-lg">Contributions, auctions, payouts and penalties are enforced by code. Every step is verifiable on MSTScan.</p>
+          </RevealItem>
+          <RevealItem className="mt-6 flex flex-wrap gap-3">
             <Button size="lg" asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>
             <Button size="lg" variant="outline" asChild><a href="#circles">Browse circles</a></Button>
-          </div>
+          </RevealItem>
         </div>
-        <div className="hidden justify-center md:flex">
+        <RevealItem className="hidden justify-center md:flex">
           {featured ? <FeaturedCircle c={featured} /> : <Skeleton className="h-64 w-64 rounded-full" />}
-        </div>
-      </section>
+        </RevealItem>
+      </RevealGroup>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3" aria-label="Network stats">
+      <RevealGroup as="section" className="grid grid-cols-2 gap-3 md:grid-cols-3" aria-label="Network stats">
         <StatTile label="Circles live" Icon={CircleDot} iconClassName="text-primary" value={stats?.circlesLive ?? (data ? all.filter((c) => c.status <= 1).length : "—")} loading={loading && !data} hint={stats ? `${stats.circlesTotal} total` : data?.source === "chain" ? "read from contract" : undefined} />
-        <StatTile label="MST in contracts" Icon={Coins} iconClassName="text-pot" testnet value={stats ? formatMst(stats.mstcInContract) : "—"} valueClassName="text-pot" loading={loading && !data} hint={stats ? "held by the contract, not by anyone" : "needs backend"} />
-        <StatTile label="On-chain transactions" Icon={Activity} iconClassName="text-chain" value={stats?.txCount ?? "—"} loading={loading && !data} hint={stats ? "every one verifiable on MSTScan" : "needs backend"} className="col-span-2 md:col-span-1" />
-      </section>
+        <StatTile label="MST in contracts" Icon={Coins} iconClassName="text-pot" testnet value={stats ? <CountUpMst wei={stats.mstcInContract} fromZero /> : "—"} valueClassName="text-pot" loading={loading && !data} hint={stats ? "held by the contract, not by anyone" : "needs backend"} />
+        <StatTile label="On-chain transactions" Icon={Activity} iconClassName="text-chain" value={stats ? <CountUp value={stats.txCount} fromZero /> : "—"} loading={loading && !data} hint={stats ? "every one verifiable on MSTScan" : "needs backend"} className="col-span-2 md:col-span-1" />
+      </RevealGroup>
 
       <HowItWorks />
 
@@ -93,7 +100,13 @@ export default function HomePage() {
             action={<Button asChild><Link href="/create"><Plus aria-hidden /> Create the first circle</Link></Button>}
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{circles.map((c) => <CircleCard key={c.id} c={c} />)}</div>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={filter} exit={{ opacity: 0 }} transition={{ duration: 0.15, ease: EASE }}>
+              <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {circles.map((c) => <CircleCard key={c.id} c={c} />)}
+              </RevealGroup>
+            </motion.div>
+          </AnimatePresence>
         )}
       </section>
     </div>

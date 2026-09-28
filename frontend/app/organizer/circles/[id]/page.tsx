@@ -13,6 +13,7 @@ import { OrganizerNotice } from "@/components/organizer/OrganizerNotice";
 import { ForbiddenCard, RequireAuth } from "@/components/RequireAuth";
 import { RoleBadge } from "@/components/RoleBadge";
 import { RoundHistory } from "@/components/RoundHistory";
+import { RevealGroup } from "@/components/motion/Reveal";
 import { StatTile } from "@/components/StatTile";
 import { PageHeader, SectionTitle } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,7 @@ function Analytics({ id }: { id: number }) {
         <Card className="p-8 text-center text-sm text-muted-foreground">{isUnreachable(a.error) ? "Backend unreachable, analytics need the ChitChain API." : a.error}</Card>
       ) : d ? (
         <>
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Circle analytics">
+          <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Circle analytics">
             <StatTile label="Round" value={d.circle.status === 1 ? `${d.round.round} / ${d.circle.maxMembers}` : "—"} hint={PHASE_LABEL[d.round.phase]} />
             <StatTile label="Current pot" testnet valueClassName="text-pot" value={<>{formatMst(d.round.collected)} <span className="text-base font-medium text-muted-foreground">/ {formatMst(d.round.expectedPot)}</span></>} hint="collected / expected, MST" />
             <StatTile label="Contribution rate" value={`${rate}%`} hint="this round">
@@ -73,7 +74,7 @@ function Analytics({ id }: { id: number }) {
               </div>
             </StatTile>
             <StatTile label="Agent decisions" value={d.agentDecisions} hint="AI bidding agent, this circle" />
-          </section>
+          </RevealGroup>
           <MembersTable circle={d.circle} members={d.members} viewer={auth.user?.walletAddress ?? null} extras={{}} />
           <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
             <div className="space-y-4">

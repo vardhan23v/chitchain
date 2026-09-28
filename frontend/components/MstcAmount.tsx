@@ -1,3 +1,4 @@
+import { CountUpMst } from "@/components/motion/CountUp";
 import { formatMst, formatMstFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +8,8 @@ interface Props {
   className?: string;
   unitClassName?: string;
   size?: "display" | "lg" | "md" | "sm";
+  /** Tween the number when it changes ("fromZero" also counts up on first paint). */
+  animate?: boolean | "fromZero";
 }
 
 const SIZES = {
@@ -17,11 +20,11 @@ const SIZES = {
 };
 
 /** DESIGN §2: `12.50 MST`, 2 decimals on screen, tabular-nums, full precision in aria-label + title. (File keeps its legacy name.) */
-export function MstcAmount({ wei, decimals = 2, className, unitClassName, size = "md" }: Props) {
+export function MstcAmount({ wei, decimals = 2, className, unitClassName, size = "md", animate }: Props) {
   const full = formatMstFull(wei as bigint | string);
   return (
     <span className={cn("tnum whitespace-nowrap", SIZES[size], className)} aria-label={`${full} MST`} title={`${full} MST`}>
-      {formatMst(wei, decimals)}
+      {animate ? <CountUpMst wei={wei} decimals={decimals} fromZero={animate === "fromZero"} /> : formatMst(wei, decimals)}
       <span className={cn("ml-1 font-semibold text-muted-foreground", size === "display" ? "text-xl" : "text-[0.75em]", unitClassName)} aria-hidden>
         MST
       </span>

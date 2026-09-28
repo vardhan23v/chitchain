@@ -1,5 +1,6 @@
 import { Coins, Gavel, ListOrdered, ShieldCheck, Trophy, UserPlus, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { SectionTitle } from "@/components/PageHeader";
 
 const STEPS: { title: string; text: string; Icon: LucideIcon; color: string; bg: string }[] = [
@@ -10,14 +11,14 @@ const STEPS: { title: string; text: string; Icon: LucideIcon; color: string; bg:
   { title: "Protect", text: "Miss a payment and your collateral covers it. Shortfalls are shown, never hidden.", Icon: ShieldCheck, color: "text-warning", bg: "bg-warning/10" },
 ];
 
-/** Landing strip: JOIN → CONTRIBUTE → BID → SETTLE → PROTECT. Equal-height cards with a light hover lift. */
+/** Landing strip: Join, Contribute, Bid, Settle, Protect. Equal-height cards that stagger in once when scrolled into view. */
 export function HowItWorks() {
   return (
     <section aria-label="How it works" className="space-y-4">
       <SectionTitle Icon={ListOrdered}>How it works</SectionTitle>
-      <ol className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+      <RevealGroup as="ol" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {STEPS.map((s, i) => (
-          <li key={s.title} className="min-w-0">
+          <RevealItem as="li" key={s.title} className="min-w-0">
             <Card className="flex h-full flex-col gap-3 p-4 md:p-5">
               <div className="flex items-center justify-between">
                 <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.bg}`}>
@@ -30,9 +31,9 @@ export function HowItWorks() {
                 <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{s.text}</p>
               </div>
             </Card>
-          </li>
+          </RevealItem>
         ))}
-      </ol>
+      </RevealGroup>
     </section>
   );
 }

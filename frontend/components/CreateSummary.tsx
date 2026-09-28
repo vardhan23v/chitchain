@@ -45,7 +45,7 @@ export function CreateSummary({ v }: { v: CreateInput }) {
         <div className="bg-pot/[0.06] p-4 md:p-5">
           <SectionTitle Icon={Calculator} tone="text-pot" trailing={<TestnetBadge size="xs" />}>Live summary</SectionTitle>
           <div className="mt-2 text-[12px] font-medium text-muted-foreground">Pot per round</div>
-          <MstcAmount wei={pot} size="display" className="text-pot" />
+          <MstcAmount wei={pot} size="display" className="text-pot" animate />
           <p className="tnum mt-1 text-xs text-muted-foreground">= {v.maxMembers} members × {v.contribution || "0"} MST</p>
         </div>
         <div className="space-y-4 p-4 md:p-5">

@@ -1,6 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Bot, CheckCircle2, Coins, Gavel, Lock, LogIn, LogOut, Play, ShieldHalf, ShieldAlert, Trophy, Wallet, XCircle, type LucideIcon, Ban, Flag, Sparkles, UserCheck } from "lucide-react";
+import { EASE } from "@/components/motion/Reveal";
 import { TxLink } from "@/components/TxLink";
 import { big, formatMst, shortAddr, timeAgo } from "@/lib/format";
 import { TIER_NAME } from "@/lib/labels";
@@ -74,11 +76,19 @@ export function eventAmount(e: FeedEvent): string | null {
   return k ? String(a[k]) : null;
 }
 
-export function FeedItem({ e, labels, now }: { e: FeedEvent; labels: LabelMap; now: number }) {
+/** `fresh` events (arrived after the first batch) slide in from the top; the rest render at rest. */
+export function FeedItem({ e, labels, now, fresh = false }: { e: FeedEvent; labels: LabelMap; now: number; fresh?: boolean }) {
   const r = renderFeedEvent(e, labels);
   const isAgent = !!e.agent;
   return (
-    <li className={cn("flex items-start gap-2.5 rounded-xl px-2 py-2 text-[13px] leading-snug", isAgent && "bg-agent/[0.06]")}>
+    <motion.li
+      layout="position"
+      initial={fresh ? { opacity: 0, y: -10 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      className={cn("flex items-start gap-2.5 rounded-xl px-2 py-2 text-[13px] leading-snug", isAgent && "bg-agent/[0.06]")}
+    >
       <span className={cn("mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full", r.color)} style={{ background: "color-mix(in srgb, currentColor 12%, transparent)" }} aria-hidden>
         <r.Icon className="h-3.5 w-3.5" />
       </span>
@@ -93,6 +103,6 @@ export function FeedItem({ e, labels, now }: { e: FeedEvent; labels: LabelMap; n
           <TxLink hash={e.txHash} label="MSTScan" className="text-[12px]" />
         </div>
       </div>
-    </li>
+    </motion.li>
   );
 }

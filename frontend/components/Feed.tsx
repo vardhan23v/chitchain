@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Radio, WifiOff } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,6 +26,15 @@ export function Feed({ events, down, loading, labels, title = "Live feed", class
     const id = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(id);
   }, []);
+
+  // Ids present in the first batch are "seen" and render at rest; anything that arrives later slides in.
+  const seen = useRef<Set<number> | null>(null);
+  if (seen.current === null && !loading) seen.current = new Set(events.map((e) => e.id));
+  const isFresh = (id: number) => seen.current !== null && !seen.current.has(id);
+  useEffect(() => {
+    if (!seen.current) return;
+    for (const e of events) seen.current.add(e.id);
+  });
 
   return (
     <Card className={cn("flex flex-col p-4 md:p-5", className)}>
@@ -56,7 +66,9 @@ export function Feed({ events, down, loading, labels, title = "Live feed", class
           <p className="py-8 text-center text-sm text-muted-foreground">No on-chain events yet.</p>
         ) : (
           <ul className="space-y-0.5 px-1 pr-3" aria-live="polite" aria-relevant="additions">
-            {events.map((e) => <FeedItem key={`${e.txHash}-${e.logIndex}-${e.id}`} e={e} labels={labels} now={now} />)}
+            <AnimatePresence initial={false}>
+              {events.map((e) => <FeedItem key={`${e.txHash}-${e.logIndex}-${e.id}`} e={e} labels={labels} now={now} fresh={isFresh(e.id)} />)}
+            </AnimatePresence>
           </ul>
         )}
       </ScrollArea>

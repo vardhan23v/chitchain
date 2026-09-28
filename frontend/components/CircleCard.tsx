@@ -5,6 +5,7 @@ import { CheckCircle2, CircleDot, Circle as CircleIcon, Timer, XCircle } from "l
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RevealItem } from "@/components/motion/Reveal";
 import { MstcAmount } from "@/components/MstcAmount";
 import { DemoBadge } from "@/components/TestnetBadge";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -27,7 +28,8 @@ export function CircleCard({ c }: { c: CircleSummary }) {
   const done = c.status >= 2;
 
   return (
-    <Card className={cn("flex flex-col gap-4 p-4 md:p-5", done && "bg-card/70")}>
+    <RevealItem className="flex min-w-0">
+    <Card className={cn("flex w-full flex-col gap-4 p-4 md:p-5", done && "bg-card/70")}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-base font-semibold" title={c.name ? `${c.name} · Circle #${c.id}` : undefined}>{c.name ?? `Circle #${c.id}`}</div>
@@ -73,5 +75,6 @@ export function CircleCard({ c }: { c: CircleSummary }) {
         <Link href={`/circle/${c.id}`}>{cta}</Link>
       </Button>
     </Card>
+    </RevealItem>
   );
 }

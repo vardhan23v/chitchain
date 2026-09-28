@@ -1,5 +1,6 @@
 import { FileCode2, Shield, UserRound, Users, UsersRound, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { SectionTitle } from "@/components/PageHeader";
 
 const ROLES: { title: string; text: string; Icon: LucideIcon; color: string; bg: string }[] = [
@@ -14,9 +15,9 @@ export function RolesStrip() {
   return (
     <section aria-label="Who does what" className="space-y-4">
       <SectionTitle Icon={UsersRound}>Who does what</SectionTitle>
-      <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <RevealGroup as="ul" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {ROLES.map((r) => (
-          <li key={r.title} className="min-w-0">
+          <RevealItem as="li" key={r.title} className="min-w-0">
             <Card className={`flex h-full flex-col gap-3 p-4 md:p-5 ${r.title === "Smart contract" ? "border-chain/30" : ""}`}>
               <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${r.bg}`}>
                 <r.Icon className={`h-[18px] w-[18px] ${r.color}`} aria-hidden />
@@ -26,9 +27,9 @@ export function RolesStrip() {
                 <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{r.text}</p>
               </div>
             </Card>
-          </li>
+          </RevealItem>
         ))}
-      </ul>
+      </RevealGroup>
     </section>
   );
 }

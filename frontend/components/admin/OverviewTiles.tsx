@@ -2,6 +2,8 @@
 
 import { Activity, Coins, ExternalLink, Landmark, Link2, Lock, Server, ShieldHalf, Ticket, Users } from "lucide-react";
 import { CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { CountUpMst } from "@/components/motion/CountUp";
+import { RevealGroup } from "@/components/motion/Reveal";
 import { StatTile } from "@/components/StatTile";
 import { CHAIN_NAME, EXPLORER_URL } from "@/lib/chain";
 import { formatMst, shortAddr } from "@/lib/format";
@@ -20,13 +22,13 @@ export function OverviewTiles({ o, loading }: { o: AdminOverview | null; loading
   const L = loading && !o;
   const explorer = (o?.contract.explorer || EXPLORER_URL).replace(/\/$/, "");
   return (
-    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Platform overview">
-      <StatTile label="Users" Icon={Users} value={o ? `${o.users.total}` : "—"} hint={o ? `${o.users.active} active · ${o.users.suspended} suspended · ${o.users.byRole.ORGANIZER ?? 0} organizers · ${o.users.byRole.ADMIN ?? 0} admins` : undefined} loading={L} />
+    <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Platform overview">
+      <StatTile label="Users" Icon={Users} value={o ? o.users.total : "—"} hint={o ? `${o.users.active} active · ${o.users.suspended} suspended · ${o.users.byRole.ORGANIZER ?? 0} organizers · ${o.users.byRole.ADMIN ?? 0} admins` : undefined} loading={L} />
       <StatTile label="Active circles" Icon={Activity} iconClassName="text-primary" value={o?.circles.active ?? "—"} hint={o ? `${o.circles.open} open · ${o.circles.demo} demo` : undefined} loading={L} />
       <StatTile label="Completed circles" value={o?.circles.completed ?? "—"} hint={o ? `${o.circles.cancelled} cancelled · ${o.circles.total} total` : undefined} loading={L} />
-      <StatTile label="MST locked" Icon={Landmark} iconClassName="text-pot" valueClassName="text-pot" testnet value={o ? `${formatMst(o.mst.locked)} MST` : "—"} hint="everything the contract holds" loading={L} />
-      <StatTile label="Active pots" Icon={Coins} testnet value={o ? `${formatMst(o.mst.pots)} MST` : "—"} loading={L} />
-      <StatTile label="Collateral" Icon={Lock} testnet value={o ? `${formatMst(o.mst.collateral)} MST` : "—"} hint={o ? `reserve ${formatMst(o.mst.reserve)} MST` : undefined} loading={L} />
+      <StatTile label="MST locked" Icon={Landmark} iconClassName="text-pot" valueClassName="text-pot" testnet value={o ? <><CountUpMst wei={o.mst.locked} fromZero /> MST</> : "—"} hint="everything the contract holds" loading={L} />
+      <StatTile label="Active pots" Icon={Coins} testnet value={o ? <><CountUpMst wei={o.mst.pots} fromZero /> MST</> : "—"} loading={L} />
+      <StatTile label="Collateral" Icon={Lock} testnet value={o ? <><CountUpMst wei={o.mst.collateral} fromZero /> MST</> : "—"} hint={o ? `reserve ${formatMst(o.mst.reserve)} MST` : undefined} loading={L} />
       <StatTile label="Defaults" Icon={ShieldHalf} iconClassName="text-warning" value={o?.defaults ?? "—"} hint="covered from collateral, all circles" loading={L} className={o?.defaults ? "border-danger/40" : undefined} />
       <StatTile label="Transactions" value={o?.tx.total ?? "—"} hint={o ? <span className={o.tx.failed ? "text-danger" : undefined}>{o.tx.failed} failed{o.tx.lastFailure ? ` · ${o.tx.lastFailure}` : ""}</span> : undefined} loading={L} />
       <StatTile label="Keeper" Icon={Server} value={o ? <Status label={o.keeper.status === "ONLINE" ? "Online" : o.keeper.status === "STALE" ? "Stale" : "Offline"} tone={o.keeper.status === "ONLINE" ? "ok" : o.keeper.status === "STALE" ? "warn" : "bad"} /> : "—"} hint={o?.keeper.address ? `${shortAddr(o.keeper.address)} · ${formatMst(o.keeper.balance)} MST` : undefined} loading={L} />
@@ -38,6 +40,6 @@ export function OverviewTiles({ o, loading }: { o: AdminOverview | null; loading
         loading={L}
       />
       <StatTile label="Open tickets" Icon={Ticket} value={o?.tickets.open ?? "—"} hint={o ? `${o.audit.last24h} audit rows in 24 h` : undefined} loading={L} />
-    </section>
+    </RevealGroup>
   );
 }

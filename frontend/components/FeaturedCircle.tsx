@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { EASE } from "@/components/motion/Reveal";
 import { MstcAmount } from "@/components/MstcAmount";
 import { DemoBadge } from "@/components/TestnetBadge";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -45,12 +47,25 @@ export function FeaturedCircle({ c }: { c: CircleSummary }) {
         <circle cx="100" cy="100" r="82" fill="none" stroke="hsl(var(--primary))" strokeOpacity="0.25" strokeWidth="1.5" strokeDasharray="3 4" />
         <circle cx="100" cy="100" r="60" fill="hsl(var(--card))" stroke="hsl(var(--border))" />
         {seats.map((s, i) => (
-          <circle key={i} cx={s.x} cy={s.y} r={s.filled ? 6 : 5} fill={s.filled ? "hsl(var(--primary))" : "hsl(var(--background))"} stroke={s.filled ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"} strokeOpacity={s.filled ? 1 : 0.5} strokeWidth="1.5" />
+          <motion.circle
+            key={i}
+            cx={s.x}
+            cy={s.y}
+            r={s.filled ? 6 : 5}
+            fill={s.filled ? "hsl(var(--primary))" : "hsl(var(--background))"}
+            stroke={s.filled ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
+            strokeOpacity={s.filled ? 1 : 0.5}
+            strokeWidth="1.5"
+            style={{ transformBox: "fill-box", transformOrigin: "center" }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.35, ease: EASE, delay: 0.2 + i * 0.04 }}
+          />
         ))}
       </svg>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
         <span className="text-xs text-muted-foreground">{active ? "In the contract" : "Pot per round"}</span>
-        <MstcAmount wei={pot} size="lg" className="text-pot" />
+        <MstcAmount wei={pot} size="lg" className="text-pot" animate="fromZero" />
         <span className={cn("tnum mt-1 text-xs font-medium", active ? "text-primary" : "text-muted-foreground")}>{status}</span>
       </div>
       <div className="mt-2 flex flex-col items-center gap-2 text-center">

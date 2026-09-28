@@ -1,7 +1,11 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CountUp } from "@/components/motion/CountUp";
+import { revealItem } from "@/components/motion/Reveal";
 import { TestnetBadge } from "@/components/TestnetBadge";
 import { cn } from "@/lib/utils";
 
@@ -23,19 +27,20 @@ interface Props {
   children?: ReactNode;
 }
 
-/** Tile anatomy: label row (label · badge · icon) → value → sub-line. Numbers are tabular. */
+/** Tile anatomy: label row (label, badge, icon), value, sub-line. Numbers are tabular; plain numeric values count up. Inside a RevealGroup the tile joins the stagger. */
 export function StatTile({ label, value, hint, loading, testnet, Icon, iconClassName, badge, className, valueClassName, children }: Props) {
+  const shown = typeof value === "number" && Number.isFinite(value) ? <CountUp value={value} fromZero /> : value;
   return (
-    <Card className={cn("flex min-w-0 flex-col p-4 md:p-5", className)}>
+    <motion.div variants={revealItem} className={cn("flex min-w-0 flex-col rounded-2xl border bg-card p-4 text-card-foreground shadow-sm md:p-5", className)}>
       <div className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
         <span className="truncate">{label}</span>
         {badge}
         {testnet && <TestnetBadge size="xs" className="hidden sm:inline-flex" />}
         {Icon && <Icon className={cn("ml-auto h-4 w-4 shrink-0 text-muted-foreground/70", iconClassName)} aria-hidden />}
       </div>
-      {loading ? <Skeleton className="mt-2 h-8 w-24" /> : <div className={cn("tnum mt-1.5 min-w-0 truncate text-2xl font-bold leading-tight tracking-tight", valueClassName)}>{value}</div>}
+      {loading ? <Skeleton className="mt-2 h-8 w-24" /> : <div className={cn("tnum mt-1.5 min-w-0 truncate text-2xl font-bold leading-tight tracking-tight", valueClassName)}>{shown}</div>}
       {hint && <div className="mt-1 text-xs leading-snug text-muted-foreground">{hint}</div>}
       {children}
-    </Card>
+    </motion.div>
   );
 }

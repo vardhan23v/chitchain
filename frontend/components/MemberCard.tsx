@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { EASE } from "@/components/motion/Reveal";
 import { XCircle } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -51,13 +52,13 @@ export function MemberCard({ m, circle, isYou, extra }: Props) {
   return (
     <motion.div
       className={cn(
-        "relative flex min-w-[168px] flex-col gap-2 rounded-2xl border bg-card p-3 shadow-sm md:p-4",
+        "relative flex w-full min-w-[168px] flex-col gap-2 rounded-2xl border bg-card p-3 shadow-sm md:p-4",
         isYou && "ring-2 ring-primary ring-offset-2 ring-offset-background",
         m.removed && "opacity-60 grayscale",
         shake && "animate-shake"
       )}
-      animate={confetti && !reduce ? { scale: [1, 1.03, 1] } : {}}
-      transition={{ duration: 0.4 }}
+      animate={confetti ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+      transition={{ duration: 0.4, ease: EASE }}
       data-testid="member-card"
     >
       <ConfettiLite trigger={confetti} />

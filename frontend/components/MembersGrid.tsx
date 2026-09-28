@@ -3,6 +3,7 @@
 import { Users } from "lucide-react";
 import { MemberCard, type MemberExtra } from "@/components/MemberCard";
 import { MembersTable } from "@/components/MembersTable";
+import { RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { SectionTitle } from "@/components/PageHeader";
 import { sameAddr } from "@/lib/format";
 import type { CircleSummary, FeedEvent, MemberInfo, RoundHistoryRow } from "@/lib/types";
@@ -35,17 +36,19 @@ export function MembersGrid({ circle, members, viewer, events, rounds }: Props) 
   return (
     <section aria-label="Members" className="space-y-3">
       <SectionTitle Icon={Users} trailing={<span className="tnum">{members.length}/{circle.maxMembers} seats filled</span>}>Members</SectionTitle>
-      <div className="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-5">
+      <RevealGroup mode="load" stagger={0.05} className="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-5">
         {members.map((m) => (
-          <MemberCard key={m.address} m={m} circle={circle} isYou={sameAddr(m.address, viewer)} extra={extras[m.address.toLowerCase()]} />
+          <RevealItem key={m.address} className="flex min-w-0">
+            <MemberCard m={m} circle={circle} isYou={sameAddr(m.address, viewer)} extra={extras[m.address.toLowerCase()]} />
+          </RevealItem>
         ))}
         {circle.status === 0 &&
           Array.from({ length: seats }, (_, i) => (
-            <div key={`seat-${i}`} className="flex min-w-[168px] items-center justify-center rounded-2xl border border-dashed bg-card/50 p-4 text-xs font-medium text-muted-foreground">
+            <RevealItem key={`seat-${i}`} className="flex min-w-[168px] items-center justify-center rounded-2xl border border-dashed bg-card/50 p-4 text-xs font-medium text-muted-foreground">
               Open seat
-            </div>
+            </RevealItem>
           ))}
-      </div>
+      </RevealGroup>
       <MembersTable circle={circle} members={members} viewer={viewer} extras={extras} />
       {circle.status === 0 && seats > 0 && <p className="text-xs text-muted-foreground md:hidden">{seats} open {seats === 1 ? "seat" : "seats"}</p>}
     </section>

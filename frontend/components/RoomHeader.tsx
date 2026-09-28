@@ -1,8 +1,10 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, CircleDot, Circle as CircleIcon, ExternalLink, Hash, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Countdown } from "@/components/Countdown";
+import { EASE } from "@/components/motion/Reveal";
 import { DemoBadge } from "@/components/TestnetBadge";
 import { useRoundClock } from "@/hooks/useCountdown";
 import { CONTRACT_ADDRESS, HAS_CONTRACT } from "@/lib/chain";
@@ -26,7 +28,7 @@ const STATUS = {
   3: { variant: "status-removed", Icon: XCircle },
 } as const;
 
-/** Eyebrow (circle id · tx counter) → title + status → phase pill with countdown, DEMO chip, Contract ↗. */
+/** Eyebrow (circle id, tx counter), then title with status badge, phase pill (crossfades when the phase flips) and DEMO chip; Contract link on the right. */
 export function RoomHeader({ circle, round, txCount, onSettle, settling, source }: Props) {
   const active = circle.status === 1;
   const clock = useRoundClock(round, active);
@@ -50,10 +52,23 @@ export function RoomHeader({ circle, round, txCount, onSettle, settling, source 
           <h1 className="min-w-0 truncate">{circle.name ?? `Circle #${circle.id}`}</h1>
           <Badge variant={st.variant}><st.Icon className="h-3 w-3" aria-hidden />{STATUS_LABEL[circle.status]}</Badge>
           {circle.isDemo && <DemoBadge />}
+          {active && (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={clock.roundPhase}
+                className="inline-flex"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.2, ease: EASE }}
+              >
+                <Countdown deadline={deadline || null} active={active} label={label} tone={clock.roundPhase} onSettle={onSettle} settling={settling} />
+              </motion.span>
+            </AnimatePresence>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 md:justify-end">
-        <Countdown deadline={deadline || null} active={active} label={label} tone={clock.roundPhase} onSettle={onSettle} settling={settling} />
         {HAS_CONTRACT && (
           <a href={addrUrl(CONTRACT_ADDRESS)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-chain/30 px-3 py-1.5 text-[13px] font-semibold text-chain transition-colors hover:bg-chain/10" aria-label="Open the ChitChain contract on MSTScan">
             Contract <ExternalLink className="h-3.5 w-3.5" aria-hidden />

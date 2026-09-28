@@ -2,6 +2,7 @@
 
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { MstcAmount } from "@/components/MstcAmount";
 import { TxLink } from "@/components/TxLink";
 import { WithdrawDialog } from "@/components/WithdrawDialog";
@@ -52,17 +53,17 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
         {claimable > 0n && <WithdrawDialog claimable={me!.claimable} onConfirm={onWithdraw} disabled={pending} className="ml-auto" label={`Withdraw all · ${formatMst(me!.claimable)} MST`} />}
       </div>
       {settled.length > 0 ? (
-        <ul className="mt-3 divide-y text-sm">
+        <RevealGroup as="ul" mode="load" className="mt-3 divide-y text-sm">
           {settled.map((e) => (
-            <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5">
+            <RevealItem as="li" key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5">
               <span className="tnum w-16 text-muted-foreground">Round {String(e.args.round ?? e.round)}</span>
               <span className="font-medium">{who(labels, e.args.winner)}</span>
               <span className="tnum">payout <span className="font-semibold text-success">{formatMst(String(e.args.payout ?? "0"))}</span></span>
               <span className="tnum text-muted-foreground">discount {formatMst(String(e.args.discount ?? "0"))}</span>
               <TxLink hash={e.txHash} label="MSTScan" className="ml-auto text-xs" />
-            </li>
+            </RevealItem>
           ))}
-        </ul>
+        </RevealGroup>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">Winners: {members.filter((m) => m.hasWon).map((m) => m.label ?? shortAddr(m.address)).join(", ") || "—"}. Round-by-round detail needs the backend feed.</p>
       )}
