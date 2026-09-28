@@ -4,16 +4,14 @@ pragma solidity ^0.8.20;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IChitChain} from "./IChitChain.sol";
 import {ChitChainBase} from "./ChitChainBase.sol";
+import {ChitChainSettlement} from "./ChitChainSettlement.sol";
 
-/// @title ChitChain — a trust-minimised chit fund. The pot sits in this contract, not in anyone's account.
-/// @notice One contract, many circles. Native MSTC. All payouts are pull-based via `withdraw`.
-///         Behaviour follows ARCHITECTURE.md §3; signatures follow INTERFACE.md.
-contract ChitChain is ChitChainBase, ReentrancyGuard {
-    constructor(address riskOracle_, address treasury_) {
-        if (riskOracle_ == address(0) || treasury_ == address(0)) revert InvalidParams();
-        riskOracle = riskOracle_;
-        treasury = treasury_;
-    }
+/// @title ChitChain v2 — a trust-minimised chit fund. The pot sits in this contract, not in anyone's account.
+/// @notice One contract, many circles. Native MST (testnet). All payouts are pull-based via `withdraw`.
+///         Each round has two phases: contributions (contributionDuration) then bidding (biddingDuration);
+///         bids are accepted from round start until the bidding deadline. Behaviour follows ARCHITECTURE.md §3.
+contract ChitChain is ChitChainSettlement, ReentrancyGuard {
+    constructor(address riskOracle_, address treasury_) ChitChainBase(riskOracle_, treasury_) {}
 
     receive() external payable { revert DirectPaymentRejected(); }
     fallback() external payable { revert DirectPaymentRejected(); }
@@ -28,25 +26,20 @@ contract ChitChain is ChitChainBase, ReentrancyGuard {
 
     // ───────────────────────── Lifecycle ─────────────────────────
     /// @inheritdoc IChitChain
-    function createCircle(
-        uint256 contribution, uint8 maxMembers, uint32 roundDuration,
-        uint32 joinWindow, uint16 feeBps, uint256 baseCollateral
-    ) external override returns (uint256 circleId) {
-        if (contribution == 0 || roundDuration == 0 || joinWindow == 0) revert InvalidParams();
-        if (maxMembers < MIN_MEMBERS || maxMembers > MAX_MEMBERS) revert InvalidParams();
-        if (feeBps > MAX_FEE_BPS || baseCollateral < contribution) revert InvalidParams();
+    function createCircle(CircleParams calldata p) external override returns (uint256 circleId) {
+        if (p.contribution == 0 || p.contributionDuration == 0 || p.biddingDuration == 0 || p.joinWindow == 0) revert InvalidParams();
+        if (p.maxMembers < MIN_MEMBERS || p.maxMembers > MAX_MEMBERS) revert InvalidParams();
+        if (p.feeBps > MAX_FEE_BPS || p.baseCollateral < p.contribution) revert InvalidParams();
+        if (p.holdbackBps > BPS || p.maxDiscountBps > MAX_DISCOUNT_BPS) revert InvalidParams();
+        if (p.highBps == 0 || p.lowBps > p.mediumBps || p.mediumBps > p.highBps) revert InvalidParams();
 
         circleId = ++_circleCount;
         Circle storage c = _circles[circleId];
         c.creator = msg.sender;
-        c.contribution = contribution;
-        c.maxMembers = maxMembers;
-        c.roundDuration = roundDuration;
-        c.joinDeadline = uint64(block.timestamp) + joinWindow;
-        c.feeBps = feeBps;
-        c.baseCollateral = baseCollateral;
+        c.params = p;
+        c.joinDeadline = uint64(block.timestamp) + p.joinWindow;
         c.status = Status.Open;
-        emit CircleCreated(circleId, msg.sender, contribution, maxMembers, roundDuration, c.joinDeadline);
+        emit CircleCreated(circleId, msg.sender, p.contribution, p.maxMembers, p.contributionDuration, p.biddingDuration, c.joinDeadline);
     }
 
     /// @inheritdoc IChitChain
@@ -56,10 +49,10 @@ contract ChitChain is ChitChainBase, ReentrancyGuard {
         if (block.timestamp > c.joinDeadline) revert JoinWindowClosed();
         MemberState storage m = _ms[circleId][msg.sender];
         if (m.joined) revert AlreadyJoined();
-        if (c.members.length >= c.maxMembers) revert CircleFull();
+        if (c.members.length >= c.params.maxMembers) revert CircleFull();
 
         Tier tier = riskTier[msg.sender];
-        uint256 need = _preWin(c.baseCollateral, tier);
+        uint256 need = _preWin(c, tier);
         if (msg.value != need) revert WrongAmount(need, msg.value);
 
         m.joined = true;
@@ -68,11 +61,11 @@ contract ChitChain is ChitChainBase, ReentrancyGuard {
         c.members.push(msg.sender);
         emit Joined(circleId, msg.sender, tier, need);
 
-        if (c.members.length == c.maxMembers) {
+        if (c.members.length == c.params.maxMembers) {
             c.status = Status.Active;
             c.round = 1;
-            c.roundDeadline = uint64(block.timestamp) + c.roundDuration;
-            emit CircleStarted(circleId, c.roundDeadline);
+            _startRound(c);
+            emit CircleStarted(circleId, c.contributionDeadline, c.biddingDeadline);
         }
     }
 
@@ -125,9 +118,9 @@ contract ChitChain is ChitChainBase, ReentrancyGuard {
         MemberState storage m = _ms[circleId][msg.sender];
         if (!m.joined) revert NotMember();
         if (m.removed) revert MemberRemoved();
-        if (block.timestamp > c.roundDeadline) revert RoundClosed();
+        if (block.timestamp > c.contributionDeadline) revert ContributionClosed();
         if (_paid[circleId][c.round][msg.sender]) revert AlreadyPaid();
-        if (msg.value != c.contribution) revert WrongAmount(c.contribution, msg.value);
+        if (msg.value != c.params.contribution) revert WrongAmount(c.params.contribution, msg.value);
 
         _paid[circleId][c.round][msg.sender] = true;
         c.collected += msg.value;
@@ -140,7 +133,7 @@ contract ChitChain is ChitChainBase, ReentrancyGuard {
         if (c.status != Status.Active) revert NotActive();
         MemberState storage m = _ms[circleId][msg.sender];
         if (!m.joined || m.removed || m.hasWon) revert NotEligibleToBid();
-        if (block.timestamp > c.roundDeadline) revert RoundClosed();
+        if (block.timestamp > c.biddingDeadline) revert BiddingClosed();
 
         uint256 max = _maxDiscount(c, circleId);
         if (discount > max) revert BidTooHigh(max);
@@ -154,49 +147,53 @@ contract ChitChain is ChitChainBase, ReentrancyGuard {
     }
 
     /// @inheritdoc IChitChain
-    /// @dev No external calls; loops bounded by MAX_MEMBERS. See ARCHITECTURE.md §3.3.
+    /// @dev No external calls; loops bounded by MAX_MEMBERS. Defaults are detected and covered here, on-chain.
     function settleRound(uint256 circleId) external override nonReentrant {
         Circle storage c = _circles[circleId];
         if (c.status != Status.Active) revert NotActive();
-        if (block.timestamp <= c.roundDeadline) revert RoundNotOver();
+        if (block.timestamp <= c.biddingDeadline) revert BiddingNotOver();
 
         uint8 round = c.round;
         uint256 pot = _collectMissed(c, circleId, round);
         c.collected = 0;
 
-        uint256 fee = (pot * c.feeBps) / 10_000;
+        uint256 fee = (pot * c.params.feeBps) / BPS;
         c.reserve += fee;
 
         (address winner, uint256 discount) = _pickWinner(c, circleId, round);
+        uint256 payout;
+        uint256 holdback;
 
         if (winner == address(0)) {
             // nobody eligible: share the whole pot (minus fee) as dividends
             _shareDividends(c, circleId, round, pot - fee, address(0));
-            emit RoundSettled(circleId, round, address(0), pot, 0, 0, fee);
+            discount = 0;
         } else {
             MemberState storage w = _ms[circleId][winner];
             w.hasWon = true;
-            uint256 payout = pot - fee - discount;
-            payout = _applyHoldback(c, circleId, winner, w, payout);
+            payout = pot - fee - discount;
+            (payout, holdback) = _applyHoldback(c, circleId, winner, w, payout);
             if (_activeCount(c, circleId) > 1) {
                 _shareDividends(c, circleId, round, discount, winner);
             } else {
                 payout += discount; // no one else to share with
             }
             w.claimable += payout;
-            emit RoundSettled(circleId, round, winner, pot, payout, discount, fee);
         }
+        _history[circleId][round] = RoundRecord(winner, uint64(block.timestamp), pot, payout, discount, fee, holdback);
+        emit RoundSettled(circleId, round, winner, pot, payout, discount, fee);
 
         if (_eligibleCount(c, circleId) == 0) {
             _complete(c, circleId);
         } else {
             c.round = round + 1;
-            c.roundDeadline = uint64(block.timestamp) + c.roundDuration;
+            _startRound(c);
         }
     }
 
     // ───────────────────────── Withdrawals ─────────────────────────
     /// @inheritdoc IChitChain
+    /// @dev Pays only `claimable`. Locked collateral and holdback are never withdrawable while a circle is active.
     function withdraw(uint256 circleId) external override nonReentrant {
         MemberState storage m = _ms[circleId][msg.sender];
         uint256 amount = m.claimable;
@@ -216,5 +213,4 @@ contract ChitChain is ChitChainBase, ReentrancyGuard {
         (bool ok, ) = treasury.call{value: amount}("");
         require(ok, "transfer failed");
     }
-
 }

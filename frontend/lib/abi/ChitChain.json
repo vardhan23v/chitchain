@@ -49,7 +49,22 @@
   },
   {
     "inputs": [],
+    "name": "BiddingClosed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "BiddingNotOver",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "CircleFull",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ContributionClosed",
     "type": "error"
   },
   {
@@ -115,16 +130,6 @@
   {
     "inputs": [],
     "name": "ReentrancyGuardReentrantCall",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "RoundClosed",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "RoundNotOver",
     "type": "error"
   },
   {
@@ -230,7 +235,13 @@
       {
         "indexed": false,
         "internalType": "uint32",
-        "name": "roundDuration",
+        "name": "contributionDuration",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "biddingDuration",
         "type": "uint32"
       },
       {
@@ -255,7 +266,13 @@
       {
         "indexed": false,
         "internalType": "uint64",
-        "name": "firstDeadline",
+        "name": "contributionDeadline",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "biddingDeadline",
         "type": "uint64"
       }
     ],
@@ -317,6 +334,12 @@
       {
         "indexed": false,
         "internalType": "uint256",
+        "name": "required",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
         "name": "fromCollateral",
         "type": "uint256"
       },
@@ -325,9 +348,15 @@
         "internalType": "uint256",
         "name": "fromReserve",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "shortfall",
+        "type": "uint256"
       }
     ],
-    "name": "Covered",
+    "name": "DefaultDetected",
     "type": "event"
   },
   {
@@ -566,12 +595,25 @@
   },
   {
     "inputs": [],
-    "name": "MAX_DISCOUNT_PCT",
+    "name": "BPS",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "uint16",
         "name": "",
-        "type": "uint256"
+        "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_DISCOUNT_BPS",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "",
+        "type": "uint16"
       }
     ],
     "stateMutability": "view",
@@ -658,34 +700,71 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "contribution",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint8",
-        "name": "maxMembers",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint32",
-        "name": "roundDuration",
-        "type": "uint32"
-      },
-      {
-        "internalType": "uint32",
-        "name": "joinWindow",
-        "type": "uint32"
-      },
-      {
-        "internalType": "uint16",
-        "name": "feeBps",
-        "type": "uint16"
-      },
-      {
-        "internalType": "uint256",
-        "name": "baseCollateral",
-        "type": "uint256"
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "contribution",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "baseCollateral",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "maxMembers",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint32",
+            "name": "contributionDuration",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "biddingDuration",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "joinWindow",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "holdbackBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "maxDiscountBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "lowBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "mediumBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "highBps",
+            "type": "uint16"
+          }
+        ],
+        "internalType": "struct IChitChain.CircleParams",
+        "name": "p",
+        "type": "tuple"
       }
     ],
     "name": "createCircle",
@@ -722,13 +801,23 @@
             "type": "uint256"
           },
           {
+            "internalType": "uint256",
+            "name": "baseCollateral",
+            "type": "uint256"
+          },
+          {
             "internalType": "uint8",
             "name": "maxMembers",
             "type": "uint8"
           },
           {
             "internalType": "uint32",
-            "name": "roundDuration",
+            "name": "contributionDuration",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "biddingDuration",
             "type": "uint32"
           },
           {
@@ -742,9 +831,29 @@
             "type": "uint16"
           },
           {
-            "internalType": "uint256",
-            "name": "baseCollateral",
-            "type": "uint256"
+            "internalType": "uint16",
+            "name": "holdbackBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "maxDiscountBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "lowBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "mediumBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint16",
+            "name": "highBps",
+            "type": "uint16"
           },
           {
             "internalType": "enum IChitChain.Status",
@@ -755,6 +864,11 @@
             "internalType": "uint8",
             "name": "round",
             "type": "uint8"
+          },
+          {
+            "internalType": "uint64",
+            "name": "contributionDeadline",
+            "type": "uint64"
           },
           {
             "internalType": "uint64",
@@ -836,6 +950,16 @@
             "internalType": "uint256",
             "name": "bidThisRound",
             "type": "uint256"
+          },
+          {
+            "internalType": "uint32",
+            "name": "defaults",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "collateralUsed",
+            "type": "uint256"
           }
         ],
         "internalType": "struct IChitChain.MemberView",
@@ -884,7 +1008,12 @@
           },
           {
             "internalType": "uint64",
-            "name": "deadline",
+            "name": "contributionDeadline",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "biddingDeadline",
             "type": "uint64"
           },
           {
@@ -915,6 +1044,67 @@
         ],
         "internalType": "struct IChitChain.RoundView",
         "name": "v",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "circleId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "round",
+        "type": "uint8"
+      }
+    ],
+    "name": "getRoundHistory",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "winner",
+            "type": "address"
+          },
+          {
+            "internalType": "uint64",
+            "name": "settledAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pot",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "payout",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "discount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "fee",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "holdback",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IChitChain.RoundRecord",
+        "name": "",
         "type": "tuple"
       }
     ],
