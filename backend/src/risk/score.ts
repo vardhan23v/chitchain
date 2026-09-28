@@ -1,0 +1,49 @@
+import type { Reputation } from "./seed";
+
+export type Tier = 0 | 1 | 2 | 3; // Unassessed, Low, Medium, High
+export interface Factor { name: string; value: string; effect: string }
+export interface Score { score: number; tier: Tier; factors: Factor[] }
+
+const fmt = (x: number): string => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+const signed = (x: number): string => (x >= 0 ? `+${fmt(x)}` : `−${fmt(Math.abs(x))}`);
+
+/**
+ * Deterministic heuristic — ARCHITECTURE.md §4.1 (weights are judgement calls, not a credit score).
+ *   cold start (paidOnTime + missed == 0) → 60 (Medium)
+ *   score = 40 + 40·onTimeRate + 10·min(completed,3)/3 − 30·(removed > 0), clamped 0–100
+ *   Low ≥ 75 · Medium 50–74 · High < 50
+ */
+export function scoreReputation(r: Reputation): Score {
+  const total = r.paidOnTime + r.missed;
+  if (total === 0) {
+    return {
+      score: 60,
+      tier: 2,
+      factors: [{ name: "Payment history", value: "none yet", effect: "cold start → 60" }],
+    };
+  }
+  const onTimeRate = r.paidOnTime / total;
+  const onTime = 40 * onTimeRate;
+  const completed = (10 * Math.min(r.circlesCompleted, 3)) / 3;
+  const removedPenalty = r.circlesRemoved > 0 ? 30 : 0;
+  const raw = 40 + onTime + completed - removedPenalty;
+  const score = Math.round(Math.min(100, Math.max(0, raw)) * 10) / 10;
+  return {
+    score,
+    tier: tierOf(score),
+    factors: [
+      { name: "Base", value: "everyone starts here", effect: "+40" },
+      { name: "On-time rate", value: `${Math.round(onTimeRate * 100)}% (${r.paidOnTime}/${total})`, effect: signed(onTime) },
+      { name: "Circles completed", value: `${r.circlesCompleted}${r.circlesCompleted > 3 ? " (capped at 3)" : ""}`, effect: signed(completed) },
+      { name: "Removed from a circle", value: r.circlesRemoved > 0 ? `${r.circlesRemoved} time(s)` : "never", effect: signed(-removedPenalty) },
+    ],
+  };
+}
+
+export function tierOf(score: number): Tier {
+  if (score >= 75) return 1;
+  if (score >= 50) return 2;
+  return 3;
+}
+
+export const TIER_LABEL: Record<Tier, string> = { 0: "Unassessed", 1: "Low", 2: "Medium", 3: "High" };
