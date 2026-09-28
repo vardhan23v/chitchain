@@ -76,14 +76,27 @@
   }
 
   * { @apply border-border; }
-  body { @apply bg-background text-foreground antialiased; font-size: 15px; }
-  h1 { @apply text-3xl font-bold tracking-tight; }
-  h2 { @apply text-xl font-semibold; }
+  html { -webkit-tap-highlight-color: transparent; }
+  body { @apply bg-background text-foreground antialiased; font-size: 15px; overflow-x: hidden; }
+  h1 { @apply text-2xl font-bold tracking-tight md:text-3xl; }
+  h2 { @apply text-xl font-semibold tracking-tight; }
   .tnum { font-variant-numeric: tabular-nums; }
   :focus-visible { @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background; }
+  ::selection { @apply bg-primary/20; }
 }
 
 @layer utilities {
+  /* Small-caps section eyebrow (DESIGN §4 small/meta). */
+  .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground; }
+  /* Card lift on hover, 150 ms. */
+  .card-hover { @apply transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-md; }
+  /* Horizontal-scroll wrapper with a visible right edge fade on small screens. */
+  .edge-fade { -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent); mask-image: linear-gradient(to right, black calc(100% - 28px), transparent); }
+  @screen md { .edge-fade { -webkit-mask-image: none; mask-image: none; } }
+  /* Data tables: zebra rows, sticky header, right-aligned numbers via .num. */
+  .table-data thead th { @apply sticky top-0 z-10 bg-muted/70 backdrop-blur; }
+  .table-data tbody tr:nth-child(even) { @apply bg-muted/30; }
+  .table-data tbody tr { @apply border-t transition-colors hover:bg-primary/[0.04]; }
   .striped-primary {
     background-image: repeating-linear-gradient(
       45deg,
@@ -94,5 +107,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

@@ -20,11 +20,11 @@ export function explainFactor(name: string): string {
 export function RiskFactors({ factors, reputation }: { factors: RiskFactor[]; reputation: RiskResult["reputation"] }) {
   return (
     <div className="space-y-2">
-      <ul className="divide-y rounded-xl border text-sm">
+      <ul className="divide-y overflow-hidden rounded-xl border bg-muted/20 text-sm">
         {factors.map((f) => (
-          <li key={f.name} className="flex flex-col gap-0.5 px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3">
-            <span className="w-40 shrink-0 font-medium">{f.name}</span>
-            <span className="tnum shrink-0 text-foreground">{f.value}</span>
+          <li key={f.name} className="flex flex-col gap-0.5 px-3 py-2 sm:grid sm:grid-cols-[10rem_auto_1fr] sm:items-baseline sm:gap-3">
+            <span className="font-medium">{f.name}</span>
+            <span className="tnum font-semibold text-foreground">{f.value}</span>
             <span className="text-xs text-muted-foreground">{f.effect} · {explainFactor(f.name)}</span>
           </li>
         ))}

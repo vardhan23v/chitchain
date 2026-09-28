@@ -1,13 +1,17 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { ExternalLink, Info, RefreshCw, Sparkles } from "lucide-react";
+import { ExternalLink, History, Info, RefreshCw, ShieldCheck, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddressPill } from "@/components/AddressPill";
+import { Avatar } from "@/components/Avatar";
+import { EmptyState } from "@/components/EmptyState";
+import { InfoBanner } from "@/components/InfoBanner";
+import { PageHeader, SectionTitle } from "@/components/PageHeader";
 import { FeedItem } from "@/components/FeedItem";
 import { RiskFactors } from "@/components/RiskFactors";
 import { ScoreGauge, scoreBand } from "@/components/ScoreGauge";
@@ -26,11 +30,10 @@ export default function MemberPage() {
 
   if (!address) {
     return (
-      <Card className="rounded-2xl p-8 text-center">
-        <h1 className="text-2xl">My profile</h1>
-        <p className="mt-2 text-muted-foreground">Connect BridgeKey to see your risk tier and on-chain history.</p>
-        {wallet.hasWallet ? <Button className="mt-4" onClick={() => void wallet.connect()}>Connect BridgeKey</Button> : <p className="mt-4 text-sm text-muted-foreground">No wallet detected — install the BridgeKey extension or Android app.</p>}
-      </Card>
+      <div className="space-y-6">
+        <PageHeader eyebrow="Member profile" title="My profile" description="Your risk tier and on-chain history." />
+        <EmptyState Icon={Wallet} title="Connect BridgeKey to see your profile" text={wallet.hasWallet ? "Your risk tier and on-chain history show here." : "No wallet detected — install the BridgeKey extension or Android app."} action={wallet.hasWallet ? <Button onClick={() => void wallet.connect()}><Wallet aria-hidden /> Connect BridgeKey</Button> : undefined} />
+      </div>
     );
   }
   if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return <p className="text-muted-foreground">Invalid address.</p>;
@@ -54,29 +57,36 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-mono text-2xl md:text-3xl">{address.slice(0, 6)}…{address.slice(-4)}</h1>
-        {isYou && <Badge>You</Badge>}
-        <AddressPill address={address} />
-        <a href={addrUrl(address)} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-chain hover:underline">MSTScan <ExternalLink className="h-3.5 w-3.5" aria-hidden /></a>
-      </div>
+      <PageHeader
+        eyebrow={isYou ? "My profile" : "Member profile"}
+        title={
+          <span className="flex items-center gap-3">
+            <Avatar address={address} size={40} />
+            <span className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</span>
+            {isYou && <Badge>You</Badge>}
+          </span>
+        }
+        description={<AddressPill address={address} />}
+        actions={
+          <Button asChild size="sm" variant="outline" className="rounded-full border-chain/30 text-chain hover:bg-chain/10 hover:text-chain">
+            <a href={addrUrl(address)} target="_blank" rel="noopener noreferrer" aria-label={`Address ${address} on MSTScan`}>MSTScan <ExternalLink aria-hidden /></a>
+          </Button>
+        }
+      />
 
-      <Card className="rounded-2xl p-4 md:p-6">
+      <Card className="p-4 md:p-6">
         {loading ? (
           <div className="flex gap-6"><Skeleton className="h-20 w-32" /><div className="flex-1 space-y-2"><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div></div>
         ) : !data ? (
-          <div className="text-sm text-muted-foreground">
+          <div className="space-y-2 text-sm text-muted-foreground">
             <p>Risk assessment needs the backend{error ? ` (${error})` : ""}.</p>
-            <p className="mt-1">Until assessed, this wallet is <TierChip tier={0} className="mx-1 inline-flex" /> and pays the High-tier collateral to join.</p>
+            <p className="flex flex-wrap items-center gap-1">Until assessed, this wallet is <TierChip tier={0} /> and pays the High-tier collateral to join.</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-[auto_1fr]">
-            <div className="pb-4"><ScoreGauge score={data.score} /></div>
+            <div className="flex justify-center pb-4 md:justify-start"><ScoreGauge score={data.score} /></div>
             <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
-                Demo heuristic risk model
-                <Badge variant="outline" className="normal-case tracking-normal">0 = safest · 100 = riskiest</Badge>
-              </div>
+              <SectionTitle Icon={ShieldCheck} trailing={<Badge variant="outline" className="text-muted-foreground">0 = safest · 100 = riskiest</Badge>}>Demo heuristic risk model</SectionTitle>
               <div className="flex flex-wrap items-center gap-2">
                 <TierChip tier={data.tier} />
                 <span className={cn("text-sm font-semibold", BAND_CLS[scoreBand(data.score)])}>{scoreBand(data.score)} risk band</span>
@@ -86,7 +96,7 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
                 &ldquo;{data.explanation}&rdquo; <span className="text-xs text-muted-foreground">({data.explanationSource === "llm" ? "AI" : "template"})</span>
               </p>
               <RiskFactors factors={data.factors} reputation={data.reputation} />
-              <p className="flex items-start gap-1 text-xs text-muted-foreground"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />Demo heuristic risk model on {data.dataSource === "SYNTHETIC" ? "synthetic demo history" : data.dataSource === "ONCHAIN" ? "on-chain history" : "mixed synthetic and on-chain history"} — not a credit score.</p>
+              <InfoBanner Icon={Info}>Demo heuristic risk model on {data.dataSource === "SYNTHETIC" ? "synthetic demo history" : data.dataSource === "ONCHAIN" ? "on-chain history" : "mixed synthetic and on-chain history"} — not a credit score.</InfoBanner>
               <div className="flex flex-wrap items-center gap-3">
                 <Button onClick={onAssess} disabled={assessing}>
                   <RefreshCw className={assessing ? "animate-spin" : ""} aria-hidden /> {assessing ? "Assessing…" : "Re-assess (sets tier on-chain)"}
@@ -99,13 +109,13 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
       </Card>
 
       <section className="space-y-3">
-        <h2 className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-chain" aria-hidden />On-chain history</h2>
+        <SectionTitle Icon={History} tone="text-chain" trailing={data?.history?.length ? <span className="tnum">{data.history.length} events</span> : undefined}>On-chain history</SectionTitle>
         {data?.history?.length ? (
-          <Card className="rounded-2xl p-3">
-            <ol className="relative ml-2 space-y-0.5 border-l pl-2">{data.history.slice().reverse().map((e) => <FeedItem key={`${e.txHash}-${e.logIndex}`} e={e} labels={labelMap} now={Date.now()} />)}</ol>
+          <Card className="p-2 md:p-3">
+            <ol className="relative ml-3 space-y-0.5 border-l border-dashed pl-1">{data.history.slice().reverse().map((e) => <FeedItem key={`${e.txHash}-${e.logIndex}`} e={e} labels={labelMap} now={Date.now()} />)}</ol>
           </Card>
         ) : (
-          <p className="text-sm text-muted-foreground">{data ? "No on-chain events for this wallet yet." : "History needs the backend indexer."}</p>
+          <EmptyState Icon={History} tone="bg-chain/10 text-chain" title={data ? "No on-chain events for this wallet yet" : "History needs the backend indexer"} text={data ? "Join a circle and every contribution, bid and payout will appear here." : undefined} />
         )}
       </section>
     </div>

@@ -78,13 +78,20 @@ export function FeedItem({ e, labels, now }: { e: FeedEvent; labels: LabelMap; n
   const r = renderFeedEvent(e, labels);
   const isAgent = !!e.agent;
   return (
-    <li className={cn("flex items-start gap-2 rounded-xl px-2 py-1.5 text-[13px]", isAgent && "bg-agent/5")}>
-      <r.Icon className={cn("mt-0.5 h-4 w-4 shrink-0", r.color)} aria-hidden />
+    <li className={cn("flex items-start gap-2.5 rounded-xl px-2 py-2 text-[13px] leading-snug", isAgent && "bg-agent/[0.06]")}>
+      <span className={cn("mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full", r.color)} style={{ background: "color-mix(in srgb, currentColor 12%, transparent)" }} aria-hidden>
+        <r.Icon className="h-3.5 w-3.5" />
+      </span>
       <div className="min-w-0 flex-1">
-        <span className={cn(isAgent && "font-medium text-agent")}>{r.text}</span>
-        {r.reason && <span className="text-muted-foreground"> — <em>{r.reason}</em></span>}
-        <span className="text-muted-foreground"> · {timeAgo(e.ts, now)} · </span>
-        <TxLink hash={e.txHash} label="↗" className="text-[13px]" />
+        <div className={cn(isAgent && "font-medium text-agent")}>
+          {r.text}
+          {r.reason && <span className="font-normal text-muted-foreground"> — <em>{r.reason}</em></span>}
+        </div>
+        <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <span className="tnum">{timeAgo(e.ts, now)}</span>
+          <span aria-hidden>·</span>
+          <TxLink hash={e.txHash} label="MSTScan" className="text-[12px]" />
+        </div>
       </div>
     </li>
   );

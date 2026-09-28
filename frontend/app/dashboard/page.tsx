@@ -1,19 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { KeyRound, WifiOff } from "lucide-react";
+import { CircleDot, ExternalLink, History, KeyRound, LifeBuoy, Lock, User, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { CircleCard } from "@/components/CircleCard";
+import { EmptyState } from "@/components/EmptyState";
+import { InfoBanner } from "@/components/InfoBanner";
+import { PageHeader, SectionTitle } from "@/components/PageHeader";
 import { ActiveCircleTiles } from "@/components/dashboard/ActiveCircleTiles";
 import { ControlPanel } from "@/components/dashboard/ControlPanel";
 import { MeTiles } from "@/components/dashboard/MeTiles";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RoleBadge } from "@/components/RoleBadge";
-import { TestnetBadge } from "@/components/TestnetBadge";
 import { useAuth } from "@/hooks/useAuth";
 import { useMe } from "@/hooks/useMe";
 import { isUnreachable } from "@/lib/api";
+
+const QUICK = [
+  { href: "/member/ACCOUNT", label: "Risk profile", Icon: User },
+  { href: "/activity", label: "Transaction history", Icon: History },
+  { href: "/collateral", label: "My collateral", Icon: Lock },
+  { href: "/support", label: "Support", Icon: LifeBuoy },
+];
 
 export default function DashboardPage() {
   return (
@@ -33,18 +42,22 @@ function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground">My dashboard</h1>
-        {auth.user && <RoleBadge role={auth.user.role} passwordAdmin={auth.isPasswordAdmin} />}
-        <TestnetBadge />
-        {down && <Badge variant="outline" className="gap-1 text-muted-foreground"><WifiOff className="h-3 w-3" aria-hidden /> {isUnreachable(me.error) ? "backend offline" : "couldn't load overview"}</Badge>}
-      </div>
+      <PageHeader
+        eyebrow="My dashboard"
+        title={auth.user?.displayName || "Overview"}
+        description="Your balances, collateral and the circle that needs you right now. Every number is read from the contract."
+        actions={
+          <>
+            {auth.user && <RoleBadge role={auth.user.role} passwordAdmin={auth.isPasswordAdmin} />}
+            {down && <Badge variant="outline" className="gap-1 text-muted-foreground"><WifiOff className="h-3 w-3" aria-hidden /> {isUnreachable(me.error) ? "backend offline" : "couldn't load overview"}</Badge>}
+          </>
+        }
+      />
 
       {auth.isPasswordAdmin && (
-        <Card className="flex flex-wrap items-center gap-2 rounded-2xl border-agent/40 bg-agent/5 p-4 text-sm">
-          <KeyRound className="h-4 w-4 shrink-0 text-agent" aria-hidden />
-          <span>Password admin accounts have no wallet; use the <Link href="/admin" className="font-semibold text-primary hover:underline">Admin dashboard</Link>.</span>
-        </Card>
+        <InfoBanner Icon={KeyRound} tone="agent">
+          Password admin accounts have no wallet; use the <Link href="/admin" className="font-semibold text-primary hover:underline">Admin dashboard</Link>.
+        </InfoBanner>
       )}
 
       <MeTiles me={me.data} circles={list} account={account} loading={me.loading} />
@@ -52,23 +65,27 @@ function Dashboard() {
       {active ? (
         <ActiveCircleTiles circle={active} account={account} />
       ) : (
-        <Card className="rounded-2xl border-dashed p-6 text-center text-sm text-muted-foreground">
-          {circles.loading && !circles.data ? "Loading your circles…" : "You're not in an active circle right now."} <Link href="/#circles" className="text-primary hover:underline">Browse circles</Link>
-        </Card>
+        <EmptyState
+          Icon={CircleDot}
+          title={circles.loading && !circles.data ? "Loading your circles…" : "You're not in an active circle right now"}
+          text="Join an open circle and your live round will show here."
+          action={<Button asChild variant="outline"><Link href="/#circles">Browse circles</Link></Button>}
+        />
       )}
 
       <ControlPanel />
 
-      <section className="flex flex-wrap gap-4 text-sm">
-        <Link className="text-primary hover:underline" href={`/member/${account}`}>Full risk profile</Link>
-        <Link className="text-primary hover:underline" href="/activity">Transaction history</Link>
-        <Link className="text-primary hover:underline" href="/collateral">My collateral</Link>
-        <Link className="text-primary hover:underline" href="/support">Support</Link>
-      </section>
+      <nav className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="More">
+        {QUICK.map(({ href, label, Icon }) => (
+          <Link key={label} href={href.replace("ACCOUNT", account)} className="card-hover flex items-center gap-2 rounded-2xl border bg-card px-4 py-3 text-sm font-medium">
+            <Icon className="h-4 w-4 text-primary" aria-hidden /> {label} <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground/60" aria-hidden />
+          </Link>
+        ))}
+      </nav>
 
       {list.length > 0 && (
         <section className="space-y-3">
-          <h2>My circles</h2>
+          <SectionTitle Icon={CircleDot} tone="text-primary" trailing={<span className="tnum">{list.length}</span>}>My circles</SectionTitle>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map((c) => <CircleCard key={c.id} c={c} />)}</div>
         </section>
       )}

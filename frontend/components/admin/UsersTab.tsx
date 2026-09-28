@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound } from "lucide-react";
+import { Ban, CheckCircle2, KeyRound } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { TableScroll, TH } from "@/components/TableScroll";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +17,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { sameAddr, timeAgo } from "@/lib/format";
 import { isPasswordAdmin, type AdminUser, type Role } from "@/lib/types";
 
-const TH = "px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
 const ROLES: Role[] = ["MEMBER", "ORGANIZER", "ADMIN"];
 type Pending = { u: AdminUser; role?: Role; status?: "ACTIVE" | "SUSPENDED" };
 
@@ -42,24 +43,24 @@ export function UsersTab() {
           <SelectContent><SelectItem value="all">All roles</SelectItem>{ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
         </Select>
       </div>
-      <Card className="overflow-x-auto rounded-2xl">
+      <Card className="overflow-hidden">
         {users.loading && !users.data ? (
           <div className="space-y-2 p-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
         ) : users.error && !users.data ? (
           <p className="p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load users — {users.error}</p>
         ) : (
-          <table className="w-full min-w-[720px] text-sm">
-            <thead className="bg-muted/50"><tr><th className={TH}>Wallet</th><th className={TH}>Name</th><th className={TH}>Role</th><th className={TH}>Status</th><th className={TH}>Circles</th><th className={TH}>Last login</th></tr></thead>
+          <TableScroll><table className="table-data w-full min-w-[720px] text-sm">
+            <thead><tr><th className={TH}>Wallet</th><th className={TH}>Name</th><th className={TH}>Role</th><th className={TH}>Status</th><th className={TH}>Circles</th><th className={TH}>Last login</th></tr></thead>
             <tbody>
               {list.map((u) => {
                 const self = sameAddr(u.walletAddress, auth.user?.walletAddress);
                 return (
-                  <tr key={u.walletAddress} className="border-t">
+                  <tr key={u.walletAddress}>
                     <td className="px-3 py-2">
                       {isPasswordAdmin(u) ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-agent/40 bg-agent/10 px-2 py-0.5 font-mono text-[13px]" title="Signed in with the admin password — no wallet"><KeyRound className="h-3 w-3" aria-hidden /> {u.walletAddress.slice("admin:".length)} <span className="text-[10px] font-sans font-semibold uppercase tracking-wide text-agent">password admin</span></span>
                       ) : <AddressPill address={u.walletAddress} />}
-                      {self && <span className="ml-1 text-[10px] font-bold text-primary">YOU</span>}
+                      {self && <span className="ml-1 rounded-full bg-primary px-1.5 py-px text-[10px] font-bold text-primary-foreground">You</span>}
                     </td>
                     <td className="px-3 py-2">{u.displayName ?? <span className="text-muted-foreground">—</span>}</td>
                     <td className="px-3 py-2">
@@ -72,9 +73,12 @@ export function UsersTab() {
                       </div>
                     </td>
                     <td className="px-3 py-2">
-                      <Button size="sm" variant={u.status === "ACTIVE" ? "outline" : "destructive"} className="h-7 text-xs" disabled={users.busy === u.walletAddress} onClick={() => setPending({ u, status: u.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE" })}>
-                        {u.status === "ACTIVE" ? "Active · suspend" : "Suspended · reactivate"}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={u.status === "ACTIVE" ? "status-paid" : "status-removed"} className="uppercase tracking-wide">{u.status === "ACTIVE" ? <CheckCircle2 className="h-3 w-3" aria-hidden /> : <Ban className="h-3 w-3" aria-hidden />}{u.status}</Badge>
+                        <Button size="sm" variant={u.status === "ACTIVE" ? "ghost" : "outline"} className="h-7 text-xs" disabled={users.busy === u.walletAddress} onClick={() => setPending({ u, status: u.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE" })}>
+                          {u.status === "ACTIVE" ? "Suspend" : "Reactivate"}
+                        </Button>
+                      </div>
                     </td>
                     <td className="tnum px-3 py-2">{u.circles}</td>
                     <td className="px-3 py-2 text-muted-foreground">{u.lastLogin ? timeAgo(u.lastLogin) : "never"}</td>
@@ -83,7 +87,7 @@ export function UsersTab() {
               })}
               {list.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No users match.</td></tr>}
             </tbody>
-          </table>
+          </table></TableScroll>
         )}
       </Card>
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>

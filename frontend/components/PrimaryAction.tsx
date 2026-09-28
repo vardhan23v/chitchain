@@ -30,7 +30,7 @@ export interface PrimaryActionProps {
 
 /** DESIGN §6.3 primary-action state table: one clear CTA at a time. */
 export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, pending, hasContract, phase = "contribution", on }: PrimaryActionProps) {
-  const cls = "w-full sm:w-auto";
+  const cls = "w-full md:w-auto md:min-w-[220px]";
   if (!hasContract) return <Button size="lg" className={cls} disabled>Contract not deployed</Button>;
   if (!wallet.hasWallet) return <Button size="lg" className={cls} asChild><a href={BRIDGEKEY_URL} target="_blank" rel="noopener noreferrer">Install BridgeKey</a></Button>;
   if (!wallet.account) return <Button size="lg" className={cls} onClick={() => void wallet.connect()} disabled={wallet.connecting}>{wallet.connecting ? "Connecting…" : "Connect BridgeKey"}</Button>;

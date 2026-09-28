@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { NameCircleForm } from "@/components/organizer/NameCircleForm";
-import { DemoBadge, TestnetBadge } from "@/components/TestnetBadge";
+import { DemoBadge } from "@/components/TestnetBadge";
 import { big, formatMst } from "@/lib/format";
 import { STATUS_LABEL } from "@/lib/labels";
 import { roundNo, type OrganizerCircle } from "@/lib/types";
@@ -26,7 +26,7 @@ export function OrganizerCircleCard({ c, onChanged }: { c: OrganizerCircle; onCh
   const joined = c.members.filter((m) => m.joined && !m.removed).length;
   const hasBid = big(c.round?.bestDiscount ?? "0") > 0n;
   return (
-    <Card className="flex flex-col gap-3 rounded-2xl p-4 md:p-5">
+    <Card className="card-hover flex flex-col gap-3 p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
         {c.name ? (
           <h2 className="text-base">{c.name} <span className="font-normal text-muted-foreground">· Circle #{c.id}</span></h2>
@@ -35,10 +35,9 @@ export function OrganizerCircleCard({ c, onChanged }: { c: OrganizerCircle; onCh
         )}
         <Badge variant={STATUS_VARIANT[c.status]}>{STATUS_LABEL[c.status]}</Badge>
         {c.isDemo && <DemoBadge />}
-        <TestnetBadge size="xs" className="ml-auto" />
       </div>
       {!c.name && <NameCircleForm id={c.id} onSaved={onChanged} />}
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-muted/40 p-3 sm:grid-cols-4">
         <Cell label="Members" value={`${joined} / ${c.maxMembers}`} />
         <Cell label="Round" value={c.status === 1 ? `${roundNo(c)} / ${c.maxMembers}` : "—"} />
         <Cell label="Current pot" value={c.round ? `${formatMst(c.round.collected)} / ${formatMst(c.round.expectedPot)} MST` : "—"} />

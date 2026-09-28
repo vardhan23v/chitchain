@@ -51,7 +51,7 @@ export function MemberCard({ m, circle, isYou, extra }: Props) {
   return (
     <motion.div
       className={cn(
-        "relative flex min-w-[168px] flex-col gap-2 rounded-2xl border bg-card p-3 md:p-4",
+        "card-hover relative flex min-w-[168px] flex-col gap-2 rounded-2xl border bg-card p-3 shadow-sm md:p-4",
         isYou && "ring-2 ring-primary ring-offset-2 ring-offset-background",
         m.removed && "opacity-60 grayscale",
         shake && "animate-shake"

@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { History } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
+import { TableScroll, TH } from "@/components/TableScroll";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { eventAmount, renderFeedEvent } from "@/components/FeedItem";
-import { TestnetBadge } from "@/components/TestnetBadge";
 import { TxLink } from "@/components/TxLink";
 import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,8 +17,6 @@ import { useWallet } from "@/hooks/useWallet";
 import { formatMst, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { isEvmAddress } from "@/lib/types";
-
-const TH = "px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
 
 export default function ActivityPage() {
   return (
@@ -34,24 +34,17 @@ function Activity() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="flex items-center gap-2"><History className="h-6 w-6 text-chain" aria-hidden /> Transaction history</h1>
-        <TestnetBadge />
-        <span className="text-sm text-muted-foreground">Every indexed event where you were the member, winner or bidder.</span>
-      </div>
-      <Card className="overflow-x-auto rounded-2xl">
+      <PageHeader eyebrow="My activity" title="Transaction history" description="Every indexed on-chain event where you were the member, winner or bidder — each one verifiable on MSTScan." actions={events.length ? <span className="tnum text-xs text-muted-foreground">{events.length} events</span> : undefined} />
+      <Card className="overflow-hidden">
         {act.loading && !act.data ? (
           <div className="space-y-2 p-4">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
         ) : act.error && !act.data ? (
           <p className="p-6 text-center text-sm text-muted-foreground">History needs the backend indexer — it is unreachable right now.</p>
         ) : events.length === 0 ? (
-          <div className="p-10 text-center text-sm text-muted-foreground">
-            <p>No on-chain activity for this wallet yet.</p>
-            <Button asChild variant="outline" className="mt-3"><Link href="/#circles">Join a circle</Link></Button>
-          </div>
+          <EmptyState Icon={History} className="border-0" title="No on-chain activity yet" text="Join a circle and every contribution, bid and payout will appear here." action={<Button asChild variant="outline"><Link href="/#circles">Join a circle</Link></Button>} />
         ) : (
-          <table className="w-full min-w-[640px] text-sm">
-            <thead className="bg-muted/50">
+          <TableScroll><table className="table-data w-full min-w-[640px] text-sm">
+            <thead>
               <tr><th className={TH}>Event</th><th className={TH}>Circle</th><th className={cn(TH, "text-right")}>Amount</th><th className={TH}>When</th><th className={TH}>Tx</th></tr>
             </thead>
             <tbody>
@@ -59,17 +52,17 @@ function Activity() {
                 const r = renderFeedEvent(e, {});
                 const amt = eventAmount(e);
                 return (
-                  <tr key={`${e.txHash}-${e.logIndex}`} className="border-t">
-                    <td className="px-3 py-2"><span className="flex items-center gap-2"><r.Icon className={cn("h-4 w-4 shrink-0", r.color)} aria-hidden />{r.text}</span></td>
-                    <td className="px-3 py-2">{e.circleId ? <Link href={`/circle/${e.circleId}`} className="text-primary hover:underline">#{e.circleId}</Link> : "—"}</td>
-                    <td className="tnum px-3 py-2 text-right">{amt !== null ? `${formatMst(amt)} MST` : "—"}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{timeAgo(e.ts)}</td>
-                    <td className="px-3 py-2"><TxLink hash={e.txHash} label="MSTScan" /></td>
+                  <tr key={`${e.txHash}-${e.logIndex}`}>
+                    <td className="px-3 py-2.5"><span className="flex items-center gap-2.5"><span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-full", r.color)} style={{ background: "color-mix(in srgb, currentColor 12%, transparent)" }} aria-hidden><r.Icon className="h-3.5 w-3.5" /></span>{r.text}</span></td>
+                    <td className="px-3 py-2.5">{e.circleId ? <Link href={`/circle/${e.circleId}`} className="text-primary hover:underline">#{e.circleId}</Link> : "—"}</td>
+                    <td className="tnum whitespace-nowrap px-3 py-2.5 text-right font-medium">{amt !== null ? `${formatMst(amt)} MST` : <span className="text-muted-foreground">—</span>}</td>
+                    <td className="tnum whitespace-nowrap px-3 py-2.5 text-muted-foreground">{timeAgo(e.ts)}</td>
+                    <td className="px-3 py-2.5"><TxLink hash={e.txHash} label="MSTScan" /></td>
                   </tr>
                 );
               })}
             </tbody>
-          </table>
+          </table></TableScroll>
         )}
       </Card>
     </div>

@@ -18,7 +18,7 @@ export function SupportTab() {
   return (
     <div className="space-y-3">
       <Tabs value={status} onValueChange={(v) => setStatus(v as "OPEN" | "CLOSED")}>
-        <TabsList className="rounded-full"><TabsTrigger value="OPEN" className="rounded-full">Open</TabsTrigger><TabsTrigger value="CLOSED" className="rounded-full">Closed</TabsTrigger></TabsList>
+        <TabsList aria-label="Ticket status"><TabsTrigger value="OPEN">Open</TabsTrigger><TabsTrigger value="CLOSED">Closed</TabsTrigger></TabsList>
       </Tabs>
       {s.loading && !s.data ? (
         <Skeleton className="h-32 rounded-2xl" />
@@ -36,7 +36,7 @@ export function SupportTab() {
 function TicketCard({ t, busy, onUpdate }: { t: SupportTicket; busy: boolean; onUpdate: (b: { status?: "OPEN" | "CLOSED"; adminNote?: string }) => Promise<void> }) {
   const [note, setNote] = useState(t.adminNote ?? "");
   return (
-    <Card className="rounded-2xl p-4">
+    <Card className="p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold">#{t.id} · {t.subject}</span>
         <AddressPill address={t.userWallet} />

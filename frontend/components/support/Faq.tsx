@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { BRIDGEKEY_URL, CHAIN_NAME, EXPLORER_URL, FAUCET_URL } from "@/lib/chain";
 
 const A = ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{children}</a>;
@@ -49,11 +50,12 @@ export function Faq() {
   return (
     <div className="space-y-2">
       {FAQ.map((f) => (
-        <details key={f.q} className="group rounded-2xl border bg-card p-4">
-          <summary className="cursor-pointer list-none font-semibold marker:content-none">
-            <span className="mr-2 inline-block transition-transform group-open:rotate-90" aria-hidden>›</span>{f.q}
+        <details key={f.q} className="group rounded-2xl border bg-card shadow-sm transition-colors open:border-primary/30">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-90" aria-hidden />
+            {f.q}
           </summary>
-          <p className="mt-2 text-sm text-muted-foreground">{f.a}</p>
+          <p className="px-4 pb-4 pl-10 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
         </details>
       ))}
     </div>

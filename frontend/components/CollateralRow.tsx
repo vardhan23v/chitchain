@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Trophy, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { TierChip } from "@/components/TierChip";
@@ -35,13 +36,13 @@ export function CollateralRow({ c, onWithdraw, pending }: Props) {
   ];
 
   return (
-    <Card className="rounded-2xl p-4">
+    <Card className="p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <Link href={`/circle/${c.id}`} className="font-semibold hover:underline">Circle #{c.id}</Link>
         <Badge variant={c.status === 1 ? "default" : c.status === 0 ? "pot" : c.status === 2 ? "status-paid" : "status-removed"}>{STATUS_LABEL[c.status]}</Badge>
         <TierChip tier={me.tier} circle={c} short />
-        {me.removed && <Badge variant="status-removed">Removed</Badge>}
-        {me.hasWon && <Badge variant="status-won">Won</Badge>}
+        {me.removed && <Badge variant="status-removed"><XCircle className="h-3 w-3" aria-hidden />Removed</Badge>}
+        {me.hasWon && <Badge variant="status-won"><Trophy className="h-3 w-3" aria-hidden />Won</Badge>}
         <div className="ml-auto">
           {claimable > 0n ? (
             <WithdrawDialog claimable={me.claimable} onConfirm={() => onWithdraw(c.id)} disabled={pending} variant="outline" className="h-9" />
@@ -50,11 +51,11 @@ export function CollateralRow({ c, onWithdraw, pending }: Props) {
           )}
         </div>
       </div>
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-5">
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-muted/40 p-3 text-sm sm:grid-cols-5">
         {cells.map(([k, v, cls]) => (
           <div key={k}>
-            <dt className="text-xs text-muted-foreground">{k}</dt>
-            <dd className={cn("tnum font-medium", cls)}>{v}</dd>
+            <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{k}</dt>
+            <dd className={cn("tnum font-semibold", cls)}>{v}</dd>
           </div>
         ))}
       </dl>

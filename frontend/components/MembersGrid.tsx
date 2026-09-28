@@ -3,6 +3,7 @@
 import { Users } from "lucide-react";
 import { MemberCard, type MemberExtra } from "@/components/MemberCard";
 import { MembersTable } from "@/components/MembersTable";
+import { SectionTitle } from "@/components/PageHeader";
 import { sameAddr } from "@/lib/format";
 import type { CircleSummary, FeedEvent, MemberInfo, RoundHistoryRow } from "@/lib/types";
 
@@ -33,16 +34,14 @@ export function MembersGrid({ circle, members, viewer, events, rounds }: Props) 
   const seats = Math.max(0, circle.maxMembers - members.length);
   return (
     <section aria-label="Members" className="space-y-3">
-      <div className="flex items-center gap-2 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
-        <Users className="h-3.5 w-3.5" aria-hidden /> Members <span className="tnum">{members.length}/{circle.maxMembers}</span>
-      </div>
+      <SectionTitle Icon={Users} trailing={<span className="tnum">{members.length}/{circle.maxMembers} seats filled</span>}>Members</SectionTitle>
       <div className="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-5">
         {members.map((m) => (
           <MemberCard key={m.address} m={m} circle={circle} isYou={sameAddr(m.address, viewer)} extra={extras[m.address.toLowerCase()]} />
         ))}
         {circle.status === 0 &&
           Array.from({ length: seats }, (_, i) => (
-            <div key={`seat-${i}`} className="flex min-w-[168px] items-center justify-center rounded-2xl border border-dashed p-4 text-xs text-muted-foreground">
+            <div key={`seat-${i}`} className="flex min-w-[168px] items-center justify-center rounded-2xl border border-dashed bg-card/50 p-4 text-xs font-medium text-muted-foreground">
               Open seat
             </div>
           ))}

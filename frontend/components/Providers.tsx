@@ -12,7 +12,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <AuthProvider>
         <TooltipProvider delayDuration={200}>
           {children}
-          <Toaster position="bottom-right" richColors closeButton toastOptions={{ classNames: { toast: "rounded-2xl" } }} />
+          <Toaster position="bottom-right" richColors closeButton offset={16} toastOptions={{ classNames: { toast: "rounded-2xl border shadow-lg", title: "text-[13px] font-semibold", description: "text-xs" } }} />
         </TooltipProvider>
       </AuthProvider>
     </WalletProvider>

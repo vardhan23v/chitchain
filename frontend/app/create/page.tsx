@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { CoreFields } from "@/components/create/CoreFields";
 import { RiskFields } from "@/components/create/RiskFields";
 import { CreateSummary } from "@/components/CreateSummary";
+import { PageHeader } from "@/components/PageHeader";
 import { TxStepper } from "@/components/TxStepper";
 import { useAuth } from "@/hooks/useAuth";
 import { useTx } from "@/hooks/useTx";
@@ -88,18 +89,12 @@ export default function CreatePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1>Create a circle</h1>
-        <p className="mt-1 text-muted-foreground">Set the rules once. The contract enforces them for everyone. Amounts are MST testnet coins.</p>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
-        <Card className="rounded-2xl p-4 md:p-6">
-          <form className="space-y-5" onSubmit={submit} noValidate>
+      <PageHeader eyebrow="New circle" title="Create a circle" description="Set the rules once. The contract enforces them for everyone. Amounts are MST testnet coins." />
+      <div className="grid items-start gap-6 lg:grid-cols-[3fr_2fr]">
+        <Card className="p-4 md:p-6">
+          <form className="space-y-6" onSubmit={submit} noValidate>
             <CoreFields v={v} set={set} errors={errors} />
-            <div className="border-t pt-5">
-              <h2 className="mb-4 text-base">Risk &amp; auction rules</h2>
-              <div className="space-y-5"><RiskFields v={v} set={set} errors={errors} /></div>
-            </div>
+            <RiskFields v={v} set={set} errors={errors} />
             <Button type="submit" size="lg" className="w-full" disabled={pending || !HAS_CONTRACT || !wallet.hasWallet}>{cta}</Button>
             <TxStepper state={state} />
             {errors.form && <p className="text-xs text-danger" role="alert">{errors.form}</p>}

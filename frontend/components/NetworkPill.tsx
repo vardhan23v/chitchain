@@ -11,7 +11,7 @@ export function NetworkPill() {
   const { hasWallet, chainId, correctChain, switchNetwork } = useWallet();
   if (!hasWallet || chainId === null) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
+      <span className="hidden h-8 items-center gap-2 whitespace-nowrap rounded-full border px-3 text-xs font-medium text-muted-foreground sm:inline-flex">
         <span className="h-2 w-2 rounded-full bg-muted-foreground/50" aria-hidden />
         {CHAIN_NAME}
       </span>
@@ -19,7 +19,7 @@ export function NetworkPill() {
   }
   if (correctChain) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success">
+      <span className="inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-success/30 bg-success/10 px-3 text-xs font-medium text-success">
         <span className="h-2 w-2 rounded-full bg-success" aria-hidden />
         {CHAIN_NAME}
       </span>
@@ -29,7 +29,7 @@ export function NetworkPill() {
     <Button
       size="sm"
       variant="destructive"
-      className="h-7 rounded-full px-3 text-xs"
+      className="h-8 rounded-full px-3 text-xs"
       onClick={() => switchNetwork().catch((e) => toast.error(parseTxError(e).message))}
     >
       <span className="h-2 w-2 rounded-full bg-white" aria-hidden />

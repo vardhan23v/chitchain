@@ -46,6 +46,7 @@ export default function CircleRoomPage() {
   if (!data) {
     return (
       <div className="space-y-4">
+        <Skeleton className="h-4 w-40" />
         <Skeleton className="h-9 w-64" />
         <div className="grid gap-4 lg:grid-cols-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}</div>
         {room.slow && <p className="text-sm text-warning" role="status">MST testnet is slow — retrying</p>}
@@ -87,29 +88,29 @@ export default function CircleRoomPage() {
   );
 
   return (
-    <div className="space-y-5 pb-28 md:pb-0">
+    <div className="space-y-5 pb-32 md:pb-0">
       <RoomHeader circle={circle} round={round} txCount={data.txCount} onSettle={() => void actions.settle(!!wallet.account && wallet.correctChain)} settling={actions.pending} source={data.source} />
       <RoomBanners circle={circle} me={room.me} members={members} events={feed.events} labels={labels} onWithdraw={() => void actions.withdraw()} pending={actions.pending} />
       {showLatestDefault && data.latestDefault && <DefaultEventCard d={data.latestDefault} compact />}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <div className="grid gap-5 md:grid-cols-[3fr_2fr]">
-            <div className="space-y-3">
+            <div className="min-w-0 space-y-3">
               <PotMeter circle={circle} round={round} />
               <div className="hidden md:block">{primary}</div>
             </div>
-            <div ref={bidRef}>
+            <div ref={bidRef} className="min-w-0">
               <AuctionPanel round={round} phase={clock.roundPhase} active={circle.status === 1} me={room.me} activeMembers={activeMembers} labelFor={labelFor} onBid={actions.bid} pending={actions.pending} />
             </div>
           </div>
           <RoomTabs data={data} me={room.me} viewer={wallet.account} events={feed.events} labelFor={labelFor} onChanged={refetchAll} />
         </div>
-        <Feed events={feed.events} down={feed.down} loading={feed.loading} labels={labels} />
+        <Feed events={feed.events} down={feed.down} loading={feed.loading} labels={labels} className="min-w-0" />
       </div>
 
       {/* Mobile sticky primary action */}
-      <div className="fixed inset-x-0 bottom-14 z-30 border-t bg-background/95 p-3 backdrop-blur md:hidden">{primary}</div>
+      <div className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t bg-background/95 p-3 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] backdrop-blur md:hidden">{primary}</div>
     </div>
   );
 }

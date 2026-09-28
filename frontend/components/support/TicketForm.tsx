@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { Inbox, Loader2, MessageSquarePlus, Ticket } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/EmptyState";
+import { SectionTitle } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,10 +26,7 @@ export function TicketForm() {
 
   if (auth.status !== "authenticated") {
     return (
-      <Card className="rounded-2xl border-dashed p-6 text-center text-sm text-muted-foreground">
-        Sign in with your wallet to open a support ticket and see replies.
-        <div className="mt-3"><Button asChild size="sm"><Link href="/login?next=/support">Sign in</Link></Button></div>
-      </Card>
+      <EmptyState Icon={Ticket} title="Open a ticket" text="Sign in with your wallet to open a support ticket and see replies." action={<Button asChild size="sm"><Link href="/login?next=/support">Sign in</Link></Button>} />
     );
   }
   const submit = async (e: React.FormEvent) => {
@@ -41,8 +40,8 @@ export function TicketForm() {
   const tickets = s.data ?? [];
   return (
     <div className="space-y-4">
-      <Card className="rounded-2xl p-4 md:p-5">
-        <h2 className="text-base">Open a ticket</h2>
+      <Card className="p-4 md:p-5">
+        <SectionTitle Icon={MessageSquarePlus} tone="text-primary">Open a ticket</SectionTitle>
         <form className="mt-3 space-y-3" onSubmit={submit}>
           <div className="space-y-1">
             <Label htmlFor="t-subject">Subject</Label>
@@ -59,19 +58,19 @@ export function TicketForm() {
         </form>
       </Card>
       <section className="space-y-2">
-        <h2 className="text-base">My tickets</h2>
+        <SectionTitle Icon={Inbox} trailing={tickets.length ? <span className="tnum">{tickets.length}</span> : undefined}>My tickets</SectionTitle>
         {s.loading && !s.data ? (
           <Skeleton className="h-16 rounded-2xl" />
         ) : s.error && !s.data ? (
           <p className="text-sm text-muted-foreground">Couldn&apos;t load your tickets — backend unreachable.</p>
         ) : tickets.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No tickets yet.</p>
+          <EmptyState Icon={Inbox} tone="bg-muted text-muted-foreground" title="No tickets yet" className="py-6" />
         ) : (
           tickets.map((t) => (
-            <Card key={t.id} className="rounded-2xl p-4">
+            <Card key={t.id} className="p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold">#{t.id} · {t.subject}</span>
-                <Badge variant={t.status === "OPEN" ? "status-pending" : "status-paid"}>{t.status}</Badge>
+                <Badge variant={t.status === "OPEN" ? "status-pending" : "status-paid"} className="uppercase tracking-wide">{t.status === "OPEN" ? "Open" : "Closed"}</Badge>
                 <span className="ml-auto text-xs text-muted-foreground">{timeAgo(t.createdAt)}</span>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{t.message}</p>

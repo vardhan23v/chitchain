@@ -26,7 +26,7 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
   const claimable = BigInt(me?.claimable ?? "0");
   if (circle.status === 3) {
     return (
-      <Card className="flex flex-wrap items-center gap-3 rounded-2xl border-danger/30 bg-danger/5 p-4">
+      <Card className="flex flex-wrap items-center gap-3 border-danger/30 bg-danger/5 p-4">
         <AlertTriangle className="h-5 w-5 text-danger" aria-hidden />
         <span className="font-medium">Didn&apos;t fill in time — withdraw your collateral</span>
         {claimable > 0n && <WithdrawDialog claimable={me!.claimable} onConfirm={onWithdraw} disabled={pending} className="ml-auto" />}
@@ -44,28 +44,29 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
   const totalFees = settled.reduce((s, e) => s + BigInt(String(e.args.fee ?? "0")), 0n);
 
   return (
-    <Card className="rounded-2xl border-success/30 bg-success/5 p-4 md:p-5">
+    <Card className="border-success/30 bg-success/5 p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
         <h2 className="text-base">Circle completed</h2>
+        <span className="text-xs text-muted-foreground">· every payout is pull-only and verifiable</span>
         {claimable > 0n && <WithdrawDialog claimable={me!.claimable} onConfirm={onWithdraw} disabled={pending} className="ml-auto" label={`Withdraw all · ${formatMst(me!.claimable)} MST`} />}
       </div>
       {settled.length > 0 ? (
         <ul className="mt-3 divide-y text-sm">
           {settled.map((e) => (
-            <li key={e.id} className="flex flex-wrap items-center gap-x-3 py-1.5">
+            <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5">
               <span className="tnum w-16 text-muted-foreground">Round {String(e.args.round ?? e.round)}</span>
               <span className="font-medium">{who(labels, e.args.winner)}</span>
-              <span className="tnum">payout {formatMst(String(e.args.payout ?? "0"))}</span>
+              <span className="tnum">payout <span className="font-semibold text-success">{formatMst(String(e.args.payout ?? "0"))}</span></span>
               <span className="tnum text-muted-foreground">discount {formatMst(String(e.args.discount ?? "0"))}</span>
-              <TxLink hash={e.txHash} label="↗" />
+              <TxLink hash={e.txHash} label="MSTScan" className="ml-auto text-xs" />
             </li>
           ))}
         </ul>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">Winners: {members.filter((m) => m.hasWon).map((m) => m.label ?? shortAddr(m.address)).join(", ") || "—"}. Round-by-round detail needs the backend feed.</p>
       )}
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-success/20 pt-3 text-[13px] text-muted-foreground">
         {Object.keys(dividends).length > 0 && (
           <span>Dividends: {Object.entries(dividends).map(([k, v]) => `${labels[k] ?? shortAddr(k)} ${formatMst(v)}`).join(" · ")}</span>
         )}

@@ -1,10 +1,10 @@
 "use client";
 
-import { ShieldAlert, ShieldHalf } from "lucide-react";
+import { ExternalLink, ShieldAlert, ShieldHalf } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DefaultStatusChip } from "@/components/StatusChip";
-import { TxLink } from "@/components/TxLink";
-import { big, formatMst, shortAddr, timeAgo } from "@/lib/format";
+import { big, formatMst, shortAddr, timeAgo, txUrl } from "@/lib/format";
 import { memberLabel } from "@/lib/labels";
 import type { DefaultRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ interface Props {
 
 /**
  * "Member D missed the Round 2 contribution." with the exact money movement.
- * Never claims full protection when shortfall > 0.
+ * Strong but calm: warning tint, key/value grid, MSTScan button. Never claims full protection when shortfall > 0.
  */
 export function DefaultEventCard({ d, compact, className }: Props) {
   const shortfall = big(d.shortfall);
@@ -25,47 +25,43 @@ export function DefaultEventCard({ d, compact, className }: Props) {
   const Icon = partial ? ShieldAlert : ShieldHalf;
   const rows: [string, string, string?][] = [
     ["Required", `${formatMst(d.required)} MST`],
-    ["Collateral used", `${formatMst(d.fromCollateral)} MST`],
+    ["From collateral", `${formatMst(d.fromCollateral)} MST`, "text-warning"],
     ["From reserve", `${formatMst(d.fromReserve)} MST`],
-    ["Remaining collateral", `${formatMst(d.remainingCollateral)} MST`],
-    ["Shortfall", `${formatMst(shortfall)} MST`, shortfall > 0n ? "text-danger font-semibold" : undefined],
+    ["Collateral left", `${formatMst(d.remainingCollateral)} MST`],
+    ["Shortfall", `${formatMst(shortfall)} MST`, shortfall > 0n ? "text-danger" : "text-success"],
+    ["Pot", d.potFullyFunded && shortfall === 0n ? "Fully funded" : `Short by ${formatMst(shortfall)}`, d.potFullyFunded && shortfall === 0n ? "text-success" : "text-danger"],
   ];
 
   return (
-    <Card className={cn("rounded-2xl p-4", partial ? "border-danger/40 bg-danger/5" : "border-warning/40 bg-warning/5", className)}>
-      <div className="flex flex-wrap items-start gap-2">
-        <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", partial ? "text-danger" : "text-warning")} aria-hidden />
+    <Card className={cn("p-4 md:p-5", partial ? "border-danger/30 bg-danger/[0.04]" : "border-warning/30 bg-warning/[0.05]", className)}>
+      <div className="flex flex-wrap items-start gap-3">
+        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", partial ? "bg-danger/10 text-danger" : "bg-warning/10 text-warning")} aria-hidden>
+          <Icon className="h-5 w-5" />
+        </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold">
+          <h3 className="text-sm font-semibold leading-snug">
             {memberLabel(d.label, d.member)} missed the Round {d.round} contribution.
           </h3>
-          <p className="text-xs text-muted-foreground">{timeAgo(d.ts)} · {shortAddr(d.member)}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {partial ? `Partially covered — shortfall ${formatMst(shortfall)} MST` : `Collateral covered ${formatMst(d.fromCollateral)} MST`} · {timeAgo(d.ts)} · <span className="font-mono">{shortAddr(d.member)}</span>
+          </p>
         </div>
         <DefaultStatusChip status={partial ? "PARTIALLY_COVERED" : "COVERED_BY_COLLATERAL"} />
       </div>
       {!compact && (
-        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+        <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3 lg:grid-cols-6">
           {rows.map(([k, v, cls]) => (
-            <div key={k} className="flex justify-between gap-2 sm:block">
-              <dt className="text-xs text-muted-foreground">{k}</dt>
-              <dd className={cn("tnum", cls)}>{v}</dd>
+            <div key={k} className="bg-card px-3 py-2">
+              <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{k}</dt>
+              <dd className={cn("tnum text-sm font-semibold", cls)}>{v}</dd>
             </div>
           ))}
-          <div className="flex justify-between gap-2 sm:block">
-            <dt className="text-xs text-muted-foreground">Pot</dt>
-            <dd className={cn("text-xs font-bold uppercase tracking-wide", d.potFullyFunded && shortfall === 0n ? "text-success" : "text-danger")}>
-              {d.potFullyFunded && shortfall === 0n ? "Fully funded" : `Short by ${formatMst(shortfall)} MST`}
-            </dd>
-          </div>
         </dl>
       )}
-      {compact && (
-        <p className={cn("mt-2 text-xs", partial ? "text-danger" : "text-muted-foreground")}>
-          {partial ? `Partially covered — shortfall ${formatMst(shortfall)} MST` : `Collateral covered ${formatMst(d.fromCollateral)} MST`}
-        </p>
-      )}
-      <div className="mt-2">
-        <TxLink hash={d.txHash} label="View on MSTScan" />
+      <div className="mt-3">
+        <Button asChild size="sm" variant="outline" className="rounded-full border-chain/30 text-chain hover:bg-chain/10 hover:text-chain">
+          <a href={txUrl(d.txHash)} target="_blank" rel="noopener noreferrer" aria-label={`View transaction ${d.txHash} on MSTScan`}>View on MSTScan <ExternalLink aria-hidden /></a>
+        </Button>
       </div>
     </Card>
   );

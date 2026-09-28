@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldHalf } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DefaultEventCard } from "@/components/DefaultEventCard";
@@ -14,7 +14,8 @@ import { ForbiddenCard, RequireAuth } from "@/components/RequireAuth";
 import { RoleBadge } from "@/components/RoleBadge";
 import { RoundHistory } from "@/components/RoundHistory";
 import { StatTile } from "@/components/StatTile";
-import { TestnetBadge } from "@/components/TestnetBadge";
+import { PageHeader, SectionTitle } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnreachable } from "@/lib/api";
@@ -42,25 +43,30 @@ function Analytics({ id }: { id: number }) {
 
   return (
     <div className="space-y-6">
-      <Link href="/organizer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline"><ArrowLeft className="h-4 w-4" aria-hidden /> My circles</Link>
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl md:text-3xl">{d?.circle.name ?? `Circle #${id}`}{d?.circle.name && <span className="ml-2 text-base font-normal text-muted-foreground">· Circle #{id}</span>}</h1>
-        {auth.user && <RoleBadge role={auth.user.role} />}
-        <TestnetBadge />
-        <Link href={`/circle/${id}`} className="ml-auto text-sm text-primary hover:underline">Open room →</Link>
-      </div>
+      <PageHeader
+        back={<Link href="/organizer" className="inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline"><ArrowLeft className="h-3.5 w-3.5" aria-hidden /> My circles</Link>}
+        eyebrow={`Circle #${id} · analytics`}
+        title={d?.circle.name ?? `Circle #${id}`}
+        description="Contribution rate, defaults and agent decisions for this circle."
+        actions={
+          <>
+            {auth.user && <RoleBadge role={auth.user.role} />}
+            <Button asChild size="sm" variant="outline"><Link href={`/circle/${id}`}>Open room <ArrowRight aria-hidden /></Link></Button>
+          </>
+        }
+      />
       <OrganizerNotice />
-      {d && !d.circle.name && <Card className="rounded-2xl p-4"><NameCircleForm id={id} onSaved={() => void a.refetch()} /></Card>}
+      {d && !d.circle.name && <Card className="p-4"><NameCircleForm id={id} onSaved={() => void a.refetch()} /></Card>}
 
       {a.loading && !d ? (
         <Skeleton className="h-40 rounded-2xl" />
       ) : a.error && !d ? (
-        <Card className="rounded-2xl p-8 text-center text-sm text-muted-foreground">{isUnreachable(a.error) ? "Backend unreachable — analytics need the ChitChain API." : a.error}</Card>
+        <Card className="p-8 text-center text-sm text-muted-foreground">{isUnreachable(a.error) ? "Backend unreachable — analytics need the ChitChain API." : a.error}</Card>
       ) : d ? (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Circle analytics">
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Circle analytics">
             <StatTile label="Round" value={d.circle.status === 1 ? `${d.round.round} / ${d.circle.maxMembers}` : "—"} hint={PHASE_LABEL[d.round.phase]} />
-            <StatTile label="Current pot" testnet value={`${formatMst(d.round.collected)} / ${formatMst(d.round.expectedPot)}`} hint="collected / expected, MST" />
+            <StatTile label="Current pot" testnet valueClassName="text-pot" value={<>{formatMst(d.round.collected)} <span className="text-base font-medium text-muted-foreground">/ {formatMst(d.round.expectedPot)}</span></>} hint="collected / expected, MST" />
             <StatTile label="Contribution rate" value={`${rate}%`} hint="this round">
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={rate} aria-valuemin={0} aria-valuemax={100}>
                 <div className="h-full rounded-full bg-success" style={{ width: `${rate}%` }} />
@@ -74,7 +80,7 @@ function Analytics({ id }: { id: number }) {
               <RoundHistory rounds={d.rounds} loading={false} labelFor={labelFor} source="api" />
               {d.defaults.length > 0 && (
                 <section className="space-y-2">
-                  <h2 className="text-base">Defaults</h2>
+                  <SectionTitle Icon={ShieldHalf} tone="text-warning" trailing={<span className="tnum">{d.defaults.length}</span>}>Defaults</SectionTitle>
                   {d.defaults.map((x) => <DefaultEventCard key={`${x.member}-${x.round}-${x.txHash}`} d={x} compact />)}
                 </section>
               )}

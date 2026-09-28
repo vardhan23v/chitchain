@@ -23,7 +23,7 @@ export function TierChip({ tier, className, short, circle }: Props) {
   const { variant, Icon } = META[tier] ?? META[0];
   const label = tierLabelFor(tier, circle);
   return (
-    <Badge variant={variant} className={cn("whitespace-nowrap", className)}>
+    <Badge variant={variant} className={cn("whitespace-nowrap", className)} title={label}>
       <Icon className="h-3.5 w-3.5" aria-hidden />
       <span>{short ? label.split(" · ")[0] : label}</span>
     </Badge>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Hash } from "lucide-react";
+import { CheckCircle2, CircleDot, Circle as CircleIcon, ExternalLink, Hash, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Countdown } from "@/components/Countdown";
 import { DemoBadge } from "@/components/TestnetBadge";
@@ -19,37 +19,47 @@ interface Props {
   source: "api" | "chain";
 }
 
-const STATUS_VARIANT = { 0: "pot", 1: "default", 2: "status-paid", 3: "status-removed" } as const;
+const STATUS = {
+  0: { variant: "pot", Icon: CircleIcon },
+  1: { variant: "status-won", Icon: CircleDot },
+  2: { variant: "status-paid", Icon: CheckCircle2 },
+  3: { variant: "status-removed", Icon: XCircle },
+} as const;
 
-/** Circle title, status, round r/N, phase pill with countdown, DEMO MODE chip, Contract ↗ and tx counter. */
+/** Eyebrow (circle id · tx counter) → title + status → phase pill with countdown, DEMO chip, Contract ↗. */
 export function RoomHeader({ circle, round, txCount, onSettle, settling, source }: Props) {
   const active = circle.status === 1;
   const clock = useRoundClock(round, active);
   const deadline = clock.roundPhase === "contribution" ? clock.contributionDeadline : clock.biddingDeadline;
   const label = clock.roundPhase === "settling" ? undefined : PHASE_LABEL[clock.roundPhase];
+  const st = STATUS[circle.status];
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <h1 className="text-2xl md:text-3xl">
-        {circle.name ?? `Circle #${circle.id}`}
-        {circle.name && <span className="ml-2 text-base font-normal text-muted-foreground">· Circle #{circle.id}</span>}
-      </h1>
-      <Badge variant={STATUS_VARIANT[circle.status]}>{STATUS_LABEL[circle.status]}</Badge>
-      {circle.isDemo && <DemoBadge />}
-      {active && <span className="tnum text-sm text-muted-foreground">Round {circle.round} of {circle.maxMembers}</span>}
-      {circle.status === 0 && <span className="tnum text-sm text-muted-foreground">{circle.memberCount}/{circle.maxMembers} members</span>}
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        <Countdown deadline={deadline || null} active={active} label={label} onSettle={onSettle} settling={settling} />
+    <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div className="min-w-0">
+        <div className="eyebrow flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="tnum">Circle #{circle.id}</span>
+          {active && <span className="tnum normal-case tracking-normal">· Round {circle.round} of {circle.maxMembers}</span>}
+          {circle.status === 0 && <span className="tnum normal-case tracking-normal">· {circle.memberCount}/{circle.maxMembers} members</span>}
+          <span className="inline-flex items-center gap-1 normal-case tracking-normal" title={source === "api" ? "Indexed by the ChitChain backend" : "Backend offline — reading the contract directly"}>
+            <Hash className="h-3 w-3" aria-hidden />
+            {source === "api" ? <span className="tnum">{txCount} on-chain transactions</span> : <span>reading directly from the contract</span>}
+          </span>
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <h1 className="min-w-0 truncate">{circle.name ?? `Circle #${circle.id}`}</h1>
+          <Badge variant={st.variant} className="uppercase tracking-wide"><st.Icon className="h-3 w-3" aria-hidden />{STATUS_LABEL[circle.status]}</Badge>
+          {circle.isDemo && <DemoBadge />}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+        <Countdown deadline={deadline || null} active={active} label={label} tone={clock.roundPhase} onSettle={onSettle} settling={settling} />
         {HAS_CONTRACT && (
-          <a href={addrUrl(CONTRACT_ADDRESS)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-chain/30 px-3 py-1 text-[13px] font-medium text-chain hover:bg-chain/10">
+          <a href={addrUrl(CONTRACT_ADDRESS)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-chain/30 px-3 py-1.5 text-[13px] font-semibold text-chain transition-colors hover:bg-chain/10" aria-label="Open the ChitChain contract on MSTScan">
             Contract <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           </a>
         )}
       </div>
-      <div className="flex w-full items-center gap-1 text-[13px] text-muted-foreground">
-        <Hash className="h-3.5 w-3.5" aria-hidden />
-        {source === "api" ? <span className="tnum">{txCount} on-chain transactions in this circle</span> : <span>Reading directly from the contract — backend offline</span>}
-      </div>
-    </div>
+    </header>
   );
 }

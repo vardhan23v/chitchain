@@ -1,5 +1,7 @@
+import { Calculator } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { MstcAmount } from "@/components/MstcAmount";
+import { SectionTitle } from "@/components/PageHeader";
 import { TestnetBadge } from "@/components/TestnetBadge";
 import { TierChip } from "@/components/TierChip";
 import { BPS } from "@/lib/chain";
@@ -15,7 +17,7 @@ function safeWei(v: string): bigint {
   }
 }
 
-/** DESIGN §6.2 live summary panel (v2: windows, holdback, max discount, per-tier multipliers). */
+/** DESIGN §6.2 live summary: pot formula, tier table, holdback example, durations. Sticky on desktop. */
 export function CreateSummary({ v }: { v: CreateInput }) {
   const contribution = safeWei(v.contribution);
   const base = safeWei(v.baseCollateral);
@@ -30,57 +32,49 @@ export function CreateSummary({ v }: { v: CreateInput }) {
   const fee = (pot * BigInt(pctToBps(v.feePct || 0))) / BigInt(BPS);
   const samplePayout = pot - maxDiscount - fee;
   const holdback = (samplePayout * BigInt(pctToBps(v.holdbackPct || 0))) / BigInt(BPS);
+  const facts: [string, string][] = [
+    ["Round length", formatDuration(roundLen)],
+    ["Total duration", `${formatDuration(total)} · ${v.maxMembers} rounds`],
+    ["Fee per round", `${v.feePct}% → reserve`],
+    ["Max discount", `${v.maxDiscountPct}% · ${formatMst(maxDiscount)} MST`],
+  ];
 
   return (
-    <Card className="rounded-2xl p-4 md:p-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base">Summary</h2>
-        <TestnetBadge size="xs" />
-      </div>
-      <dl className="mt-3 space-y-3 text-sm">
-        <div>
-          <dt className="text-muted-foreground">Pot per round</dt>
-          <dd><MstcAmount wei={pot} size="lg" className="text-pot" /></dd>
-          <dd className="text-xs text-muted-foreground">{v.maxMembers} members × {v.contribution || "0"} MST</dd>
+    <div className="lg:sticky lg:top-24">
+      <Card className="overflow-hidden">
+        <div className="bg-pot/[0.06] p-4 md:p-5">
+          <SectionTitle Icon={Calculator} tone="text-pot" trailing={<TestnetBadge size="xs" />}>Live summary</SectionTitle>
+          <div className="mt-2 text-[12px] font-medium text-muted-foreground">Pot per round</div>
+          <MstcAmount wei={pot} size="display" className="text-pot" />
+          <p className="tnum mt-1 text-xs text-muted-foreground">= {v.maxMembers} members × {v.contribution || "0"} MST</p>
         </div>
-        <div>
-          <dt className="text-muted-foreground">Collateral by tier (locked at join)</dt>
-          <dd className="mt-1 space-y-1.5">
-            {tiers.map((t) => (
-              <div key={t} className="flex items-center justify-between gap-2">
-                <TierChip tier={t} circle={bpsFor} />
-                <MstcAmount wei={collateralFor(t)} size="sm" />
+        <div className="space-y-4 p-4 md:p-5">
+          <div>
+            <div className="text-[12px] font-medium text-muted-foreground">Collateral locked at join, by tier</div>
+            <table className="mt-2 w-full text-sm">
+              <tbody className="divide-y">
+                {tiers.map((t) => (
+                  <tr key={t}>
+                    <td className="py-1.5"><TierChip tier={t} circle={bpsFor} /></td>
+                    <td className="py-1.5 text-right"><MstcAmount wei={collateralFor(t)} size="sm" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-muted/40 p-3 text-sm">
+            {facts.map(([k, val]) => (
+              <div key={k}>
+                <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{k}</dt>
+                <dd className="tnum font-semibold">{val}</dd>
               </div>
             ))}
-          </dd>
+          </dl>
+          <p className="tnum text-xs leading-snug text-muted-foreground">
+            Holdback example: a winner accepting the lowest allowed payout ({formatMst(samplePayout)} MST after {v.maxDiscountPct}% discount and {v.feePct}% fee) has <span className="font-semibold text-foreground">{formatMst(holdback)} MST</span> ({v.holdbackPct}%) held back until the circle completes.
+          </p>
         </div>
-        <div>
-          <dt className="text-muted-foreground">Holdback example</dt>
-          <dd className="tnum text-xs">
-            A winner who accepts the lowest allowed payout ({formatMst(samplePayout)} MST after a {v.maxDiscountPct}% discount and {v.feePct}% fee) has <span className="font-semibold text-foreground">{formatMst(holdback)} MST</span> ({v.holdbackPct}%) held back until the circle completes.
-          </dd>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <dt className="text-muted-foreground">Round length</dt>
-            <dd className="tnum font-semibold">{formatDuration(roundLen)}</dd>
-            <dd className="text-xs text-muted-foreground">{formatDuration(v.contributionDuration)} contribute + {formatDuration(v.biddingDuration)} bid</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Total duration</dt>
-            <dd className="tnum font-semibold">{formatDuration(total)}</dd>
-            <dd className="text-xs text-muted-foreground">{v.maxMembers} rounds</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Fee per round</dt>
-            <dd className="tnum font-semibold">{v.feePct}% → reserve</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Max discount</dt>
-            <dd className="tnum font-semibold">{v.maxDiscountPct}% · {formatMst(maxDiscount)} MST</dd>
-          </div>
-        </div>
-      </dl>
-    </Card>
+      </Card>
+    </div>
   );
 }

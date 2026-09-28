@@ -11,7 +11,7 @@ export function TxStepper({ state, className }: { state: TxState; className?: st
   const idx = TX_STAGES.findIndex((s) => s.key === state.stage);
   const failed = state.stage === "failed";
   return (
-    <div className={cn("rounded-xl border bg-card p-3 text-xs", failed && "border-danger/40", className)} role="status" aria-live="polite">
+    <div className={cn("rounded-xl border bg-card px-3 py-2.5 text-xs", failed && "border-danger/40", className)} role="status" aria-live="polite">
       <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {TX_STAGES.map((s, i) => {
           const done = !failed && idx > i;

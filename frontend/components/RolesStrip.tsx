@@ -1,27 +1,30 @@
-import { FileCode2, Shield, UserRound, Users, type LucideIcon } from "lucide-react";
+import { FileCode2, Shield, UserRound, Users, UsersRound, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { SectionTitle } from "@/components/PageHeader";
 
-const ROLES: { title: string; text: string; Icon: LucideIcon; color: string }[] = [
-  { title: "Member", text: "Participates in a chit circle: joins, contributes, bids, withdraws.", Icon: UserRound, color: "text-primary" },
-  { title: "Circle organizer", text: "Manages my chit circle: names it, invites members, reads analytics.", Icon: Users, color: "text-pot" },
-  { title: "Platform admin", text: "Manages the ChitChain platform: users, audit log, support, health.", Icon: Shield, color: "text-agent" },
-  { title: "Smart contract", text: "Controls the funds. No role can move a member's money — payouts are pull-only.", Icon: FileCode2, color: "text-chain" },
+const ROLES: { title: string; text: string; Icon: LucideIcon; color: string; bg: string }[] = [
+  { title: "Member", text: "Joins, contributes, bids and withdraws.", Icon: UserRound, color: "text-primary", bg: "bg-primary/10" },
+  { title: "Circle organizer", text: "Names the circle, invites members, reads analytics.", Icon: Users, color: "text-pot", bg: "bg-pot/10" },
+  { title: "Platform admin", text: "Manages users, audit log, support and health.", Icon: Shield, color: "text-agent", bg: "bg-agent/10" },
+  { title: "Smart contract", text: "Controls the funds. No role can move a member's money — payouts are pull-only.", Icon: FileCode2, color: "text-chain", bg: "bg-chain/10" },
 ];
 
-/** Landing strip: people operate the platform; the smart contract controls the funds (API.md v3 principle). */
+/** Landing strip: people operate the platform; the smart contract controls the funds. */
 export function RolesStrip() {
   return (
-    <section aria-label="Who does what" className="space-y-3">
-      <h2>Who does what</h2>
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <section aria-label="Who does what" className="space-y-4">
+      <SectionTitle Icon={UsersRound}>Who does what</SectionTitle>
+      <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {ROLES.map((r) => (
-          <li key={r.title}>
-            <Card className="h-full rounded-2xl p-4">
-              <div className="flex items-center gap-2">
-                <r.Icon className={`h-5 w-5 ${r.color}`} aria-hidden />
-                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{r.title}</span>
+          <li key={r.title} className="min-w-0">
+            <Card className={`card-hover flex h-full flex-col gap-3 p-4 md:p-5 ${r.title === "Smart contract" ? "border-chain/30" : ""}`}>
+              <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${r.bg}`}>
+                <r.Icon className={`h-[18px] w-[18px] ${r.color}`} aria-hidden />
+              </span>
+              <div>
+                <div className="text-sm font-semibold">{r.title}</div>
+                <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{r.text}</p>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">{r.text}</p>
             </Card>
           </li>
         ))}

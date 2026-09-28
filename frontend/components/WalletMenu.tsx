@@ -32,7 +32,7 @@ export function WalletMenu() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" className="gap-1.5">
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-full">
             <span className="font-mono">{name}</span>
             <RoleBadge role="ADMIN" passwordAdmin size="xs" className="hidden sm:inline-flex" />
             <ChevronDown className="h-3 w-3" aria-hidden />
@@ -61,22 +61,22 @@ export function WalletMenu() {
 
   if (!hasWallet) {
     return (
-      <Button asChild size="sm" variant="outline">
-        <a href={BRIDGEKEY_URL} target="_blank" rel="noopener noreferrer"><Wallet aria-hidden /> Install BridgeKey</a>
+      <Button asChild size="sm" className="h-8 rounded-full">
+        <a href={BRIDGEKEY_URL} target="_blank" rel="noopener noreferrer"><Wallet aria-hidden /> <span className="hidden sm:inline">Install&nbsp;</span>BridgeKey</a>
       </Button>
     );
   }
   if (!account) {
     return (
-      <Button size="sm" onClick={() => connect().catch((e) => toast.error(parseTxError(e).message))} disabled={connecting}>
-        <Wallet aria-hidden /> {connecting ? "Connecting…" : "Connect BridgeKey"}
+      <Button size="sm" className="h-8 rounded-full" onClick={() => connect().catch((e) => toast.error(parseTxError(e).message))} disabled={connecting}>
+        <Wallet aria-hidden /> {connecting ? "Connecting…" : <><span className="hidden sm:inline">Connect&nbsp;</span>BridgeKey</>}
       </Button>
     );
   }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5">
+        <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-full">
           <span className="font-mono">{auth.user?.displayName || shortAddr(account)}</span>
           {signedIn && auth.user && <RoleBadge role={auth.user.role} size="xs" className="hidden sm:inline-flex" />}
           <ChevronDown className="h-3 w-3" aria-hidden />
@@ -90,7 +90,7 @@ export function WalletMenu() {
           </div>
           <div className="text-[11px] font-normal text-muted-foreground">Balance</div>
           <div className="flex items-center justify-between gap-2">
-            <span className="tnum text-sm font-semibold">{balance === null ? "…" : `${formatMst(balance, 4)} MST`}</span>
+            <span className="tnum text-sm font-semibold" title={balance === null ? undefined : `${formatMst(balance, 6)} MST`}>{balance === null ? "…" : `${formatMst(balance)} MST`}</span>
             <TestnetBadge size="xs" />
           </div>
           {balance !== null && balance === 0n && (

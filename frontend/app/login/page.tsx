@@ -2,12 +2,14 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, Copy, KeyRound, Loader2, ShieldCheck, Wallet } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Check, Copy, Loader2, ShieldCheck, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { InfoBanner } from "@/components/InfoBanner";
+import { Logo } from "@/components/Logo";
+import { AdminPasswordForm } from "@/components/login/AdminPasswordForm";
+import { LoginStepper } from "@/components/login/LoginStepper";
 import { TestnetBadge } from "@/components/TestnetBadge";
 import { roleHome, useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
@@ -38,9 +40,6 @@ function Login() {
   const [done, setDone] = useState(false);
   // Platform-admin password fallback: shown only when the backend reports it enabled (GET /health.adminPasswordLogin).
   const [adminLoginAvailable, setAdminLoginAvailable] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
 
   const go = (u: User) => router.replace(next ?? roleHome(u.role));
 
@@ -63,107 +62,73 @@ function Login() {
       setTimeout(() => go(u), 600);
     }
   };
-  const signInAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const signInAdmin = async (username: string, password: string) => {
     const u = await auth.signInAdmin(username, password);
     if (u) {
-      setPassword("");
       setDone(true);
       setTimeout(() => router.replace(next ?? "/admin"), 600);
     }
+    return !!u;
   };
   const signing = auth.status === "signing";
+  const step = done ? 2 : wallet.account ? 1 : 0;
 
   return (
-    <div className="mx-auto max-w-md space-y-4">
-      <Card className="rounded-2xl p-6 md:p-8">
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-5 w-5 text-primary" aria-hidden />
+    <div className="mx-auto max-w-md space-y-4 pt-2 md:pt-6">
+      <Card className="p-6 md:p-8">
+        <div className="flex items-center justify-between">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10"><Logo className="h-8 w-8 text-primary" /></span>
           <TestnetBadge size="xs" />
         </div>
-        <h1 className="mt-3 text-2xl">Welcome to ChitChain</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Connect your MST wallet to continue.</p>
+        <h1 className="mt-4">Welcome to ChitChain</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Connect your MST wallet, sign once, and you&apos;re in. No gas, no funds move.</p>
+        <div className="mt-5"><LoginStepper current={step} /></div>
 
         {!wallet.hasWallet ? (
-          <div className="mt-5 space-y-2">
-            <Button className="w-full" asChild><a href={BRIDGEKEY_URL} target="_blank" rel="noopener noreferrer"><Wallet aria-hidden /> Install BridgeKey</a></Button>
+          <div className="mt-6 space-y-2">
+            <Button className="w-full" size="lg" asChild><a href={BRIDGEKEY_URL} target="_blank" rel="noopener noreferrer"><Wallet aria-hidden /> Install BridgeKey</a></Button>
             <p className="text-center text-xs text-muted-foreground">No wallet detected. Install BridgeKey, then reload this page.</p>
           </div>
         ) : !wallet.account ? (
-          <Button className="mt-5 w-full" size="lg" disabled={wallet.connecting} onClick={() => wallet.connect().catch((e) => toast.error(parseTxError(e).message))}>
-            <Wallet aria-hidden /> {wallet.connecting ? "Connecting…" : "Connect MST Wallet"}
+          <Button className="mt-6 w-full" size="lg" disabled={wallet.connecting} onClick={() => wallet.connect().catch((e) => toast.error(parseTxError(e).message))}>
+            <Wallet aria-hidden /> {wallet.connecting ? "Connecting…" : "Connect BridgeKey"}
           </Button>
         ) : (
-          <div className="mt-5 space-y-3">
-            <Row label="Wallet">
-              <span className="font-mono text-sm">{shortAddr(wallet.account)}</span>
-              <button type="button" className="rounded p-1 text-muted-foreground hover:text-foreground" aria-label="Copy address" onClick={() => navigator.clipboard.writeText(wallet.account!).then(() => toast("Address copied"))}>
-                <Copy className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </Row>
-            <Row label="Network">
-              {wallet.correctChain ? (
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-success"><span className="h-2 w-2 rounded-full bg-success" aria-hidden /> {CHAIN_NAME}</span>
-              ) : (
-                <>
-                  <span className="text-sm text-warning">Wrong network</span>
-                  <Button size="sm" variant="outline" onClick={() => wallet.switchNetwork().catch((e) => toast.error(parseTxError(e).message))}>Switch to {CHAIN_NAME}</Button>
-                </>
-              )}
-            </Row>
+          <div className="mt-6 space-y-4">
+            <dl className="divide-y overflow-hidden rounded-xl border bg-muted/30 text-sm">
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Wallet</dt>
+                <dd className="flex items-center gap-1.5">
+                  <span className="font-mono">{shortAddr(wallet.account)}</span>
+                  <button type="button" className="rounded p-1 text-muted-foreground hover:text-foreground" aria-label="Copy address" onClick={() => navigator.clipboard.writeText(wallet.account!).then(() => toast("Address copied"))}>
+                    <Copy className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Network</dt>
+                <dd className="flex items-center gap-2">
+                  {wallet.correctChain ? (
+                    <span className="inline-flex items-center gap-1.5 font-medium text-success"><Check className="h-3.5 w-3.5" aria-hidden /> {CHAIN_NAME}</span>
+                  ) : (
+                    <>
+                      <span className="text-warning">Wrong network</span>
+                      <Button size="sm" variant="outline" onClick={() => wallet.switchNetwork().catch((e) => toast.error(parseTxError(e).message))}>Switch to {CHAIN_NAME}</Button>
+                    </>
+                  )}
+                </dd>
+              </div>
+            </dl>
             <Button className="w-full" size="lg" disabled={!wallet.correctChain || signing || done} onClick={() => void signIn()}>
-              {done ? <><Check aria-hidden /> Wallet verified.</> : signing ? <><Loader2 className="animate-spin" aria-hidden /> Confirm the signature in BridgeKey…</> : "Sign In"}
+              {done ? <><Check aria-hidden /> Wallet verified</> : signing ? <><Loader2 className="animate-spin" aria-hidden /> Confirm the signature in BridgeKey…</> : "Sign in"}
             </Button>
             {signing && <p className="text-center text-xs text-muted-foreground">Signing proves you own this wallet. It costs no gas and moves no funds.</p>}
           </div>
         )}
+        <InfoBanner Icon={ShieldCheck} tone="success" className="mt-5">ChitChain never asks for your seed phrase or private key.</InfoBanner>
       </Card>
-      <p className="flex items-start justify-center gap-1.5 text-center text-xs text-muted-foreground">
-        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
-        ChitChain never asks for your seed phrase or private key.
-      </p>
 
-      {adminLoginAvailable && (
-        <div className="space-y-3">
-          <p className="text-center">
-            <button type="button" className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" aria-expanded={showAdmin} aria-controls="admin-login" onClick={() => setShowAdmin((v) => !v)}>
-              Platform admin? Sign in with password
-            </button>
-          </p>
-          {showAdmin && (
-            <Card id="admin-login" className="rounded-2xl p-6">
-              <form onSubmit={(e) => void signInAdmin(e)} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-agent" aria-hidden />
-                  <h2 className="text-base font-semibold">Admin password login</h2>
-                </div>
-                <p className="text-xs text-muted-foreground">Password login is for the platform administrator only. Members and organizers sign in with their MST wallet.</p>
-                <div className="space-y-1.5">
-                  <Label htmlFor="admin-username">Username</Label>
-                  <Input id="admin-username" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value)} required disabled={signing || done} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="admin-password">Password</Label>
-                  <Input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={signing || done} />
-                </div>
-                <Button type="submit" className="w-full" disabled={signing || done || !username.trim() || !password}>
-                  {done ? <><Check aria-hidden /> Admin verified.</> : signing ? <><Loader2 className="animate-spin" aria-hidden /> Checking…</> : "Sign in as admin"}
-                </Button>
-                <p className="text-center text-[11px] text-muted-foreground">Grants website admin rights only — never wallet or fund control.</p>
-              </form>
-            </Card>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border bg-muted/30 px-3 py-2">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-      <span className="flex items-center gap-2">{children}</span>
+      {adminLoginAvailable && <AdminPasswordForm signing={signing} done={done} onSubmit={signInAdmin} />}
     </div>
   );
 }

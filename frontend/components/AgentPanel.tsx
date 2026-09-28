@@ -68,17 +68,17 @@ export function AgentPanel({ circleId, member, isDemoWallet, logs, mandate, labe
   const status = !member ? "Connect or pick a member." : !isDemoWallet ? "Agent bids only for custodial demo wallets (A–E)." : backendDown ? "Backend unreachable." : mandate?.active ? "Mandate active — re-planned each round." : "";
 
   return (
-    <Card className="rounded-2xl border-agent/30 p-4 md:p-5">
-      <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium uppercase tracking-wide text-agent">
-        <Bot className="h-4 w-4" aria-hidden /> AI bidding agent
-        <Badge variant="agent" className="normal-case tracking-normal">custodial demo wallet</Badge>
-        <Badge variant="outline" className="normal-case tracking-normal text-muted-foreground">experimental</Badge>
+    <Card className="border-agent/30 bg-agent/[0.03] p-4 md:p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="eyebrow inline-flex items-center gap-1.5 text-agent"><Bot className="h-3.5 w-3.5" aria-hidden /> AI bidding agent</span>
+        <Badge variant="agent">custodial demo wallet</Badge>
+        <Badge variant="outline" className="text-muted-foreground">experimental</Badge>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
         Tell the agent your goal. Each round it re-reads the auction and bids on-chain from {member && isDemoWallet ? `${labelFor(member.address)}'s` : "the member's"} custodial demo wallet. Real BridgeKey wallets bid manually.
       </p>
       {!signedIn ? (
-        <div className="mt-3 rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+        <div className="mt-3 rounded-xl border border-dashed bg-card p-4 text-center text-sm text-muted-foreground">
           Sign in as the circle organizer or admin to drive the agent.
           <div className="mt-2"><Button asChild size="sm" variant="outline"><Link href={`/login?next=/circle/${circleId}`}>Sign in</Link></Button></div>
         </div>
