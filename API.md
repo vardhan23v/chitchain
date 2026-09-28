@@ -59,3 +59,98 @@ All amounts are **MST testnet coins** (18 decimals). The UI labels them `MST` an
 
 ## Feed labels
 The backend attaches `label` (A–E) to demo wallet addresses; the frontend shows `label ?? shortAddr`.
+
+---
+
+# v3 — Wallet login, roles, audit, support
+
+## Principle
+People operate the platform; the smart contract controls the funds. No role, endpoint or backend process can move member funds: the v2 contract has no admin/organizer fund functions at all (creator is only stored, payouts are pull-only, settlement is permissionless). Roles below only gate *website* actions.
+
+## Auth (SIWE-style, bearer sessions)
+```ts
+type Role = "MEMBER" | "ORGANIZER" | "ADMIN";
+interface User { walletAddress: string /* lowercase */; role: Role; status: "ACTIVE"|"SUSPENDED"; displayName: string|null; createdAt: number; lastLogin: number|null; }
+```
+| Method | Path | Body → Response |
+|---|---|---|
+| POST | `/auth/nonce` | `{ address }` → `{ nonce, message, expiresAt }` (rate-limited 10/min per IP and per address; nonce valid 5 min, one-time) |
+| POST | `/auth/verify` | `{ address, nonce, signature }` → `{ token, expiresAt, user }` (401 `NONCE_INVALID` / `BAD_SIGNATURE`, 403 `SUSPENDED`) |
+| GET | `/auth/me` | bearer → `{ user, session: { id, expiresAt } }` |
+| POST | `/auth/logout` | bearer → `{ ok }` (revokes the session) |
+
+The client signs exactly the `message` string with `personal_sign` and never sends the message back; the server rebuilds it from the stored nonce. Message text:
+```
+ChitChain wants you to sign in with your MST wallet.
+
+Domain: <frontend host>
+Address: <checksummed address>
+Chain ID: 91562037
+Nonce: <nonce>
+Issued At: <ISO>
+Expires: <ISO>
+
+ChitChain never asks for your seed phrase or private key.
+```
+Protected requests send `Authorization: Bearer <token>` (HS256 JWT, 24 h; role is re-read from the database on every request). Errors: 401 `NO_AUTH`/`BAD_TOKEN`/`SESSION_REVOKED`, 403 `FORBIDDEN`/`NOT_ORGANIZER`/`SUSPENDED`, 429 `RATE_LIMITED`.
+
+Roles: everyone is `MEMBER` on first login; addresses listed in `PLATFORM_ADMIN_ADDRESSES` become `ADMIN`; a member becomes `ORGANIZER` when they claim a circle they created on-chain (`POST /circles/:id/claim`). Admins can change roles/status in `/admin/users`.
+
+## Authorization matrix
+| Access | Endpoints |
+|---|---|
+| Public | `GET /health`, `GET /circles*`, `GET /stats`, `GET /feed`, `GET /members/:addr/{activity,circles,risk}`, `GET /agent/logs`, `GET /demo/state`, `POST /circles/:id/settle` (anyone can settle on-chain; 5/min per IP) |
+| Signed in | `GET /auth/me`, `POST /auth/logout`, `GET /me`, `GET /me/circles`, `GET /me/invites`, `PATCH /me`, `POST /support`, `GET /support/mine`, `POST /circles/:id/claim` |
+| Self or ADMIN | `POST /members/:addr/assess` |
+| Organizer of the circle or ADMIN | `POST/DELETE /agent/mandate`, `POST /organizer/circles/:id/meta`, `POST/DELETE /organizer/circles/:id/invites[/:addr]`, `GET /organizer/circles/:id/analytics` |
+| ORGANIZER or ADMIN | `GET /organizer/circles` |
+| ADMIN | `POST /demo/{fund,assess-all,skip,new-circle,withdraw}`, everything under `/admin` |
+
+## New shapes
+```ts
+interface CircleSummary { /* v2 fields */ name: string|null; organizerWallet: string|null; }
+interface MeOverview { user: User; balance: string /* wei */; risk: RiskResult|null; totals: { contributions: string; payouts: string; dividends: string; defaults: number; circles: number }; activeCircle: (CircleSummary & { me: MemberInfo; round: RoundInfo }) | null; }
+interface Invite { circleId: number; circle: CircleSummary|null; invitedBy: string; createdAt: number; }
+interface OrganizerCircle extends CircleSummary { members: MemberInfo[]; round: RoundInfo; pendingContributions: number; defaults: number; collateralTotal: string; lowestAcceptedPayout: string; }
+interface CircleAnalytics { circle: CircleSummary; round: RoundInfo; members: MemberInfo[]; rounds: RoundHistoryRow[]; defaults: (DefaultInfo & {member,label})[]; contributionRate: number /* 0..1 this round */; agentDecisions: number; recentEvents: FeedEvent[]; }
+interface AuditRow { id: number; ts: number; actorWallet: string|null; role: string /* MEMBER|ORGANIZER|ADMIN|SYSTEM|KEEPER|AGENT|AUTOPILOT|ORACLE */; action: string; target: string|null; result: string; txHash: string|null; meta: Record<string,unknown>|null; }
+interface SupportTicket { id: number; userWallet: string; subject: string; message: string; status: "OPEN"|"CLOSED"; adminNote: string|null; createdAt: number; updatedAt: number; }
+interface LoopStatus { name: string; everyMs: number; ticks: number; errors: number; lastTickAt: number|null; lastOkAt: number|null; lastError: string|null; busy: boolean; }
+interface AdminOverview {
+  users: { total: number; active: number; byRole: Record<Role, number>; suspended: number };
+  circles: { total: number; open: number; active: number; completed: number; cancelled: number; demo: number };
+  mst: { locked: string; pots: string; collateral: string; reserve: string } /* wei */;
+  defaults: number; tx: { total: number; sent: number; mined: number; failed: number; lastFailure: string|null };
+  tickets: { open: number }; audit: { last24h: number };
+  chain: { chainId: number; latestBlock: number; lastIndexedBlock: number|null; lag: number; connected: boolean };
+  contract: { address: string|null; status: "ACTIVE"|"NOT_CONFIGURED"; explorer: string };
+  loops: LoopStatus[]; keeper: { address: string|null; balance: string; status: "ONLINE"|"STALE"|"OFFLINE" };
+  wallets: { deployer: {address,balance}|null; oracle: {address,balance}|null };
+}
+```
+
+## New endpoints
+| Method | Path | Response |
+|---|---|---|
+| GET | `/me` | `MeOverview` |
+| GET | `/me/circles` | `{ circles: (CircleSummary & { me: MemberInfo })[] }` |
+| GET | `/me/invites` | `{ invites: Invite[] }` |
+| PATCH | `/me` `{ displayName }` | `{ user }` |
+| POST | `/circles/:id/claim` `{ name, description?, txHash? }` | `{ circle: CircleSummary, user }` — caller must be the on-chain creator; promotes MEMBER → ORGANIZER |
+| GET | `/organizer/circles` | `{ circles: OrganizerCircle[] }` (ADMIN: all circles) |
+| POST | `/organizer/circles/:id/meta` `{ name, description? }` | `{ circle }` |
+| POST | `/organizer/circles/:id/invites` `{ addresses: string[] }` | `{ invites: Invite[] }` |
+| DELETE | `/organizer/circles/:id/invites/:addr` | `{ ok }` |
+| GET | `/organizer/circles/:id/analytics` | `CircleAnalytics` |
+| POST | `/support` `{ subject, message }` | `{ ticket }` (5/min per wallet) |
+| GET | `/support/mine` | `{ tickets }` |
+| GET | `/admin/overview` | `AdminOverview` |
+| GET | `/admin/users?role&status&q&limit` | `{ users: (User & { circles: number })[] }` |
+| PATCH | `/admin/users/:addr` `{ role?, status?, displayName? }` | `{ user }` (409 `LAST_ADMIN`, 400 `CANNOT_EDIT_SELF_ROLE`) |
+| GET | `/admin/audit?limit&actor&action&since` | `{ rows: AuditRow[] }` newest first |
+| GET | `/admin/support?status` | `{ tickets }` |
+| PATCH | `/admin/support/:id` `{ status?, adminNote? }` | `{ ticket }` |
+| GET | `/admin/config` | safe config subset (never keys, never DATABASE_URL) |
+| GET | `/health` | adds `loops: LoopStatus[]`, `tx`, `indexerHealthy` |
+
+Audit rows are written for: logins (ok/denied), every admin mutation, organizer meta/invites, circle claims, member assess, support tickets, demo actions, keeper settlements, autopilot contributions, agent bids, oracle tier updates. The audit log is an application log; blockchain events remain the authority for blockchain state.
