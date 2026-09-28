@@ -9,7 +9,8 @@
     "ping": "hardhat run scripts/ping.ts --network mstTestnet",
     "deploy": "hardhat run scripts/deploy.ts --network mstTestnet",
     "seed-demo": "hardhat run scripts/seed-demo.ts --network mstTestnet",
-    "export-abi": "hardhat run scripts/export-abi.ts"
+    "export-abi": "hardhat run scripts/export-abi.ts",
+    "fund-roles": "hardhat run scripts/fund-roles.ts --network mstTestnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
