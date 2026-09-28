@@ -1,0 +1,21 @@
+{
+  "name": "chitchain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ChitChain — a trust-minimised chit fund on MST Blockchain. The pot sits in a contract, not in anyone's account.",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "ping": "hardhat run scripts/ping.ts --network mstTestnet",
+    "deploy": "hardhat run scripts/deploy.ts --network mstTestnet",
+    "seed-demo": "hardhat run scripts/seed-demo.ts --network mstTestnet",
+    "export-abi": "hardhat run scripts/export-abi.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.4.0"
+  }
+}
