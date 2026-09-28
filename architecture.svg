@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" font-family="Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+    <marker id="arrR" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C0392B"/></marker>
+    <marker id="arrV" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7C3AED"/></marker>
+  </defs>
+  <rect width="1400" height="760" fill="#F8FAFC"/>
+  <text x="700" y="48" text-anchor="middle" font-size="30" font-weight="700" fill="#0F172A">ChitChain — the pot sits in a contract, not in anyone's account</text>
+  <text x="700" y="76" text-anchor="middle" font-size="15" fill="#64748B">Blockchain = custody + rules · AI = judgement · MST Testnet (chain 91562037)</text>
+
+  <!-- Members -->
+  <rect x="60" y="130" width="300" height="150" rx="18" fill="#fff" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="210" y="165" text-anchor="middle" font-size="18" font-weight="600" fill="#0F172A">Members (BridgeKey wallets)</text>
+  <text x="210" y="195" text-anchor="middle" font-size="13" fill="#64748B">join · contribute · placeBid · withdraw</text>
+  <text x="210" y="218" text-anchor="middle" font-size="13" fill="#64748B">Every action is a signed testnet tx</text>
+  <text x="210" y="255" text-anchor="middle" font-size="12" fill="#16A34A">Low 0.5× · Medium 1× · High / Unassessed 2× collateral</text>
+
+  <!-- Frontend -->
+  <rect x="60" y="330" width="300" height="150" rx="18" fill="#fff" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="210" y="365" text-anchor="middle" font-size="18" font-weight="600" fill="#0F172A">Frontend — Next.js 14</text>
+  <text x="210" y="395" text-anchor="middle" font-size="13" fill="#64748B">Circle Room · pot meter · auction · member cards</text>
+  <text x="210" y="418" text-anchor="middle" font-size="13" fill="#64748B">Live feed with MSTScan links (poll 2–3 s)</text>
+  <text x="210" y="455" text-anchor="middle" font-size="12" fill="#4F46E5">Tailwind · shadcn/ui · ethers v6</text>
+
+  <!-- Contract -->
+  <rect x="520" y="130" width="360" height="350" rx="22" fill="#FEF2F2" stroke="#C0392B" stroke-width="3"/>
+  <text x="700" y="168" text-anchor="middle" font-size="20" font-weight="700" fill="#C0392B">ChitChain.sol — MST Testnet</text>
+  <text x="700" y="192" text-anchor="middle" font-size="13" fill="#64748B">one contract, many circles · native MSTC · pull payments</text>
+  <g font-size="14" fill="#0F172A">
+    <text x="550" y="230">🔒  Holds pot, collateral, reserve</text>
+    <text x="550" y="258">🗳  Discount auction (≤ 40 % of pot, strict &gt;)</text>
+    <text x="550" y="286">⚙  settleRound: missed → collateral → reserve → remove</text>
+    <text x="550" y="314">🛡  Post-win holdback (50 / 75 / 100 % of dues)</text>
+    <text x="550" y="342">💸  Dividends = discount split, dust → first eligible</text>
+    <text x="550" y="370">📜  Reputation counters on-chain</text>
+    <text x="550" y="398">🚫  receive()/fallback() revert · ReentrancyGuard</text>
+  </g>
+  <text x="700" y="450" text-anchor="middle" font-size="13" fill="#C0392B" font-weight="600">Events → MSTScan (testnet.mstscan.com)</text>
+
+  <!-- Backend -->
+  <rect x="1040" y="130" width="300" height="350" rx="18" fill="#fff" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="1190" y="165" text-anchor="middle" font-size="18" font-weight="600" fill="#0F172A">Backend — Node + Express</text>
+  <g font-size="14" fill="#0F172A">
+    <text x="1070" y="205">⏱  Keeper — settleRound after deadline</text>
+    <text x="1070" y="235">📥  Indexer — events → SQLite feed</text>
+    <text x="1070" y="265" fill="#7C3AED">🧠  Risk engine — heuristic score → tier</text>
+    <text x="1070" y="295" fill="#7C3AED">🤖  Bidding agent — goal → bid plan</text>
+    <text x="1070" y="325">🎛  Demo autopilot (custodial demo wallets)</text>
+  </g>
+  <text x="1190" y="370" text-anchor="middle" font-size="12" fill="#64748B">only privileged power on-chain:</text>
+  <text x="1190" y="390" text-anchor="middle" font-size="13" fill="#C0392B" font-weight="600">setRiskTier (riskOracle wallet)</text>
+  <text x="1190" y="430" text-anchor="middle" font-size="12" fill="#64748B">LLM (8 s timeout, template fallback)</text>
+  <text x="1190" y="450" text-anchor="middle" font-size="12" fill="#64748B">writes explanations + bid JSON only</text>
+
+  <!-- Arrows -->
+  <line x1="360" y1="205" x2="515" y2="205" stroke="#C0392B" stroke-width="3" marker-end="url(#arrR)"/>
+  <text x="437" y="195" text-anchor="middle" font-size="12" fill="#C0392B">signed txs</text>
+  <line x1="210" y1="280" x2="210" y2="325" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="360" y1="405" x2="515" y2="405" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="437" y="395" text-anchor="middle" font-size="12" fill="#475569">read views</text>
+  <line x1="880" y1="220" x2="1035" y2="220" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="957" y="210" text-anchor="middle" font-size="12" fill="#475569">events / views</text>
+  <line x1="1035" y1="300" x2="885" y2="300" stroke="#7C3AED" stroke-width="3" marker-end="url(#arrV)"/>
+  <text x="957" y="290" text-anchor="middle" font-size="12" fill="#7C3AED">setRiskTier · placeBid · settleRound</text>
+  <path d="M360,440 C 700,560 900,560 1040,440" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr)"/>
+  <text x="700" y="545" text-anchor="middle" font-size="12" fill="#475569">REST + polling (circles, feed, risk, agent)</text>
+
+  <!-- Bottom strip -->
+  <rect x="60" y="600" width="1280" height="110" rx="18" fill="#fff" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="700" y="635" text-anchor="middle" font-size="16" font-weight="600" fill="#0F172A">Demo round (30 s): all contribute → agent bids for B → keeper settles → B paid (holdback applied) → D skips → collateral covers → pot still full</text>
+  <text x="700" y="665" text-anchor="middle" font-size="13" fill="#64748B">≈ 24 real testnet transactions in ~3 minutes · every tx links to MSTScan · nobody ever holds the money</text>
+  <text x="700" y="692" text-anchor="middle" font-size="12" fill="#94A3B8">Prototype on MST Testnet · heuristic risk score on synthetic data · custodial keeper/oracle/agent wallets · not a registered chit company (Chit Funds Act, 1982)</text>
+</svg>
