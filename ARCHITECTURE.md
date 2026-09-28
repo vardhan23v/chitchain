@@ -38,6 +38,8 @@ Members (BridgeKey) ──signed txs──►  ChitChain.sol (MST testnet)  ─�
 Frontend (Next.js) ◄──REST/poll──►  Backend: Keeper · Indexer · Risk Engine · Bidding Agent ◄──► LLM API
 ```
 
+**Roles (v3):** MEMBER participates · CIRCLE ORGANIZER manages a circle (website role; no on-chain fund power) · PLATFORM ADMIN operates the website (no fund power) · SMART CONTRACT controls the money. Login is wallet-signature based (nonce → `personal_sign` → server-side `verifyMessage` → 24 h bearer session); roles are stored in the database and re-checked on every protected API call; an application audit log records logins, admin/organizer actions and keeper/agent transactions (blockchain events remain authoritative).
+
 **Separation of duties (pitch line):**
 - **Blockchain = custody + rules.** Holds all money; enforces contributions, auction, payouts, penalties, security holdback.
 - **AI = judgement.** Risk engine prices collateral; bidding agent decides when/how much to bid. AI never holds member funds except the disclosed demo agent wallets (§9). Its only privileged on-chain power is `setRiskTier`.

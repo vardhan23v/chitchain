@@ -135,16 +135,64 @@ A member gives a goal ("I need about 0.45 MST this round"), optional desired pay
 ### Keeper
 Every 3 s the backend checks each active circle; when the bidding deadline has passed it calls `settleRound`. It can trigger, never decide.
 
+## Roles and Responsibilities
+
+> "ChitChain operates the platform. The organizer manages the circle. Members participate in the circle. The smart contract controls the financial rules and funds."
+
+| Role | Description | Can | Cannot |
+|---|---|---|---|
+| **MEMBER** | Participates in a chit circle | connect wallet, sign in, join, lock collateral, contribute, bid, withdraw *claimable* balances, view everything about their own position, ask the AI agent (demo wallets) | change rules, withdraw the pot, change anyone's risk, touch another member's collateral, pick a winner, bypass deadlines or default rules |
+| **CIRCLE ORGANIZER** | Creates and manages a circle but does not personally hold the pot | create a circle from their own wallet, name it, invite members, monitor contributions, defaults, bidding and settlement, view analytics and history | transfer the pot, mark someone as paid, deduct collateral, change balances, choose a winner, withdraw another member's funds |
+| **PLATFORM ADMIN** | Operates the ChitChain website and infrastructure | view all circles, users, activity, keeper/indexer health, audit log, support tickets, safe config; suspend website access; run demo controls (custodial demo wallets only) | withdraw or move any member funds, edit blockchain balances. There is no "withdraw all" anywhere. |
+| **SMART CONTRACT** | Controls the financial rules | hold the pot, collateral and reserve; enforce contributions, the auction, settlement, payouts, dividends, default deduction and holdback | be overridden by the backend, organizer or admin |
+
+### Smart contract permissions (why each role is allowed what)
+The deployed contract (`ChitChain` v2) has **no privileged fund functions**. Concretely:
+- `createCircle` is permissionless; the caller is stored as `creator` and gets no on-chain power over funds. The Organizer role therefore lives in the website database and only gates *website* screens (naming, invites, analytics).
+- `settleRound`, which performs the default deduction, is callable by anyone after the bidding deadline. The keeper calls it for convenience; the deduction logic is the contract's.
+- `setRiskTier` is the only privileged call (the risk-oracle wallet), and it affects only *future* joins; a circle snapshots each member's tier at join.
+- `withdraw` pays only the caller's own `claimable` balance. Locked collateral, holdback and the reserve are never withdrawable while a circle is active.
+- `withdrawTreasury` pays accumulated fees to the treasury address set at deploy time, never member funds.
+- `receive()`/`fallback()` revert, so the contract cannot be used as a wallet by anyone.
+Because of this, adding Organizer/Admin roles required **no contract change**: the website cannot give itself powers the contract does not expose.
+
+### How login works
+1. Connect BridgeKey (EIP-1193). The app only ever sees your public address.
+2. The backend issues a one-time nonce (valid 5 minutes) and a plain-text sign-in message that includes the domain, your address, chain id 91562037, the nonce and timestamps.
+3. You sign that message with `personal_sign`. Signing is free and moves no funds.
+4. The backend rebuilds the message from its own stored nonce, verifies the signature with `ethers.verifyMessage`, marks the nonce used, and issues a 24-hour session token (HS256 JWT sent as a bearer header). Nonces cannot be replayed; sessions can be revoked by logging out or by an admin suspension; the role is re-read from the database on every request.
+5. You are redirected by role: MEMBER → `/dashboard`, ORGANIZER → `/organizer`, ADMIN → `/admin`.
+No passwords, no seed phrases, no private keys: ChitChain never asks for them and never stores them.
+
+### Who operates ChitChain
+The ChitChain platform team runs the website, backend API, database, AI services, keeper and monitoring. Website administrators can see everything and support users, but cannot change blockchain financial state.
+
+### Who controls funds
+The `ChitChain` smart contract on MST testnet holds every MST in every circle and moves it only through its coded rules: contribution → contract; default → member collateral → pot/reserve; payout → winner's claimable balance; dividend → eligible members' claimable balances. The backend and database only index and cache what the chain already says.
+
+### Future compliance note
+There is no broker role. A real-world deployment would require registered chit operators and regulatory compliance (Chit Funds Act, 1982); the MVP does not claim to provide that.
+
 ## Architecture
 ![architecture](architecture.png)
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) (behaviour), [INTERFACE.md](INTERFACE.md) (contract ABI), [DESIGN.md](DESIGN.md) (UI) and [API.md](API.md) (REST).
 
 ```
-Members (BridgeKey) ──signed txs──►  ChitChain.sol (MST testnet)  ──►  MSTScan
-        │                                  ▲        │ events
-        ▼                                  │        ▼
-Frontend (Next.js) ◄──REST/poll──►  Backend: Keeper · Indexer · Risk Engine · Bidding Agent ◄──► LLM API
+                  CHITCHAIN PLATFORM (website team)
+                         |
+        ┌────────────────┼────────────────┐
+        ↓                ↓                ↓
+    Frontend          Backend            AI
+  (login, UI)   (sessions, API, index,  (risk, bids)
+                 keeper, audit, support)
+        └────────────────┼────────────────┘
+                         ↓
+  Members ─ Organizers ─►  MST Blockchain (BridgeKey signs every tx)
+                         ↓
+                  ChitChain contract
+                         ↓
+             Pot / Collateral / Rules
 ```
 
 **Separation of duties:** the blockchain is custody + rules; the AI is judgement. The AI's only privileged on-chain power is `setRiskTier` (risk oracle wallet). The bidding agent bids from **custodial demo wallets** that are labelled as such in the UI.
