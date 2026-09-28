@@ -84,7 +84,7 @@ demo.post("/demo/new-circle", ...adminOnly, wrap(async (req, res) => {
   let contribution: bigint;
   try { contribution = parseEther(parsed.data.contribution); } catch { throw new ApiError(400, "invalid contribution", "BAD_BODY"); }
   if (contribution <= 0n) throw new ApiError(400, "contribution must be > 0", "BAD_BODY");
-  const members = Math.max(demoWallets.length, 3);
+  const members = Math.max(demoWallets.length, 2);
 
   const rc = await sendTx("demo createCircle", deployer!, () => createCircleCall(deployer!, {
     contribution, baseCollateral: contribution, maxMembers: members,

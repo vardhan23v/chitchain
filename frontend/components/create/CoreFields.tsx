@@ -29,8 +29,8 @@ export function CoreFields({ v, set, errors }: FieldsProps) {
           <Field label="Contribution per round" htmlFor="contribution" error={errors.contribution} suffix="MST">
             <Input id="contribution" inputMode="decimal" className="tnum" value={v.contribution} onChange={(e) => set("contribution", e.target.value)} />
           </Field>
-          <SliderRow label="Members" htmlFor="members" value={`${v.maxMembers}`} min="3" max="20" error={errors.maxMembers}>
-            <Slider id="members" min={3} max={20} step={1} value={[v.maxMembers]} onValueChange={([n]) => set("maxMembers", n)} aria-label="Members" />
+          <SliderRow label="Members" htmlFor="members" value={`${v.maxMembers}`} min="2" max="20" error={errors.maxMembers}>
+            <Slider id="members" min={2} max={20} step={1} value={[v.maxMembers]} onValueChange={([n]) => set("maxMembers", n)} aria-label="Members" />
           </SliderRow>
         </div>
       </FormSection>

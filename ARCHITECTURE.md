@@ -59,7 +59,7 @@ enum Tier   { Unassessed, Low, Medium, High }   // Unassessed = zero value = tre
 struct CircleParams {         // everything the creator configures (one calldata struct)
     uint256 contribution;         // per member per round (wei)
     uint256 baseCollateral;       // Medium-tier reference; ≥ contribution
-    uint8   maxMembers;           // 3–20
+    uint8   maxMembers;           // 2–20
     uint32  contributionDuration; // seconds contributions stay open (demo: 30)
     uint32  biddingDuration;      // seconds bidding stays open after that (demo: 30)
     uint32  joinWindow;

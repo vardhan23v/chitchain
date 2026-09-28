@@ -180,7 +180,7 @@ Constructor: `constructor(address riskOracle, address treasury)`.
 
 | Rule | Value |
 |---|---|
-| Members per circle | 3–20 |
+| Members per circle | 2–20 |
 | Rounds | Until every active member has won (≤ maxMembers) |
 | Round phases | contributions open for `contributionDuration`, then bidding stays open for `biddingDuration` (bids accepted from round start); `settleRound` after the bidding deadline |
 | Pre-win collateral | `baseCollateral × {Low lowBps, Medium mediumBps, High/Unassessed highBps} / 10000` (defaults 0.5× / 1× / 2×, per circle) |

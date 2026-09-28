@@ -2,7 +2,7 @@
 
 [![Live app](https://img.shields.io/badge/live%20app-Railway-7C3AED?logo=railway&logoColor=white)](https://frontend-production-d322.up.railway.app)
 [![Backend](https://img.shields.io/badge/backend-health-16A34A?logo=express&logoColor=white)](https://backend-production-64738.up.railway.app/health)
-[![Contract](https://img.shields.io/badge/contract-0xA18D…bD45-C0392B?logo=ethereum&logoColor=white)](https://testnet.mstscan.com/address/0xA18D48c29Bf68B750BB3fCb2f109661C5de1bD45)
+[![Contract](https://img.shields.io/badge/contract-0xFBA4…CA98-C0392B?logo=ethereum&logoColor=white)](https://testnet.mstscan.com/address/0xFBA432E34E70d6069677d80944A9eEf83376CA98)
 [![MST Testnet](https://img.shields.io/badge/MST%20Testnet-chain%2091562037-C0392B)](https://testnet.mstscan.com)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity&logoColor=white)](contracts/ChitChain.sol)
 [![Hardhat tests](https://img.shields.io/badge/Hardhat%20tests-29%20passing-F7DF1E?logo=ethereum&logoColor=black)](test)
@@ -38,7 +38,7 @@ Built in 24 h for **MST Blockchain × NEWRRO Buildathon 2026 — MST Blockchain 
 
 ## MST Blockchain integration
 - Network: **MST Testnet** (chain ID `91562037`, RPC `https://testnetrpc.mstblockchain.com`)
-- Contract: `ChitChain` v2 at `0xA18D48c29Bf68B750BB3fCb2f109661C5de1bD45` → https://testnet.mstscan.com/address/0xA18D48c29Bf68B750BB3fCb2f109661C5de1bD45 (deployed at block 5786000). v1 lived at `0xe53a0C78def8046ce1199D90EB8D2F81bb5A81d5`.
+- Contract: `ChitChain` v2.1 at `0xFBA432E34E70d6069677d80944A9eEf83376CA98` → https://testnet.mstscan.com/address/0xFBA432E34E70d6069677d80944A9eEf83376CA98 (deployed at block 5794708; identical to v2 except `MIN_MEMBERS` is 2 so two-person circles are allowed). The transaction tables below were recorded on v2 at `0xA18D48c29Bf68B750BB3fCb2f109661C5de1bD45` and remain verifiable on MSTScan; v1 lived at `0xe53a0C78def8046ce1199D90EB8D2F81bb5A81d5`.
 - What runs on-chain and why: custody of pot + collateral + reserve, contributions, discount auction, settlement, post-win holdback, default coverage, member removal, dividends, reputation counters. Everything that moves money is a contract rule, so it can be verified on MSTScan.
 - Wallet: **BridgeKey** (EIP-1193, [Chrome Web Store](https://chromewebstore.google.com/detail/bridgekey/bfjojdcfenehemjgjlepdjomkpginlkg)) · SDK: ethers v6 (the library `@mstblockchain/mst-sdk` wraps) · Scaffold structure from MST VibeKit (Hardhat + Next.js)
 - Faucet: https://faucet.masterstroke.academy (10 MST per address per 24 h)
@@ -78,7 +78,7 @@ Rounds 1–2 show the full-cover case (pot fully funded); round 3 shows the hone
 ## How it works
 
 ### Circle configuration
-A creator sets: contribution per round, members (3–20), contribution window, bidding window, join window, platform fee (≤ 3 %), base collateral (≥ contribution), holdback %, max discount (≤ 50 %), and the collateral multipliers for Low / Medium / High risk. Nothing is hard-coded per circle.
+A creator sets: contribution per round, members (2–20), contribution window, bidding window, join window, platform fee (≤ 3 %), base collateral (≥ contribution), holdback %, max discount (≤ 50 %), and the collateral multipliers for Low / Medium / High risk. Nothing is hard-coded per circle.
 
 ### Collateral (JOIN)
 Required collateral = `baseCollateral × multiplier(tier)`; defaults 0.5× / 1× / 2×. An **Unassessed** wallet pays the High multiplier, so a fresh Sybil wallet never gets a discount. The tier is snapshotted at join; later oracle updates do not change a running circle.

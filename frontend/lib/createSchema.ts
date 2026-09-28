@@ -13,7 +13,7 @@ export const createSchema = z
     name: z.string().trim().min(2, "Name must be 2–60 characters").max(60, "Name must be 2–60 characters"),
     description: z.string().trim().max(500, "Keep the description under 500 characters").optional().or(z.literal("")),
     contribution: decimal("Contribution"),
-    maxMembers: z.number().int().min(3).max(20),
+    maxMembers: z.number().int().min(2).max(20),
     contributionDuration: z.number().int().positive(),
     biddingDuration: z.number().int().positive(),
     joinWindow: z.number().int().min(60, "Join window must be at least 1 minute"),

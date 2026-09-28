@@ -51,7 +51,7 @@ const MESSAGES: Record<string, (args: readonly unknown[]) => string> = {
   MemberRemoved: () => "You were removed from this circle, collateral exhausted.",
   NothingToWithdraw: () => "Nothing to withdraw.",
   InvalidParams: () =>
-    "Invalid circle parameters. Check that members are 3 to 20, base collateral is at least the contribution, fee is at most 3%, holdback at most 100%, max discount at most 50%, and the tier multipliers rise from Low to High.",
+    "Invalid circle parameters. Check that members are 2 to 20, base collateral is at least the contribution, fee is at most 3%, holdback at most 100%, max discount at most 50%, and the tier multipliers rise from Low to High.",
   OnlyOracle: () => "Only the risk oracle can do this.",
   OnlyTreasury: () => "Only the treasury can do this.",
   DirectPaymentRejected: () => "Direct payments are rejected, use the app.",

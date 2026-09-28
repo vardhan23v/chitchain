@@ -30,7 +30,7 @@ abstract contract ChitChainBase is IChitChain {
         uint256 collateralUsed;
     }
 
-    uint8   public constant MIN_MEMBERS = 3;
+    uint8   public constant MIN_MEMBERS = 2;
     uint8   public constant MAX_MEMBERS = 20;
     uint16  public constant MAX_FEE_BPS = 300;
     uint16  public constant MAX_DISCOUNT_BPS = 5000;

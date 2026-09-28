@@ -119,7 +119,7 @@ Define in `globals.css` as CSS variables (shadcn convention, HSL). Dark mode via
 ### 6.2 Create `/create`
 
 Single card form (shadcn `Form` + zod):
-- Contribution per round (MSTC) · Members (slider 3–20) · Round length (select: 30 s demo / 1 min / 1 day / 30 days) · Join window · Platform fee (0–3%) · Base collateral (MSTC, min = contribution).
+- Contribution per round (MSTC) · Members (slider 2–20) · Round length (select: 30 s demo / 1 min / 1 day / 30 days) · Join window · Platform fee (0–3%) · Base collateral (MSTC, min = contribution).
 - **Live summary panel** on the right (below on mobile):
   - Pot per round: `members × contribution`
   - Collateral by tier: Low / Medium / High / Unassessed amounts

@@ -60,7 +60,7 @@ describe("ChitChain", () => {
     await env.chit.connect(B).join(id, { value: ONE / 2n });
     await expect(env.chit.connect(C).join(id, { value: 2n * ONE })).to.emit(env.chit, "CircleStarted");
     // invalid params
-    await expect(env.chit.createCircle(params({ maxMembers: 2 }))).to.be.revertedWithCustomError(env.chit, "InvalidParams");
+    await expect(env.chit.createCircle(params({ maxMembers: 1 }))).to.be.revertedWithCustomError(env.chit, "InvalidParams");
     await expect(env.chit.createCircle(params({ maxMembers: 3, feeBps: 301 }))).to.be.revertedWithCustomError(env.chit, "InvalidParams");
     await expect(env.chit.createCircle(params({ maxMembers: 3, baseCollateral: ONE - 1n }))).to.be.revertedWithCustomError(env.chit, "InvalidParams");
     await expect(env.chit.connect(A).setRiskTier(A.address, Tier.Low)).to.be.revertedWithCustomError(env.chit, "OnlyOracle");

@@ -1,7 +1,7 @@
 import { EventLog, type Log } from "ethers";
 import { contractAddress, isConfigured, provider, readContract } from "./chain";
 import { config } from "./config";
-import { getLastBlock, insertEvents, setLastBlock, type NewEvent } from "./db";
+import { getLastBlock, getMeta, insertEvents, prisma, setLastBlock, setMeta, type NewEvent } from "./db";
 import { bus, loop } from "./bus";
 
 const CHUNK = 2000;
@@ -84,7 +84,31 @@ export async function indexOnce(): Promise<void> {
   }
 }
 
+/**
+ * When CHITCHAIN_ADDRESS changes (contract redeploy), every chain-derived table is keyed by circle ids that restart at 1
+ * on the new contract, so wipe them and start indexing from START_BLOCK. User accounts, sessions, audit log and support
+ * tickets are kept.
+ */
+async function resetIfContractChanged(): Promise<void> {
+  if (!contractAddress) return;
+  const current = contractAddress.toLowerCase();
+  const stored = await getMeta("contract_address");
+  if (stored === current) return;
+  // A database created before this check exists has no stored address but may already hold events from the old contract.
+  const legacyData = stored === null && (await prisma.event.count()) > 0;
+  if (stored !== null || legacyData) {
+    console.log(`[indexer] contract changed ${stored ?? "(unknown)"} -> ${current}: clearing chain-derived tables`);
+    await prisma.$transaction([
+      prisma.agentEvent.deleteMany(), prisma.bidAgent.deleteMany(), prisma.agentLog.deleteMany(), prisma.mandate.deleteMany(),
+      prisma.event.deleteMany(), prisma.riskCache.deleteMany(), prisma.demoSkip.deleteMany(), prisma.demoCircle.deleteMany(),
+      prisma.circleInvite.deleteMany(), prisma.circleMeta.deleteMany(), prisma.meta.deleteMany({ where: { key: "last_block" } }),
+    ]);
+  }
+  await setMeta("contract_address", current);
+}
+
 export async function startIndexer(): Promise<void> {
+  await resetIfContractChanged();
   console.log(`[indexer] contract ${contractAddress ?? "(none)"} from block ${(await getLastBlock()) ?? config.START_BLOCK}`);
   loop("indexer", 3000, indexOnce);
 }
