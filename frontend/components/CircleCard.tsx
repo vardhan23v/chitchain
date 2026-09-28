@@ -41,7 +41,7 @@ export function CircleCard({ c }: { c: CircleSummary }) {
           </>
         ) : c.status === 1 ? (
           <>
-            Pot <MstcAmount wei={pot} size="sm" className="text-pot" /> · rounds of {formatDuration(c.roundDuration)}
+            Pot <MstcAmount wei={pot} size="sm" className="text-pot" /> · rounds of {formatDuration(c.contributionDuration + c.biddingDuration)}
           </>
         ) : (
           <>{c.maxMembers} rounds · {c.memberCount} members</>

@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CircleCard } from "@/components/CircleCard";
+import { HowItWorks } from "@/components/HowItWorks";
 import { Logo } from "@/components/Logo";
 import { StatTile } from "@/components/StatTile";
+import { TestnetBadge } from "@/components/TestnetBadge";
 import { useCircles } from "@/hooks/useCircles";
-import { formatMstc } from "@/lib/format";
+import { formatMst } from "@/lib/format";
 import type { Status } from "@/lib/types";
 
 type Filter = "all" | "open" | "active" | "done";
@@ -31,6 +33,7 @@ export default function HomePage() {
     <div className="space-y-10">
       <section className="grid items-center gap-8 md:grid-cols-[3fr_2fr]">
         <div>
+          <TestnetBadge className="mb-3" />
           <h1 className="text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
             The pot sits in a contract,<br />not in anyone&apos;s account.
           </h1>
@@ -45,9 +48,11 @@ export default function HomePage() {
 
       <section className="grid gap-3 sm:grid-cols-3" aria-label="Network stats">
         <StatTile label="Circles live" value={stats?.circlesLive ?? (data ? data.circles.filter((c) => c.status <= 1).length : "—")} loading={loading} hint={stats ? `${stats.circlesTotal} total` : data?.source === "chain" ? "read from contract" : undefined} />
-        <StatTile label="MSTC in contracts" value={stats ? formatMstc(stats.mstcInContract) : "—"} loading={loading} hint={stats ? undefined : "needs backend"} />
+        <StatTile label="MST in contracts" testnet value={stats ? formatMst(stats.mstcInContract) : "—"} loading={loading} hint={stats ? "testnet coins, no monetary value" : "needs backend"} />
         <StatTile label="On-chain transactions" value={stats?.txCount ?? "—"} loading={loading} hint={stats ? undefined : "needs backend"} />
       </section>
+
+      <HowItWorks />
 
       <section id="circles" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

@@ -2,7 +2,7 @@ import { formatUnits, parseUnits } from "ethers";
 import { EXPLORER_URL } from "@/lib/chain";
 
 /** Formats a wei amount as "12.50" (no unit). Accepts bigint or decimal string. */
-export function formatMstc(wei: bigint | string | number | null | undefined, decimals = 2): string {
+export function formatMst(wei: bigint | string | number | null | undefined, decimals = 2): string {
   if (wei === null || wei === undefined || wei === "") return (0).toFixed(decimals);
   let big: bigint;
   try {
@@ -14,8 +14,8 @@ export function formatMstc(wei: bigint | string | number | null | undefined, dec
   return num.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-/** Full-precision string for aria-labels: "1.0 MSTC" style with trailing zeros trimmed. */
-export function formatMstcFull(wei: bigint | string | null | undefined): string {
+/** Full-precision string for aria-labels: "1.0 MST" style with trailing zeros trimmed. */
+export function formatMstFull(wei: bigint | string | null | undefined): string {
   if (wei === null || wei === undefined || wei === "") return "0";
   try {
     return formatUnits(BigInt(String(wei)), 18);
@@ -24,8 +24,26 @@ export function formatMstcFull(wei: bigint | string | null | undefined): string 
   }
 }
 
-export function toWei(mstc: string | number): bigint {
-  return parseUnits(String(mstc || "0"), 18);
+export function toWei(mst: string | number): bigint {
+  return parseUnits(String(mst || "0"), 18);
+}
+
+/** Legacy aliases (pre-rename). */
+export const formatMstc = formatMst;
+export const formatMstcFull = formatMstFull;
+
+/** Safe BigInt from a decimal string; 0n on garbage. */
+export function big(v: bigint | string | number | null | undefined): bigint {
+  try {
+    return typeof v === "bigint" ? v : BigInt(String(v ?? "0") || "0");
+  } catch {
+    return 0n;
+  }
+}
+
+/** "12.50 MST" in one string (for toasts/labels). */
+export function mst(wei: bigint | string | number | null | undefined, decimals = 2): string {
+  return `${formatMst(wei, decimals)} MST`;
 }
 
 export function shortAddr(addr: string | null | undefined, head = 6, tail = 4): string {

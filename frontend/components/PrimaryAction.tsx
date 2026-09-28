@@ -5,8 +5,8 @@ import { JoinDialog } from "@/components/JoinDialog";
 import { WithdrawDialog } from "@/components/WithdrawDialog";
 import type { WalletState } from "@/hooks/useWallet";
 import { BRIDGEKEY_URL } from "@/lib/chain";
-import { formatMstc } from "@/lib/format";
-import type { CircleSummary, MemberInfo, Tier } from "@/lib/types";
+import { formatMst } from "@/lib/format";
+import type { CircleSummary, MemberInfo, RoundPhase, Tier } from "@/lib/types";
 
 export interface PrimaryActionProps {
   wallet: WalletState;
@@ -16,6 +16,8 @@ export interface PrimaryActionProps {
   viewerTier: Tier | null;
   pending: boolean;
   hasContract: boolean;
+  /** Client-side round phase (contribution | bidding | settling). */
+  phase?: RoundPhase;
   on: {
     join: () => void;
     contribute: () => void;
@@ -27,7 +29,7 @@ export interface PrimaryActionProps {
 }
 
 /** DESIGN §6.3 primary-action state table: one clear CTA at a time. */
-export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, pending, hasContract, on }: PrimaryActionProps) {
+export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, pending, hasContract, phase = "contribution", on }: PrimaryActionProps) {
   const cls = "w-full sm:w-auto";
   if (!hasContract) return <Button size="lg" className={cls} disabled>Contract not deployed</Button>;
   if (!wallet.hasWallet) return <Button size="lg" className={cls} asChild><a href={BRIDGEKEY_URL} target="_blank" rel="noopener noreferrer">Install BridgeKey</a></Button>;
@@ -57,12 +59,13 @@ export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, 
   }
   if (circle.status === 1) {
     if (!me?.joined) return <Button size="lg" className={cls} disabled>Circle is full</Button>;
-    if (!me.paidThisRound) return <Button size="lg" className={cls} onClick={on.contribute} disabled={pending}>{pending ? busyLabel : `Contribute ${formatMstc(circle.contribution)} MSTC`}</Button>;
+    if (!me.paidThisRound && phase === "contribution") return <Button size="lg" className={cls} onClick={on.contribute} disabled={pending}>{pending ? busyLabel : `Contribute ${formatMst(circle.contribution)} MST`}</Button>;
+    if (phase === "settling") return <Button size="lg" className={cls} disabled>Round closed · waiting for settlement</Button>;
     if (!me.hasWon && BigInt(me.bidThisRound || "0") === 0n) {
       return (
         <div className="flex flex-wrap gap-2">
           <Button size="lg" className={cls} onClick={on.focusBid}>Place a bid</Button>
-          <Button size="lg" variant="ghost" disabled>Skip</Button>
+          <Button size="lg" variant="ghost" disabled>{!me.paidThisRound ? "Contributions closed" : "Skip"}</Button>
         </div>
       );
     }

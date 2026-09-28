@@ -3,7 +3,7 @@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { MstcAmount } from "@/components/MstcAmount";
-import { formatMstc } from "@/lib/format";
+import { formatMst } from "@/lib/format";
 
 interface Props {
   claimable: string;
@@ -18,7 +18,7 @@ export function WithdrawDialog({ claimable, disabled, onConfirm, className, vari
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button size="lg" variant={variant} className={className} disabled={disabled}>{label ?? `Withdraw ${formatMstc(claimable)} MSTC`}</Button>
+        <Button size="lg" variant={variant} className={className} disabled={disabled}>{label ?? `Withdraw ${formatMst(claimable)} MST`}</Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

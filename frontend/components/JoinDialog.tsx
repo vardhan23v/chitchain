@@ -4,7 +4,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { MstcAmount } from "@/components/MstcAmount";
 import { TierChip } from "@/components/TierChip";
-import { formatMstc } from "@/lib/format";
+import { formatMst } from "@/lib/format";
 import type { Tier } from "@/lib/types";
 
 interface Props {
@@ -18,7 +18,7 @@ interface Props {
 
 /** DESIGN §7: AlertDialog for join showing the exact collateral and the tier that priced it. */
 export function JoinDialog({ required, tier, contribution, disabled, onConfirm, className }: Props) {
-  const label = required !== null ? `Join · lock ${formatMstc(required)} MSTC` : "Join";
+  const label = required !== null ? `Join · lock ${formatMst(required)} MST` : "Join";
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -37,13 +37,13 @@ export function JoinDialog({ required, tier, contribution, disabled, onConfirm, 
                   Priced by your risk tier {tier !== null && <TierChip tier={tier} />}
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">Then every round you contribute {formatMstc(contribution)} MSTC. All funds sit in the contract, not in anyone&apos;s account.</p>
+              <p className="text-xs text-muted-foreground">Then every round you contribute {formatMst(contribution)} MST. All funds sit in the contract, not in anyone&apos;s account.</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Lock {formatMstc(required ?? 0n)} MSTC &amp; join</AlertDialogAction>
+          <AlertDialogAction onClick={onConfirm}>Lock {formatMst(required ?? 0n)} MST &amp; join</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

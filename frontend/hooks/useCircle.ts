@@ -28,7 +28,7 @@ export function useCircle(id: number, viewer: string | null) {
         const r = await readCircleRoom(id, viewer);
         if (!r) throw e;
         source.current = "chain";
-        return { ...r, txCount: 0, mandates: [], source: "chain", viewerRequired: r.viewerRequired };
+        return { ...r, txCount: 0, mandates: [], latestDefault: null, source: "chain", viewerRequired: r.viewerRequired };
       }
     },
     source.current === "api" ? POLL_API_MS : POLL_CHAIN_MS,

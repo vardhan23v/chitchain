@@ -1,5 +1,5 @@
 import { chitInterface } from "@/lib/contract";
-import { formatMstc } from "@/lib/format";
+import { formatMst } from "@/lib/format";
 
 export interface UiError {
   message: string;
@@ -31,13 +31,15 @@ function isUserRejected(e: unknown): boolean {
   return m.includes("user rejected") || m.includes("user denied");
 }
 
-/** DESIGN §8 error table. */
+/** DESIGN §8 error table, contract v2. */
 const MESSAGES: Record<string, (args: readonly unknown[]) => string> = {
-  WrongAmount: (a) => `Send exactly ${formatMstc(a[0] as bigint)} MSTC.`,
+  WrongAmount: (a) => `Send exactly ${formatMst(a[0] as bigint)} MST.`,
   AlreadyPaid: () => "You've already paid this round.",
-  RoundClosed: () => "This round has closed — wait for settlement.",
-  BidNotHigher: (a) => `Someone bid ${formatMstc(a[0] as bigint)} MSTC; bid more to lead.`,
-  BidTooHigh: (a) => `Max discount this round is ${formatMstc(a[0] as bigint)} MSTC.`,
+  ContributionClosed: () => "Contributions for this round are closed.",
+  BiddingClosed: () => "Bidding for this round is closed.",
+  BiddingNotOver: () => "Bidding is still open — settle after the deadline.",
+  BidNotHigher: (a) => `Someone already offers a ${formatMst(a[0] as bigint)} MST discount — accept a lower payout to lead.`,
+  BidTooHigh: (a) => `Max discount this round is ${formatMst(a[0] as bigint)} MST — your accepted payout is too low.`,
   JoinWindowClosed: () => "This circle is no longer accepting members.",
   JoinWindowStillOpen: () => "The join window is still open — the circle can't be cancelled yet.",
   NotOpen: () => "This circle is no longer open.",
@@ -45,16 +47,20 @@ const MESSAGES: Record<string, (args: readonly unknown[]) => string> = {
   AlreadyJoined: () => "You're already in this circle.",
   NotMember: () => "You're not a member of this circle.",
   CircleFull: () => "This circle is full.",
-  RoundNotOver: () => "The round hasn't ended yet.",
   NotEligibleToBid: () => "Only members who haven't won yet can bid.",
   MemberRemoved: () => "You were removed from this circle — collateral exhausted.",
   NothingToWithdraw: () => "Nothing to withdraw.",
-  InvalidParams: () => "Invalid circle parameters.",
+  InvalidParams: () =>
+    "Invalid circle parameters. Check: 3–20 members, base collateral ≥ contribution, fee ≤ 3%, holdback ≤ 100%, max discount ≤ 50%, and Low ≤ Medium ≤ High multipliers.",
   OnlyOracle: () => "Only the risk oracle can do this.",
   OnlyTreasury: () => "Only the treasury can do this.",
   DirectPaymentRejected: () => "Direct payments are rejected — use the app.",
+  ReentrancyGuardReentrantCall: () => "The contract rejected a re-entrant call. Try again.",
 };
 
+const RAW_PATTERNS = [/CALL_EXCEPTION/i, /0x[0-9a-fA-F]{8,}/, /execution reverted/i, /missing revert data/i, /UNPREDICTABLE_GAS_LIMIT/i, /could not coalesce/i];
+
+/** Turns any wallet / RPC / contract error into a plain-English message. Never surfaces raw CALL_EXCEPTION or hex data. */
 export function parseTxError(e: unknown): UiError {
   if (isUserRejected(e)) return { message: "Cancelled in wallet.", neutral: true };
   const data = findRevertData(e);
@@ -63,16 +69,19 @@ export function parseTxError(e: unknown): UiError {
       const parsed = chitInterface.parseError(data);
       if (parsed) {
         const fn = MESSAGES[parsed.name];
-        return { message: fn ? fn(parsed.args) : `Transaction failed: ${parsed.name}`, neutral: false, name: parsed.name };
+        return { message: fn ? fn(parsed.args) : `The contract rejected this: ${parsed.name}.`, neutral: false, name: parsed.name };
       }
     } catch {
       /* fallthrough */
     }
   }
   const o = e as { shortMessage?: string; reason?: string; message?: string; code?: string };
-  if (o?.code === "INSUFFICIENT_FUNDS" || /insufficient funds/i.test(o?.message ?? "")) {
-    return { message: "Not enough MSTC for this transaction plus gas.", neutral: false };
+  if (o?.code === "INSUFFICIENT_FUNDS" || /insufficient funds/i.test(`${o?.message ?? ""} ${o?.shortMessage ?? ""}`)) {
+    return { message: "Not enough MST for this transaction plus gas.", neutral: false };
   }
-  const msg = o?.shortMessage ?? o?.reason ?? o?.message ?? "Transaction failed";
+  if (o?.code === "NETWORK_ERROR" || o?.code === "TIMEOUT") return { message: "MST testnet didn't answer — check your connection and try again.", neutral: false };
+  if (o?.code === "CALL_EXCEPTION" || o?.code === "UNPREDICTABLE_GAS_LIMIT") return { message: "The contract rejected this transaction. The round may have moved on — refresh and try again.", neutral: false };
+  const msg = o?.reason && !RAW_PATTERNS.some((p) => p.test(o.reason!)) ? o.reason : o?.shortMessage ?? o?.message ?? "Transaction failed";
+  if (RAW_PATTERNS.some((p) => p.test(msg))) return { message: "Transaction failed — the contract rejected it.", neutral: false };
   return { message: msg.length > 160 ? msg.slice(0, 157) + "…" : msg, neutral: false };
 }

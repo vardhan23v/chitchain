@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleDot, PlusCircle, User } from "lucide-react";
+import { CircleDot, LayoutDashboard, PlusCircle, User } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { NetworkPill } from "@/components/NetworkPill";
+import { TestnetBadge } from "@/components/TestnetBadge";
 import { WalletMenu } from "@/components/WalletMenu";
 import { useWallet } from "@/hooks/useWallet";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Circles", Icon: CircleDot },
+  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/create", label: "Create", Icon: PlusCircle },
 ] as const;
 
@@ -44,13 +46,14 @@ export function NavBar() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            <TestnetBadge className="hidden sm:inline-flex" />
             <NetworkPill />
             <WalletMenu />
           </div>
         </div>
       </header>
       {/* Mobile bottom tab bar (DESIGN §5) */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t bg-background/95 backdrop-blur md:hidden" aria-label="Mobile">
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t bg-background/95 backdrop-blur md:hidden" aria-label="Mobile">
         {items.map(({ href, label, Icon }) => (
           <Link
             key={label}

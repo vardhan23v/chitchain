@@ -6,7 +6,7 @@ import { MstcAmount } from "@/components/MstcAmount";
 import { TxLink } from "@/components/TxLink";
 import { WithdrawDialog } from "@/components/WithdrawDialog";
 import type { LabelMap } from "@/components/FeedItem";
-import { formatMstc, shortAddr } from "@/lib/format";
+import { formatMst, shortAddr } from "@/lib/format";
 import type { CircleSummary, FeedEvent, MemberInfo } from "@/lib/types";
 
 interface Props {
@@ -48,7 +48,7 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
       <div className="flex flex-wrap items-center gap-2">
         <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
         <h2 className="text-base">Circle completed</h2>
-        {claimable > 0n && <WithdrawDialog claimable={me!.claimable} onConfirm={onWithdraw} disabled={pending} className="ml-auto" label={`Withdraw all · ${formatMstc(me!.claimable)} MSTC`} />}
+        {claimable > 0n && <WithdrawDialog claimable={me!.claimable} onConfirm={onWithdraw} disabled={pending} className="ml-auto" label={`Withdraw all · ${formatMst(me!.claimable)} MST`} />}
       </div>
       {settled.length > 0 ? (
         <ul className="mt-3 divide-y text-sm">
@@ -56,8 +56,8 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
             <li key={e.id} className="flex flex-wrap items-center gap-x-3 py-1.5">
               <span className="tnum w-16 text-muted-foreground">Round {String(e.args.round ?? e.round)}</span>
               <span className="font-medium">{who(labels, e.args.winner)}</span>
-              <span className="tnum">payout {formatMstc(String(e.args.payout ?? "0"))}</span>
-              <span className="tnum text-muted-foreground">discount {formatMstc(String(e.args.discount ?? "0"))}</span>
+              <span className="tnum">payout {formatMst(String(e.args.payout ?? "0"))}</span>
+              <span className="tnum text-muted-foreground">discount {formatMst(String(e.args.discount ?? "0"))}</span>
               <TxLink hash={e.txHash} label="↗" />
             </li>
           ))}
@@ -67,9 +67,9 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
       )}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
         {Object.keys(dividends).length > 0 && (
-          <span>Dividends: {Object.entries(dividends).map(([k, v]) => `${labels[k] ?? shortAddr(k)} ${formatMstc(v)}`).join(" · ")}</span>
+          <span>Dividends: {Object.entries(dividends).map(([k, v]) => `${labels[k] ?? shortAddr(k)} ${formatMst(v)}`).join(" · ")}</span>
         )}
-        <span className="tnum">Fees collected {formatMstc(totalFees)} MSTC → reserve → treasury</span>
+        <span className="tnum">Fees collected {formatMst(totalFees)} MST → reserve → treasury</span>
         <span>Reserve now <MstcAmount wei={circle.reserve} size="sm" /></span>
       </div>
     </Card>

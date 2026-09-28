@@ -2,38 +2,37 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { CheckCircle2, Circle, ShieldHalf, Trophy, XCircle } from "lucide-react";
+import { XCircle } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/Avatar";
 import { CollateralBar } from "@/components/CollateralBar";
 import { ConfettiLite } from "@/components/Motion";
+import { ContributionChip, WonChip } from "@/components/StatusChip";
 import { TierChip } from "@/components/TierChip";
 import { memberShort } from "@/lib/labels";
-import { shortAddr } from "@/lib/format";
-import type { MemberInfo } from "@/lib/types";
+import { formatMst, shortAddr } from "@/lib/format";
+import type { CircleSummary, MemberInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export interface MemberExtra {
   wonRound?: number;
-  coveredRound?: number;
 }
 
 interface Props {
   m: MemberInfo;
-  baseCollateral: string;
+  circle: CircleSummary;
   isYou: boolean;
-  circleActive: boolean;
   extra?: MemberExtra;
-  currentRound: number;
 }
 
-export function MemberCard({ m, baseCollateral, isYou, circleActive, extra, currentRound }: Props) {
+export function MemberCard({ m, circle, isYou, extra }: Props) {
   const reduce = useReducedMotion();
   const [shake, setShake] = useState(false);
   const [confetti, setConfetti] = useState(0);
   const prevCollateral = useRef(m.collateral);
   const prevWon = useRef(m.hasWon);
+  const circleActive = circle.status === 1;
 
   useEffect(() => {
     if (BigInt(m.collateral) < BigInt(prevCollateral.current) && !reduce) {
@@ -48,15 +47,6 @@ export function MemberCard({ m, baseCollateral, isYou, circleActive, extra, curr
     if (m.hasWon && !prevWon.current) setConfetti((n) => n + 1);
     prevWon.current = m.hasWon;
   }, [m.hasWon]);
-
-  const covered = extra?.coveredRound !== undefined && extra.coveredRound >= currentRound - 1 && !m.paidThisRound;
-  const roundChip = m.removed ? null : m.paidThisRound ? (
-    <Badge variant="status-paid"><CheckCircle2 className="h-3 w-3" aria-hidden />Paid</Badge>
-  ) : covered ? (
-    <Badge variant="status-covered"><ShieldHalf className="h-3 w-3" aria-hidden />Covered by collateral</Badge>
-  ) : circleActive ? (
-    <Badge variant="status-pending"><Circle className="h-3 w-3" aria-hidden />Pending</Badge>
-  ) : null;
 
   return (
     <motion.div
@@ -82,16 +72,16 @@ export function MemberCard({ m, baseCollateral, isYou, circleActive, extra, curr
         </div>
       </div>
       <div className="flex flex-wrap gap-1">
-        <TierChip tier={m.tier} short />
+        <TierChip tier={m.tier} circle={circle} short />
         {m.removed && (
           <Badge variant="status-removed"><XCircle className="h-3 w-3" aria-hidden />Removed</Badge>
         )}
-        {m.hasWon && (
-          <Badge variant="status-won"><Trophy className="h-3 w-3" aria-hidden />Won{extra?.wonRound ? ` R${extra.wonRound}` : ""}</Badge>
-        )}
-        {roundChip}
+        {m.hasWon && <WonChip round={extra?.wonRound} />}
+        {!m.removed && circleActive && <ContributionChip status={m.contributionStatus} />}
       </div>
-      <CollateralBar collateral={m.collateral} baseCollateral={baseCollateral} tier={m.tier} removed={m.removed} />
+      <CollateralBar collateral={m.collateral} baseCollateral={circle.baseCollateral} tier={m.tier} removed={m.removed} circle={circle} />
+      {m.defaults > 0 && <div className="text-[11px] text-muted-foreground">{m.defaults} missed · used {formatMst(m.collateralUsed)} MST collateral</div>}
     </motion.div>
   );
 }
+

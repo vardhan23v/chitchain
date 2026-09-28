@@ -19,6 +19,7 @@ const badgeVariants = cva(
         "status-paid": "border-success/30 bg-success/10 text-success",
         "status-pending": "border-border bg-muted text-muted-foreground",
         "status-covered": "border-warning/30 bg-warning/10 text-warning",
+        "status-partial": "border-danger/50 bg-transparent text-danger",
         "status-won": "border-primary/30 bg-primary/10 text-primary",
         "status-removed": "border-danger/30 bg-danger/10 text-danger",
         chain: "border-chain/30 bg-chain/10 text-chain",

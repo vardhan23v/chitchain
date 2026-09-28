@@ -1,12 +1,38 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { createElement, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ContractTransactionResponse } from "ethers";
 import { parseTxError } from "@/lib/errors";
 import { txUrl } from "@/lib/format";
-import { createElement } from "react";
 import { TxToastLink } from "@/components/TxLink";
+
+export type TxStage = "idle" | "wallet" | "signing" | "submitted" | "confirming" | "confirmed" | "failed";
+
+export const TX_STAGES: { key: TxStage; label: string }[] = [
+  { key: "wallet", label: "Waiting for wallet" },
+  { key: "signing", label: "Signing" },
+  { key: "submitted", label: "Submitted" },
+  { key: "confirming", label: "Confirming" },
+  { key: "confirmed", label: "Confirmed" },
+];
+
+export const STAGE_LABEL: Record<TxStage, string> = {
+  idle: "",
+  wallet: "Waiting for wallet",
+  signing: "Signing",
+  submitted: "Submitted",
+  confirming: "Confirming",
+  confirmed: "Confirmed",
+  failed: "Failed",
+};
+
+export interface TxState {
+  stage: TxStage;
+  hash: string | null;
+  /** Plain-English failure message (never raw CALL_EXCEPTION / hex). */
+  error: string | null;
+}
 
 export interface TxOptions {
   /** e.g. "Contribution recorded on-chain" */
@@ -16,40 +42,61 @@ export interface TxOptions {
 }
 
 /**
- * DESIGN §8: loading "Confirm in BridgeKey…" → "Submitted" toast with link → wait() → success toast with link.
- * Never shows success before the tx is mined.
+ * DESIGN §8 transaction UX with five surfaced stages:
+ * Waiting for wallet → Signing → Submitted → Confirming → Confirmed (or Failed: <plain message>).
+ * One sonner toast is updated in place; `state` drives the inline stepper. Never shows success before mined.
  */
 export function useTx() {
-  const [pending, setPending] = useState(false);
+  const [state, setState] = useState<TxState>({ stage: "idle", hash: null, error: null });
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const later = (ms: number, fn: () => void) => timers.current.push(setTimeout(fn, ms));
+  const clearTimers = () => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+  };
 
   const run = useCallback(async (send: () => Promise<ContractTransactionResponse>, opts: TxOptions): Promise<string | null> => {
-    setPending(true);
-    const loadingId = toast.loading("Confirm in BridgeKey…");
+    const id = `tx-${Date.now()}`;
+    const set = (stage: TxStage, extra?: Partial<TxState>) => setState((s) => ({ ...s, stage, ...extra }));
+    setState({ stage: "wallet", hash: null, error: null });
+    toast.loading(STAGE_LABEL.wallet + "…", { id, description: "Open BridgeKey to continue" });
+    // The wallet prompt appears once the provider request goes out; after a beat we call it "Signing".
+    later(700, () => {
+      setState((s) => (s.stage === "wallet" ? { ...s, stage: "signing" } : s));
+      toast.loading(STAGE_LABEL.signing + "…", { id, description: "Confirm in BridgeKey" });
+    });
     try {
       const tx = await send();
-      toast.dismiss(loadingId);
-      const minedId = toast.loading("Submitted — waiting for confirmation", {
-        description: createElement(TxToastLink, { hash: tx.hash }),
+      clearTimers();
+      set("submitted", { hash: tx.hash });
+      toast.loading(STAGE_LABEL.submitted, { id, description: createElement(TxToastLink, { hash: tx.hash }) });
+      later(800, () => {
+        setState((s) => (s.stage === "submitted" ? { ...s, stage: "confirming" } : s));
+        toast.loading(STAGE_LABEL.confirming + "…", { id, description: createElement(TxToastLink, { hash: tx.hash }) });
       });
       const receipt = await tx.wait();
-      toast.dismiss(minedId);
+      clearTimers();
       if (!receipt || receipt.status !== 1) {
-        toast.error("Transaction reverted", { description: createElement(TxToastLink, { hash: tx.hash }) });
+        set("failed", { error: "The transaction reverted on-chain." });
+        toast.error("Failed: the transaction reverted on-chain.", { id, description: createElement(TxToastLink, { hash: tx.hash }) });
         return null;
       }
-      toast.success(opts.success, { description: createElement(TxToastLink, { hash: tx.hash }) });
+      set("confirmed");
+      toast.success(`${STAGE_LABEL.confirmed} — ${opts.success}`, { id, description: createElement(TxToastLink, { hash: tx.hash }) });
       await opts.onMined?.(tx.hash);
       return tx.hash;
     } catch (e) {
-      toast.dismiss(loadingId);
+      clearTimers();
       const ui = parseTxError(e);
-      if (ui.neutral) toast(ui.message);
-      else toast.error(ui.message);
+      set("failed", { error: ui.message });
+      if (ui.neutral) toast(ui.message, { id });
+      else toast.error(`Failed: ${ui.message}`, { id });
       return null;
     } finally {
-      setPending(false);
+      later(4000, () => setState((s) => (s.stage === "confirmed" || s.stage === "failed" ? { stage: "idle", hash: null, error: null } : s)));
     }
   }, []);
 
-  return { run, pending, txUrl };
+  const pending = state.stage === "wallet" || state.stage === "signing" || state.stage === "submitted" || state.stage === "confirming";
+  return { run, pending, state, txUrl };
 }

@@ -1,5 +1,5 @@
 import { API_URL } from "@/lib/chain";
-import type { AgentLog, CircleRoom, CircleSummary, DemoState, FeedEvent, Mandate, RiskResult, Stats } from "@/lib/types";
+import type { AgentLog, CircleRoom, CircleSummary, DefaultRecord, DemoState, FeedEvent, Level, Mandate, MyCircle, RiskResult, RoundHistoryRow, Stats } from "@/lib/types";
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public code?: string) {
@@ -29,11 +29,35 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = 8000): P
 const post = <T>(path: string, body?: unknown, timeoutMs?: number) =>
   request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }, timeoutMs);
 
+export interface MandateBody {
+  circleId: number;
+  member: string;
+  goal: string;
+  /** MST decimal string */
+  desiredPayout?: string;
+  maxDiscountPct?: number;
+  urgency?: Level;
+  riskTolerance?: Level;
+}
+
+export interface DemoNewCircleBody {
+  contributionDuration?: number;
+  biddingDuration?: number;
+  /** MST decimal string */
+  contribution?: string;
+  holdbackBps?: number;
+  maxDiscountBps?: number;
+}
+
 export const api = {
   health: () => request<{ ok: boolean; chainId: number; latestBlock: number; lastIndexedBlock: number; contract: string; keeper: string; explorer: string }>("/health", undefined, 4000),
   stats: () => request<Stats>("/stats"),
   circles: () => request<{ circles: CircleSummary[] }>("/circles"),
   circle: (id: number) => request<CircleRoom>(`/circles/${id}`),
+  rounds: (id: number) => request<{ rounds: RoundHistoryRow[] }>(`/circles/${id}/rounds`),
+  defaults: (id: number) => request<{ defaults: DefaultRecord[] }>(`/circles/${id}/defaults`),
+  activity: (addr: string, limit = 100) => request<{ events: FeedEvent[] }>(`/members/${addr}/activity?limit=${limit}`),
+  myCircles: (addr: string) => request<{ circles: MyCircle[] }>(`/members/${addr}/circles`),
   feed: (p: { circleId?: number; since?: number; limit?: number }) => {
     const q = new URLSearchParams();
     if (p.circleId !== undefined) q.set("circleId", String(p.circleId));
@@ -43,8 +67,7 @@ export const api = {
   },
   risk: (addr: string) => request<RiskResult>(`/members/${addr}/risk`),
   assess: (addr: string) => post<RiskResult & { txHash: string }>(`/members/${addr}/assess`, undefined, 60_000),
-  mandate: (body: { circleId: number; member: string; goal: string; maxDiscountPct?: number }) =>
-    post<{ mandate: Mandate; decision: AgentLog | null }>("/agent/mandate", body, 60_000),
+  mandate: (body: MandateBody) => post<{ mandate: Mandate; decision: AgentLog | null }>("/agent/mandate", body, 60_000),
   deleteMandate: (circleId: number, member: string) =>
     request<{ ok: boolean }>(`/agent/mandate?circleId=${circleId}&member=${member}`, { method: "DELETE" }),
   agentLogs: (circleId: number, limit = 20) => request<{ logs: AgentLog[] }>(`/agent/logs?circleId=${circleId}&limit=${limit}`),
@@ -52,8 +75,8 @@ export const api = {
   demoFund: () => post<{ txHashes: string[] }>("/demo/fund", undefined, 120_000),
   demoAssessAll: () => post<{ results: (RiskResult & { txHash: string })[] }>("/demo/assess-all", undefined, 120_000),
   demoSkip: (address: string, skip: boolean) => post<{ ok: boolean }>("/demo/skip", { address, skip }),
-  demoNewCircle: (body?: { roundDuration?: number; contribution?: string }) =>
-    post<{ circleId: number; txHash: string }>("/demo/new-circle", body ?? { roundDuration: 30 }, 180_000),
+  demoNewCircle: (body?: DemoNewCircleBody) =>
+    post<{ circleId: number; txHash: string }>("/demo/new-circle", body ?? { contributionDuration: 30, biddingDuration: 30 }, 180_000),
   demoWithdraw: (address: string, circleId: number) => post<{ txHash: string }>("/demo/withdraw", { address, circleId }, 60_000),
   settle: (id: number) => post<{ txHash: string }>(`/circles/${id}/settle`, undefined, 60_000),
 };

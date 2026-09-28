@@ -1,7 +1,7 @@
 import { HelpCircle, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { TIER_LABEL } from "@/lib/labels";
-import type { Tier } from "@/lib/types";
+import { tierLabelFor } from "@/lib/labels";
+import type { CircleSummary, Tier } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const META: Record<Tier, { variant: "tier-unassessed" | "tier-low" | "tier-medium" | "tier-high"; Icon: typeof Shield }> = {
@@ -11,9 +11,17 @@ const META: Record<Tier, { variant: "tier-unassessed" | "tier-low" | "tier-mediu
   3: { variant: "tier-high", Icon: ShieldAlert },
 };
 
-export function TierChip({ tier, className, short }: { tier: Tier; className?: string; short?: boolean }) {
+interface Props {
+  tier: Tier;
+  className?: string;
+  short?: boolean;
+  /** When given, the multiplier shown comes from this circle's lowBps/mediumBps/highBps. */
+  circle?: Pick<CircleSummary, "lowBps" | "mediumBps" | "highBps"> | null;
+}
+
+export function TierChip({ tier, className, short, circle }: Props) {
   const { variant, Icon } = META[tier] ?? META[0];
-  const label = TIER_LABEL[tier] ?? TIER_LABEL[0];
+  const label = tierLabelFor(tier, circle);
   return (
     <Badge variant={variant} className={cn("whitespace-nowrap", className)}>
       <Icon className="h-3.5 w-3.5" aria-hidden />

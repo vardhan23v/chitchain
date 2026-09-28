@@ -1,8 +1,8 @@
 "use client";
 
-import { Bot, CheckCircle2, Coins, Gavel, Lock, LogIn, LogOut, Play, ShieldHalf, Trophy, Wallet, XCircle, type LucideIcon, Ban, Flag, Sparkles, UserCheck } from "lucide-react";
+import { Bot, CheckCircle2, Coins, Gavel, Lock, LogIn, LogOut, Play, ShieldHalf, ShieldAlert, Trophy, Wallet, XCircle, type LucideIcon, Ban, Flag, Sparkles, UserCheck } from "lucide-react";
 import { TxLink } from "@/components/TxLink";
-import { formatMstc, shortAddr, timeAgo } from "@/lib/format";
+import { big, formatMst, shortAddr, timeAgo } from "@/lib/format";
 import { TIER_NAME } from "@/lib/labels";
 import type { FeedEvent, Tier } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -23,26 +23,33 @@ export function renderFeedEvent(e: FeedEvent, labels: LabelMap): Rendered {
   const member = who(a.member ?? a.winner ?? a.creator);
   switch (e.name) {
     case "Contributed":
-      return { Icon: CheckCircle2, color: "text-success", text: `${member} paid ${formatMstc(str(a.amount))} MSTC` };
+      return { Icon: CheckCircle2, color: "text-success", text: `${member} paid ${formatMst(str(a.amount))} MST` };
     case "BidPlaced":
       if (e.agent) {
-        return { Icon: Bot, color: "text-agent", text: `Agent for ${who(e.agent.member || a.member)} bid ${formatMstc(str(a.discount))} MSTC`, reason: e.agent.reason };
+        return { Icon: Bot, color: "text-agent", text: `Agent for ${who(e.agent.member || a.member)} offered a ${formatMst(str(a.discount))} MST discount`, reason: e.agent.reason };
       }
-      return { Icon: Gavel, color: "text-primary", text: `${member} bid ${formatMstc(str(a.discount))} MSTC` };
-    case "Covered":
-      return { Icon: ShieldHalf, color: "text-warning", text: `${member} missed — collateral covered ${formatMstc(str(a.fromCollateral ?? a.amount))} MSTC` };
+      return { Icon: Gavel, color: "text-primary", text: `${member} offered a ${formatMst(str(a.discount))} MST discount` };
+    case "DefaultDetected": {
+      const shortfall = big(str(a.shortfall));
+      if (shortfall > 0n) {
+        return { Icon: ShieldAlert, color: "text-danger", text: `${member} missed — partially covered, shortfall ${formatMst(shortfall)} MST` };
+      }
+      return { Icon: ShieldHalf, color: "text-warning", text: `${member} missed — collateral covered ${formatMst(str(a.fromCollateral))} MST` };
+    }
+    case "Covered": // v1 event, kept for old indexed rows
+      return { Icon: ShieldHalf, color: "text-warning", text: `${member} missed — collateral covered ${formatMst(str(a.fromCollateral ?? a.amount))} MST` };
     case "Removed":
       return { Icon: XCircle, color: "text-danger", text: `${member} removed — collateral exhausted` };
     case "HoldbackApplied":
-      return { Icon: Lock, color: "text-primary", text: `${formatMstc(str(a.amount))} MSTC held back to secure ${member}'s future dues` };
+      return { Icon: Lock, color: "text-primary", text: `${formatMst(str(a.amount))} MST held back to secure ${member}'s future dues` };
     case "RoundSettled":
-      return { Icon: Trophy, color: "text-primary", text: `${who(a.winner)} won Round ${str(a.round ?? e.round)} · ${formatMstc(str(a.payout))} MSTC payout` };
+      return { Icon: Trophy, color: "text-primary", text: `${who(a.winner)} won Round ${str(a.round ?? e.round)} · ${formatMst(str(a.payout))} MST payout` };
     case "DividendCredited":
-      return { Icon: Coins, color: "text-success", text: `${member} earned ${formatMstc(str(a.amount))} MSTC dividend` };
+      return { Icon: Coins, color: "text-success", text: `${member} earned ${formatMst(str(a.amount))} MST dividend` };
     case "Joined":
-      return { Icon: LogIn, color: "text-primary", text: `${member} joined · ${TIER_NAME[Number(a.tier) as Tier] ?? "Unassessed"} · locked ${formatMstc(str(a.collateral))} MSTC` };
+      return { Icon: LogIn, color: "text-primary", text: `${member} joined · ${TIER_NAME[Number(a.tier) as Tier] ?? "Unassessed"} · locked ${formatMst(str(a.collateral))} MST` };
     case "Left":
-      return { Icon: LogOut, color: "text-muted-foreground", text: `${member} left · ${formatMstc(str(a.refund))} MSTC refunded` };
+      return { Icon: LogOut, color: "text-muted-foreground", text: `${member} left · ${formatMst(str(a.refund))} MST refunded` };
     case "CircleCreated":
       return { Icon: Sparkles, color: "text-pot", text: `Circle #${str(a.circleId ?? e.circleId)} created by ${member}` };
     case "CircleStarted":
@@ -52,12 +59,19 @@ export function renderFeedEvent(e: FeedEvent, labels: LabelMap): Rendered {
     case "CircleCompleted":
       return { Icon: Flag, color: "text-success", text: `Circle #${str(a.circleId ?? e.circleId)} completed` };
     case "Withdrawn":
-      return { Icon: Wallet, color: "text-success", text: `${member} withdrew ${formatMstc(str(a.amount))} MSTC` };
+      return { Icon: Wallet, color: "text-success", text: `${member} withdrew ${formatMst(str(a.amount))} MST` };
     case "RiskTierSet":
       return { Icon: UserCheck, color: "text-agent", text: `${member} assessed · ${TIER_NAME[Number(a.tier) as Tier] ?? "Unassessed"} risk` };
     default:
       return { Icon: CheckCircle2, color: "text-muted-foreground", text: e.name };
   }
+}
+
+/** Amount (wei string) an event moved, if any — used by the activity page. */
+export function eventAmount(e: FeedEvent): string | null {
+  const a = e.args ?? {};
+  const k = ["amount", "payout", "collateral", "refund", "discount", "fromCollateral"].find((key) => a[key] !== undefined);
+  return k ? String(a[k]) : null;
 }
 
 export function FeedItem({ e, labels, now }: { e: FeedEvent; labels: LabelMap; now: number }) {

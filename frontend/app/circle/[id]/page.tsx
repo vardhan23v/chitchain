@@ -1,27 +1,26 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AgentPanel } from "@/components/AgentPanel";
 import { AuctionPanel } from "@/components/AuctionPanel";
+import { DefaultEventCard } from "@/components/DefaultEventCard";
 import { Feed } from "@/components/Feed";
 import type { LabelMap } from "@/components/FeedItem";
-import { MembersGrid } from "@/components/MembersGrid";
 import { PotMeter } from "@/components/PotMeter";
 import { PrimaryAction } from "@/components/PrimaryAction";
 import { RoomBanners } from "@/components/RoomBanners";
 import { RoomHeader } from "@/components/RoomHeader";
-import { useAgentLogs } from "@/hooks/useAgentLogs";
+import { RoomTabs } from "@/components/room/RoomTabs";
+import { TxStepper } from "@/components/TxStepper";
 import { useCircle } from "@/hooks/useCircle";
+import { useRoundClock } from "@/hooks/useCountdown";
 import { useFeed } from "@/hooks/useFeed";
 import { useRoomActions } from "@/hooks/useRoomActions";
 import { useViewerJoinInfo } from "@/hooks/useViewerJoinInfo";
 import { useWallet } from "@/hooks/useWallet";
 import { HAS_CONTRACT } from "@/lib/chain";
-import { sameAddr, shortAddr } from "@/lib/format";
-import type { MemberInfo } from "@/lib/types";
+import { shortAddr } from "@/lib/format";
 
 export default function CircleRoomPage() {
   const params = useParams<{ id: string }>();
@@ -30,13 +29,11 @@ export default function CircleRoomPage() {
   const room = useCircle(id, wallet.account);
   const feed = useFeed(id);
   const actions = useRoomActions(id, room.refetch);
-  const agentLogs = useAgentLogs(id, room.data?.source === "api");
   const bidRef = useRef<HTMLDivElement>(null);
-  const [agentPick, setAgentPick] = useState<string>("");
-
   const data = room.data;
   const isMember = !!room.me?.joined;
   const joinInfo = useViewerJoinInfo(id, wallet.account, !!data && data.circle.status === 0 && !isMember);
+  const clock = useRoundClock(data?.round, data?.circle.status === 1);
 
   const labels = useMemo<LabelMap>(() => {
     const m: LabelMap = {};
@@ -44,11 +41,6 @@ export default function CircleRoomPage() {
     return m;
   }, [data?.members]);
   const labelFor = (a: string) => labels[a.toLowerCase()] ?? shortAddr(a);
-
-  const isDemo = (m: MemberInfo | null) => !!m && (m.custodial === true || !!m.label);
-  const demoMembers = (data?.members ?? []).filter((m) => isDemo(m));
-  const agentMember: MemberInfo | null = isDemo(room.me) ? room.me : demoMembers.find((m) => sameAddr(m.address, agentPick)) ?? null;
-  const mandate = data?.mandates.find((x) => agentMember && sameAddr(x.member, agentMember.address) && x.active) ?? null;
 
   if (!Number.isFinite(id) || id < 1) return <p className="text-muted-foreground">Invalid circle id.</p>;
   if (!data) {
@@ -66,31 +58,39 @@ export default function CircleRoomPage() {
   const { circle, round, members } = data;
   const viewerRequired = room.me?.joined ? null : joinInfo.required ?? (data.viewerRequired ? BigInt(data.viewerRequired) : null);
   const viewerTier = room.me?.joined ? room.me.tier : joinInfo.tier;
+  const activeMembers = members.filter((m) => m.joined && !m.removed).length;
+  const showLatestDefault = data.latestDefault && circle.status === 1 && data.latestDefault.round >= circle.round - 1;
+  const refetchAll = () => void Promise.all([room.refetch(), feed.refetch()]);
 
   const primary = (
-    <PrimaryAction
-      wallet={wallet}
-      circle={circle}
-      me={room.me}
-      viewerRequired={viewerRequired}
-      viewerTier={viewerTier}
-      pending={actions.pending}
-      hasContract={HAS_CONTRACT}
-      on={{
-        join: () => viewerRequired !== null && void actions.join(viewerRequired),
-        contribute: () => void actions.contribute(BigInt(circle.contribution)),
-        withdraw: () => void actions.withdraw(),
-        leave: () => void actions.leave(),
-        cancel: () => void actions.cancel(),
-        focusBid: () => bidRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
-      }}
-    />
+    <div className="space-y-2">
+      <PrimaryAction
+        wallet={wallet}
+        circle={circle}
+        me={room.me}
+        viewerRequired={viewerRequired}
+        viewerTier={viewerTier}
+        pending={actions.pending}
+        hasContract={HAS_CONTRACT}
+        phase={clock.roundPhase}
+        on={{
+          join: () => viewerRequired !== null && void actions.join(viewerRequired),
+          contribute: () => void actions.contribute(BigInt(circle.contribution)),
+          withdraw: () => void actions.withdraw(),
+          leave: () => void actions.leave(),
+          cancel: () => void actions.cancel(),
+          focusBid: () => bidRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        }}
+      />
+      <TxStepper state={actions.tx} />
+    </div>
   );
 
   return (
-    <div className="space-y-5 pb-24 md:pb-0">
-      <RoomHeader circle={circle} txCount={data.txCount} onSettle={() => void actions.settle(!!wallet.account && wallet.correctChain)} settling={actions.pending} source={data.source} />
+    <div className="space-y-5 pb-28 md:pb-0">
+      <RoomHeader circle={circle} round={round} txCount={data.txCount} onSettle={() => void actions.settle(!!wallet.account && wallet.correctChain)} settling={actions.pending} source={data.source} />
       <RoomBanners circle={circle} me={room.me} members={members} events={feed.events} labels={labels} onWithdraw={() => void actions.withdraw()} pending={actions.pending} />
+      {showLatestDefault && data.latestDefault && <DefaultEventCard d={data.latestDefault} compact />}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-5">
@@ -99,32 +99,11 @@ export default function CircleRoomPage() {
               <PotMeter circle={circle} round={round} />
               <div className="hidden md:block">{primary}</div>
             </div>
-            <div ref={bidRef} className="order-3 md:order-none">
-              <AuctionPanel round={round} active={circle.status === 1} me={room.me} labelFor={labelFor} onBid={actions.bid} pending={actions.pending} />
+            <div ref={bidRef}>
+              <AuctionPanel round={round} phase={clock.roundPhase} active={circle.status === 1} me={room.me} activeMembers={activeMembers} labelFor={labelFor} onBid={actions.bid} pending={actions.pending} />
             </div>
           </div>
-          <MembersGrid circle={circle} members={members} viewer={wallet.account} events={feed.events} />
-          <div className="space-y-2">
-            {!isDemo(room.me) && demoMembers.length > 0 && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                Drive the agent for a demo wallet:
-                <Select value={agentPick} onValueChange={setAgentPick}>
-                  <SelectTrigger className="h-8 w-40 rounded-full"><SelectValue placeholder="Pick member" /></SelectTrigger>
-                  <SelectContent>{demoMembers.map((m) => <SelectItem key={m.address} value={m.address}>Member {m.label} · {shortAddr(m.address)}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            )}
-            <AgentPanel
-              circleId={id}
-              member={agentMember}
-              isDemoWallet={isDemo(agentMember)}
-              logs={agentLogs.data ? agentLogs.data.filter((l) => !agentMember || sameAddr(l.member, agentMember.address)) : null}
-              mandate={mandate}
-              labelFor={labelFor}
-              onChanged={() => void Promise.all([room.refetch(), agentLogs.refetch(), feed.refetch()])}
-              backendDown={data.source !== "api"}
-            />
-          </div>
+          <RoomTabs data={data} me={room.me} viewer={wallet.account} events={feed.events} labelFor={labelFor} onChanged={refetchAll} />
         </div>
         <Feed events={feed.events} down={feed.down} loading={feed.loading} labels={labels} />
       </div>
