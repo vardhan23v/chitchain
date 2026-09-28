@@ -27,7 +27,7 @@ export async function buildFeatures(address: string): Promise<Features> {
     }
   }
   const synthetic = seedFor(labelOf(address));
-  const history = eventsForAddress(address, 50);
+  const history = await eventsForAddress(address, 50);
   const reputation: Reputation = synthetic
     ? {
         paidOnTime: onChain.paidOnTime + synthetic.paidOnTime,

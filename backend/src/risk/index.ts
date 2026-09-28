@@ -20,7 +20,7 @@ const CACHE_SEC = 30;
 export async function assessRisk(addressRaw: string, fresh = false): Promise<RiskResult> {
   const address = getAddress(addressRaw);
   if (!fresh) {
-    const cached = getRiskCache(address, CACHE_SEC);
+    const cached = await getRiskCache(address, CACHE_SEC);
     if (cached) return JSON.parse(cached) as RiskResult;
   }
   const f = await buildFeatures(address);
@@ -29,8 +29,8 @@ export async function assessRisk(addressRaw: string, fresh = false): Promise<Ris
   const result: RiskResult = {
     address, score: s.score, tier: s.tier, onChainTier: f.onChainTier, factors: s.factors,
     explanation: ex.explanation, explanationSource: ex.explanationSource, dataSource: f.dataSource,
-    reputation: f.reputation, history: f.history.map(eventRowToFeed),
+    reputation: f.reputation, history: await Promise.all(f.history.map(eventRowToFeed)),
   };
-  setRiskCache(address, JSON.stringify(result));
+  await setRiskCache(address, JSON.stringify(result));
   return result;
 }

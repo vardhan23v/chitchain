@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { config } from "./config";
 import { contractAddress, keeper, provider } from "./chain";
-import { getLastBlock } from "./db";
+import { getLastBlock, initDb } from "./db";
 import { startIndexer } from "./indexer";
 import { startKeeper } from "./keeper";
 import { startAutopilot } from "./autopilot";
@@ -27,7 +27,7 @@ app.get("/health", wrap(async (_req, res) => {
   let latestBlock: number | null = null;
   try { latestBlock = await provider.getBlockNumber(); } catch { /* rpc down */ }
   res.json({
-    ok: latestBlock !== null, chainId: config.MST_CHAIN_ID, latestBlock, lastIndexedBlock: getLastBlock(),
+    ok: latestBlock !== null, chainId: config.MST_CHAIN_ID, latestBlock, lastIndexedBlock: await getLastBlock(),
     contract: contractAddress, keeper: keeper?.address ?? null, explorer: config.EXPLORER,
   });
 }));
@@ -47,9 +47,19 @@ bus.on("roundStarted", (circleId) => {
 process.on("unhandledRejection", (e) => console.error(`[process] unhandled rejection: ${e instanceof Error ? e.stack ?? e.message : String(e)}`));
 process.on("uncaughtException", (e) => console.error(`[process] uncaught exception: ${e.stack ?? e.message}`));
 
-app.listen(config.PORT, () => {
-  console.log(`[api] listening on http://localhost:${config.PORT} (chain ${config.MST_CHAIN_ID}, rpc ${config.MST_RPC_URL})`);
-  startIndexer();
-  startKeeper();
-  startAutopilot();
-});
+async function main(): Promise<void> {
+  try {
+    await initDb(); // fail fast on a bad DATABASE_URL; tables are created by `prisma db push` in `npm start`
+    console.log("[db] connected");
+  } catch (e) {
+    console.error(`[db] cannot connect (check DATABASE_URL): ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  }
+  app.listen(config.PORT, () => {
+    console.log(`[api] listening on http://localhost:${config.PORT} (chain ${config.MST_CHAIN_ID}, rpc ${config.MST_RPC_URL})`);
+    void startIndexer();
+    startKeeper();
+    startAutopilot();
+  });
+}
+void main();

@@ -22,10 +22,11 @@ demo.get("/demo/state", wrap(async (_req, res) => {
     label: w.label, address: w.address,
     balance: (await provider.getBalance(w.address)).toString(),
     tier: isConfigured() ? await getRiskTier(w.address) : 0,
-    skip: getSkip(w.address),
+    skip: await getSkip(w.address),
     custodial: true as const, // custodial demo wallet — backend holds the key
   })));
-  res.json({ wallets, txCount: countDistinctTx(), contract: contractAddress, circleId: latestDemoCircle() });
+  const [txCount, circleId] = await Promise.all([countDistinctTx(), latestDemoCircle()]);
+  res.json({ wallets, txCount, contract: contractAddress, circleId });
 }));
 
 /** POST /demo/fund — top up every demo wallet below 1 MSTC to 2 MSTC from the deployer. */
@@ -54,7 +55,7 @@ demo.post("/demo/skip", wrap(async (req, res) => {
   if (!parsed.success) throw new ApiError(400, "body must be { address, skip: boolean }", "BAD_BODY");
   const address = parseAddress(parsed.data.address);
   if (!demoWallet(address)) throw new ApiError(400, "not a demo wallet", "NOT_DEMO_WALLET");
-  setSkip(address, parsed.data.skip);
+  await setSkip(address, parsed.data.skip);
   console.log(`[demo] skip ${demoWallet(address)?.label} = ${parsed.data.skip}`);
   res.json({ ok: true });
 }));
@@ -85,11 +86,11 @@ demo.post("/demo/new-circle", wrap(async (req, res) => {
     } catch { /* not ours */ }
   }
   if (circleId === null) {
-    const ev = findEvent("CircleCreated", rc.hash);
+    const ev = await findEvent("CircleCreated", rc.hash);
     if (ev) circleId = Number((JSON.parse(ev.args_json) as { circleId: number }).circleId);
   }
   if (circleId === null) throw new ApiError(500, "CircleCreated event not found", "NO_EVENT");
-  addDemoCircle(circleId);
+  await addDemoCircle(circleId);
   console.log(`[demo] circle ${circleId} created txHash ${rc.hash}; joining ${demoWallets.length} demo wallets`);
   await joinAll(circleId);
   void planRound(circleId).catch((e) => console.error(`[agent] plan after new circle: ${e instanceof Error ? e.message : String(e)}`));

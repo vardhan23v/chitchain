@@ -10,6 +10,6 @@ feed.get("/feed", wrap(async (req, res) => {
   const circleId = optionalInt(req.query.circleId);
   const since = optionalInt(req.query.since);
   const limit = Math.min(optionalInt(req.query.limit) ?? 100, circleId === undefined ? 100 : 500);
-  const rows = listEvents({ circleId, since, limit });
-  res.json({ events: rows.map(eventRowToFeed) });
+  const rows = await listEvents({ circleId, since, limit });
+  res.json({ events: await Promise.all(rows.map(eventRowToFeed)) });
 }));

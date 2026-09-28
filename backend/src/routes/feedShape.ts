@@ -7,10 +7,10 @@ export interface FeedEvent {
 }
 
 /** DB row → API FeedEvent; BidPlaced rows whose tx matches an agent log carry the agent's reason. */
-export function eventRowToFeed(r: EventRow): FeedEvent {
+export async function eventRowToFeed(r: EventRow): Promise<FeedEvent> {
   let agent: FeedEvent["agent"] = null;
   if (r.name === "BidPlaced") {
-    const log = agentLogByTx(r.tx_hash);
+    const log = await agentLogByTx(r.tx_hash);
     if (log) agent = { reason: log.reason, member: log.member };
   }
   return {

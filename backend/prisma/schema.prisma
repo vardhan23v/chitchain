@@ -1,0 +1,89 @@
+// ChitChain backend schema (PostgreSQL). Tables/columns are snake_case via @@map/@map;
+// the TypeScript row types in src/db/index.ts mirror those snake_case names.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Decoded contract events written by the indexer. (tx_hash, log_index) makes re-indexing idempotent.
+model Event {
+  id       Int    @id @default(autoincrement())
+  circleId Int?   @map("circle_id")
+  round    Int?
+  name     String
+  argsJson String @map("args_json")
+  txHash   String @map("tx_hash")
+  logIndex Int    @map("log_index")
+  block    Int
+  ts       Int
+
+  @@unique([txHash, logIndex])
+  @@index([circleId, id])
+  @@index([name])
+  @@map("events")
+}
+
+/// One row per agent decision (bid or skip) per member per round.
+model AgentLog {
+  id           Int     @id @default(autoincrement())
+  circleId     Int     @map("circle_id")
+  round        Int
+  member       String
+  agentWallet  String  @map("agent_wallet")
+  bidThisRound Boolean @map("bid_this_round")
+  discount     String // wei as decimal string (bigint-as-string convention)
+  reason       String
+  source       String // "llm" | "fallback"
+  txHash       String? @map("tx_hash")
+  error        String?
+  ts           Int
+
+  @@index([circleId, id])
+  @@map("agent_logs")
+}
+
+/// A member's standing instruction to the bidding agent for one circle.
+model Mandate {
+  circleId       Int     @map("circle_id")
+  member         String
+  goal           String
+  maxDiscountPct Float?  @map("max_discount_pct")
+  active         Boolean @default(true)
+  createdAt      Int     @map("created_at")
+
+  @@id([circleId, member])
+  @@map("mandates")
+}
+
+model RiskCache {
+  addr String @id @map("address")
+  json String @map("result_json")
+  ts   Int
+
+  @@map("risk_cache")
+}
+
+model DemoSkip {
+  addr String  @id @map("address")
+  skip Boolean
+
+  @@map("demo_skip")
+}
+
+model DemoCircle {
+  circleId  Int @id @map("circle_id")
+  createdAt Int @map("created_at")
+
+  @@map("demo_circles")
+}
+
+model Meta {
+  key   String @id
+  value String
+
+  @@map("meta")
+}

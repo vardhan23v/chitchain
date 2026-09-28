@@ -33,14 +33,15 @@ circles.get("/circles/:id", wrap(async (req, res) => {
   const count = await getCircleCount();
   if (id > count) throw new ApiError(404, "circle not found", "NOT_FOUND");
   const [c, round, addrs] = await Promise.all([getCircle(id), getRound(id), getMembers(id)]);
-  const members = await Promise.all(addrs.map(async (address) => {
-    const [m, required] = await Promise.all([getMember(id, address), getRequiredCollateral(address, id)]);
-    return toJson({ address, label: labelOf(address), ...m, requiredCollateral: required });
-  }));
-  res.json({
-    circle: circleSummary(id, c), round: toJson(round), members,
-    txCount: countEventsForCircle(id), mandates: activeMandates(id).map(mandateToApi),
-  });
+  const [members, txCount, mandates] = await Promise.all([
+    Promise.all(addrs.map(async (address) => {
+      const [m, required] = await Promise.all([getMember(id, address), getRequiredCollateral(address, id)]);
+      return toJson({ address, label: labelOf(address), ...m, requiredCollateral: required });
+    })),
+    countEventsForCircle(id),
+    activeMandates(id),
+  ]);
+  res.json({ circle: circleSummary(id, c), round: toJson(round), members, txCount, mandates: mandates.map(mandateToApi) });
 }));
 
 circles.post("/circles/:id/settle", wrap(async (req, res) => {
@@ -55,11 +56,11 @@ circles.post("/circles/:id/settle", wrap(async (req, res) => {
 
 circles.get("/stats", wrap(async (_req, res) => {
   if (!isConfigured()) { res.json({ circlesLive: 0, circlesTotal: 0, mstcInContract: "0", txCount: 0 }); return; }
-  const [list, balance] = await Promise.all([allCircles(), provider.getBalance(contractAddress!)]);
+  const [list, balance, txCount] = await Promise.all([allCircles(), provider.getBalance(contractAddress!), countDistinctTx()]);
   res.json({
     circlesLive: list.filter(({ c }) => c.status === 0 || c.status === 1).length,
     circlesTotal: list.length,
     mstcInContract: balance.toString(),
-    txCount: countDistinctTx(),
+    txCount,
   });
 }));

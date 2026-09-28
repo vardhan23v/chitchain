@@ -84,11 +84,11 @@ async function discoverDemoCircles(): Promise<number[]> {
       try {
         const c = await getCircle(id);
         creatorChecked.add(id);
-        if (c.creator.toLowerCase() === deployer.address.toLowerCase()) addDemoCircle(id);
+        if (c.creator.toLowerCase() === deployer.address.toLowerCase()) await addDemoCircle(id);
       } catch (e) { console.error(`[autopilot] circle ${id}: ${errorMessage(e)}`); }
     }
   }
-  return demoCircleIds();
+  return await demoCircleIds();
 }
 
 async function autopilotTick(): Promise<void> {
@@ -103,7 +103,7 @@ async function autopilotTick(): Promise<void> {
     const members = new Set((await getMembers(circleId)).map((a) => a.toLowerCase()));
     for (const w of demoWallets) {
       if (!members.has(w.address.toLowerCase())) continue;
-      if (getSkip(w.address)) continue;
+      if (await getSkip(w.address)) continue;
       await contributeFor(circleId, circle.round, w.label, w.wallet, circle.contribution);
     }
   }

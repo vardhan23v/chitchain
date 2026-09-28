@@ -44,7 +44,7 @@ export async function decideForMandate(m: MandateRow, force = false): Promise<Ag
       getCircle(m.circle_id), getRound(m.circle_id), getMember(m.circle_id, m.member), getMembers(m.circle_id),
     ]);
     if (circle.status !== 1) return null;
-    if (!force && agentLogForRound(m.circle_id, round.round, m.member)) return null; // one decision per round
+    if (!force && (await agentLogForRound(m.circle_id, round.round, m.member))) return null; // one decision per round
     const states = await Promise.all(members.map((a) => getMember(m.circle_id, a)));
     const roundsLeft = states.filter((s) => !s.removed && !s.hasWon).length;
     const nowSec = Math.floor(Date.now() / 1000);
@@ -83,7 +83,7 @@ export async function decideForMandate(m: MandateRow, force = false): Promise<Ag
 /** Re-plan for every active mandate in a circle (called after CircleStarted / RoundSettled). */
 export async function planRound(circleId: number): Promise<void> {
   if (!isConfigured()) return;
-  for (const m of activeMandates(circleId)) {
+  for (const m of await activeMandates(circleId)) {
     try {
       await decideForMandate(m);
     } catch (e) {

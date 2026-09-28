@@ -24,7 +24,7 @@ agent.post("/agent/mandate", wrap(async (req, res) => {
   if (!demoWallet(member)) throw new ApiError(400, AGENT_ONLY_DEMO, "NOT_DEMO_WALLET"); // custodial demo wallet only
   if (!isConfigured()) throw new ApiError(503, "CHITCHAIN_ADDRESS not configured", "NO_CONTRACT");
   if (circleId > (await getCircleCount())) throw new ApiError(404, "circle not found", "NOT_FOUND");
-  const row = upsertMandate(circleId, member, goal, parsed.data.maxDiscountPct ?? null);
+  const row = await upsertMandate(circleId, member, goal, parsed.data.maxDiscountPct ?? null);
   const circle = await getCircle(circleId);
   const decision = circle.status === 1 ? await decideForMandate(row, true) : null;
   res.json({ mandate: mandateToApi(row), decision: decision ? agentLogToApi(decision) : null });
@@ -34,11 +34,11 @@ agent.delete("/agent/mandate", wrap(async (req, res) => {
   const circleId = optionalInt(req.query.circleId);
   if (circleId === undefined) throw new ApiError(400, "circleId required", "BAD_QUERY");
   const member = parseAddress(String(req.query.member ?? ""));
-  res.json({ ok: deactivateMandate(circleId, member) });
+  res.json({ ok: await deactivateMandate(circleId, member) });
 }));
 
 agent.get("/agent/logs", wrap(async (req, res) => {
   const circleId = optionalInt(req.query.circleId);
   const limit = optionalInt(req.query.limit);
-  res.json({ logs: listAgentLogs({ circleId, limit }).map(agentLogToApi) });
+  res.json({ logs: (await listAgentLogs({ circleId, limit })).map(agentLogToApi) });
 }));

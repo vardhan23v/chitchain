@@ -57,10 +57,11 @@ const schema = z.object({
 
   PORT: intWithDefault(4000),
   FRONTEND_ORIGIN: z.string().default("http://localhost:3000"),
-  DB_PATH: z.string().default("./data/chitchain.db"),
+  // PostgreSQL connection string, e.g. postgres://user:pass@host:5432/dbname (append ?sslmode=require for TLS hosts)
+  DATABASE_URL: z.string().trim().min(1, "required — postgres://user:pass@host:5432/dbname"),
 });
 
-export type Config = z.infer<typeof schema> & { backendDir: string; dbFile: string };
+export type Config = z.infer<typeof schema> & { backendDir: string };
 
 function load(): Config {
   const parsed = schema.safeParse(process.env);
@@ -70,10 +71,9 @@ function load(): Config {
     process.exit(1);
   }
   const cfg = parsed.data;
-  const dbFile = path.isAbsolute(cfg.DB_PATH) ? cfg.DB_PATH : path.resolve(backendDir, cfg.DB_PATH);
   if (!cfg.CHITCHAIN_ADDRESS) console.warn("[config] CHITCHAIN_ADDRESS is empty — indexer/keeper/agent idle until set");
   if (cfg.AGENT_WALLET_KEYS.length === 0) console.warn("[config] AGENT_WALLET_KEYS empty — demo wallets/agent unavailable");
-  return { ...cfg, backendDir, dbFile };
+  return { ...cfg, backendDir };
 }
 
 export const config: Config = load();

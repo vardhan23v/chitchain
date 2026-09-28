@@ -53,7 +53,7 @@ async function toRows(logs: (EventLog | Log)[]): Promise<NewEvent[]> {
 }
 
 let lastIndexed: number | null = null;
-export function lastIndexedBlock(): number | null { return lastIndexed ?? getLastBlock(); }
+export async function lastIndexedBlock(): Promise<number | null> { return lastIndexed ?? (await getLastBlock()); }
 
 /** One indexing pass: last_block+1 → latest in ≤2000-block chunks. Idempotent (UNIQUE tx_hash+log_index). */
 export async function indexOnce(): Promise<void> {
@@ -62,7 +62,7 @@ export async function indexOnce(): Promise<void> {
     return;
   }
   const latest = await provider.getBlockNumber();
-  const stored = getLastBlock();
+  const stored = await getLastBlock();
   let from = stored === null ? Math.max(config.START_BLOCK, 0) : stored + 1;
   if (from > latest) return;
   const contract = readContract();
@@ -70,7 +70,7 @@ export async function indexOnce(): Promise<void> {
     const to = Math.min(from + CHUNK - 1, latest);
     const logs = await contract.queryFilter("*", from, to);
     const rows = await toRows(logs);
-    const inserted = rows.length ? insertEvents(rows) : 0;
+    const inserted = rows.length ? await insertEvents(rows) : 0;
     if (inserted > 0) {
       console.log(`[indexer] blocks ${from}-${to}: ${inserted} new event(s)`);
       for (const r of rows) {
@@ -78,13 +78,13 @@ export async function indexOnce(): Promise<void> {
         if (r.circleId !== null && (r.name === "CircleStarted" || r.name === "RoundSettled")) bus.emit("roundStarted", r.circleId);
       }
     }
-    setLastBlock(to);
+    await setLastBlock(to);
     lastIndexed = to;
     from = to + 1;
   }
 }
 
-export function startIndexer(): void {
-  console.log(`[indexer] contract ${contractAddress ?? "(none)"} from block ${getLastBlock() ?? config.START_BLOCK}`);
+export async function startIndexer(): Promise<void> {
+  console.log(`[indexer] contract ${contractAddress ?? "(none)"} from block ${(await getLastBlock()) ?? config.START_BLOCK}`);
   loop("indexer", 3000, indexOnce);
 }
