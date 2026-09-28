@@ -20,7 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
+      # The secret may hold either a Railway *project token* (RAILWAY_TOKEN) or an *account/workspace token*
+      # (RAILWAY_API_TOKEN); the CLI picks whichever is valid, and --project pins the target either way.
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: 791688af-0ef5-4c85-9bfc-51caee5849ee
     steps:
       - uses: actions/checkout@v4
         with: { ref: main }
@@ -31,10 +35,10 @@ jobs:
           if [ -z "$RAILWAY_TOKEN" ]; then echo "RAILWAY_TOKEN secret is not set"; exit 1; fi
       - name: Deploy backend
         working-directory: backend
-        run: npx -y @railway/cli up --service backend --environment production --ci
+        run: npx -y @railway/cli up --project "$RAILWAY_PROJECT_ID" --service backend --environment production --ci
       - name: Deploy frontend
         working-directory: frontend
-        run: npx -y @railway/cli up --service frontend --environment production --ci
+        run: npx -y @railway/cli up --project "$RAILWAY_PROJECT_ID" --service frontend --environment production --ci
       - name: Smoke check
         run: |
           for i in $(seq 1 30); do
