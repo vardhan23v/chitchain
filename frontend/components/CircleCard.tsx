@@ -26,7 +26,10 @@ export function CircleCard({ c }: { c: CircleSummary }) {
   return (
     <Card className="flex flex-col gap-3 rounded-2xl p-4 md:p-5">
       <div className="flex items-center justify-between">
-        <span className="font-semibold">Circle #{c.id}</span>
+        <span className="min-w-0 truncate font-semibold" title={c.name ? `${c.name} · Circle #${c.id}` : undefined}>
+          {c.name ?? `Circle #${c.id}`}
+          {c.name && <span className="ml-1 font-normal text-muted-foreground">· Circle #{c.id}</span>}
+        </span>
         <span className={cn("inline-flex items-center gap-1 text-[13px] font-medium", st.cls)}>
           <st.Icon className="h-3.5 w-3.5" aria-hidden />
           {st.label}

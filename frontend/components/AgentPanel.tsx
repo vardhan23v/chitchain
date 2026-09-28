@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Bot, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AgentDecision } from "@/components/AgentDecision";
+import { useAuth } from "@/hooks/useAuth";
 import { api, type MandateBody } from "@/lib/api";
 import { formatMst } from "@/lib/format";
 import type { AgentLog, Level, Mandate, MemberInfo } from "@/lib/types";
@@ -38,8 +40,10 @@ export function AgentPanel({ circleId, member, isDemoWallet, logs, mandate, labe
   const [urgency, setUrgency] = useState<Level | "">(mandate?.urgency ?? "");
   const [riskTolerance, setRiskTolerance] = useState<Level | "">(mandate?.riskTolerance ?? "");
   const [busy, setBusy] = useState(false);
+  const auth = useAuth();
+  const signedIn = auth.status === "authenticated";
   const latest = logs?.[0] ?? null;
-  const enabled = isDemoWallet && !!member && !backendDown;
+  const enabled = signedIn && isDemoWallet && !!member && !backendDown;
   const canAsk = enabled && goal.trim().length > 3 && !busy;
 
   const ask = async () => {
@@ -73,6 +77,13 @@ export function AgentPanel({ circleId, member, isDemoWallet, logs, mandate, labe
       <p className="mt-2 text-xs text-muted-foreground">
         Tell the agent your goal. Each round it re-reads the auction and bids on-chain from {member && isDemoWallet ? `${labelFor(member.address)}'s` : "the member's"} custodial demo wallet. Real BridgeKey wallets bid manually.
       </p>
+      {!signedIn ? (
+        <div className="mt-3 rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+          Sign in as the circle organizer or admin to drive the agent.
+          <div className="mt-2"><Button asChild size="sm" variant="outline"><Link href={`/login?next=/circle/${circleId}`}>Sign in</Link></Button></div>
+        </div>
+      ) : (
+      <>
       <Textarea className="mt-3" rows={2} placeholder='e.g. "I need money before Diwali" or "No hurry, maximise dividends"' value={goal} onChange={(e) => setGoal(e.target.value)} disabled={!enabled} aria-label="Goal for the bidding agent" />
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="space-y-1">
@@ -92,6 +103,8 @@ export function AgentPanel({ circleId, member, isDemoWallet, logs, mandate, labe
           {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Bot aria-hidden />} Ask agent
         </Button>
       </div>
+      </>
+      )}
       {latest && <AgentDecision log={latest} labelFor={labelFor} pot={pot} />}
     </Card>
   );

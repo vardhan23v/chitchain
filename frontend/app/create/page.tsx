@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CoreFields } from "@/components/create/CoreFields";
 import { RiskFields } from "@/components/create/RiskFields";
 import { CreateSummary } from "@/components/CreateSummary";
 import { TxStepper } from "@/components/TxStepper";
+import { useAuth } from "@/hooks/useAuth";
 import { useTx } from "@/hooks/useTx";
 import { useWallet } from "@/hooks/useWallet";
+import { api } from "@/lib/api";
 import { getSignerContract } from "@/lib/contract";
 import { HAS_CONTRACT } from "@/lib/chain";
 import { createSchema, DEFAULTS, toCircleParams, type CreateInput } from "@/lib/createSchema";
@@ -17,6 +21,8 @@ import { createSchema, DEFAULTS, toCircleParams, type CreateInput } from "@/lib/
 export default function CreatePage() {
   const router = useRouter();
   const wallet = useWallet();
+  const auth = useAuth();
+  const signedIn = auth.status === "authenticated";
   const { run, pending, state } = useTx();
   const [v, setV] = useState<CreateInput>(DEFAULTS);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -34,6 +40,13 @@ export default function CreatePage() {
     setErrors({});
     if (!wallet.account) return void wallet.connect();
     if (!wallet.correctChain) return void wallet.switchNetwork();
+    // Naming a circle needs a session (POST /circles/:id/claim). Prompt once; if declined, the wallet-only path still creates the circle.
+    let canClaim = signedIn;
+    if (!canClaim) {
+      canClaim = !!(await auth.signIn());
+      if (!canClaim) toast("Creating without a name — sign in later to claim and name this circle.");
+    }
+    const { name, description } = parsed.data;
     const params = toCircleParams(parsed.data);
     await run(
       async () => {
@@ -56,13 +69,22 @@ export default function CreatePage() {
             }
           }
           if (id === null) id = Number(await c.circleCount());
-          router.push(`/circle/${id}`);
+          if (!canClaim) return router.push(`/circle/${id}`);
+          try {
+            const r = await api.claimCircle(id, { name, description: description || undefined, txHash: hash });
+            auth.setUser(r.user);
+            toast.success(`"${r.circle.name ?? name}" is yours — you're the organizer.`);
+            router.push("/organizer");
+          } catch (e) {
+            toast.error(`Circle #${id} is on-chain, but naming it failed: ${e instanceof Error ? e.message : "backend unreachable"}. You can name it later from the Organizer dashboard.`);
+            router.push(`/circle/${id}`);
+          }
         },
       }
     );
   };
 
-  const cta = !HAS_CONTRACT ? "Contract not deployed" : !wallet.account ? "Connect BridgeKey" : !wallet.correctChain ? "Switch to MST Testnet" : pending ? "Confirm in BridgeKey…" : "Create circle";
+  const cta = !HAS_CONTRACT ? "Contract not deployed" : !wallet.account ? "Connect BridgeKey" : !wallet.correctChain ? "Switch to MST Testnet" : auth.status === "signing" ? "Confirm the signature in BridgeKey…" : pending ? "Confirm in BridgeKey…" : signedIn ? "Create circle" : "Sign in & create circle";
 
   return (
     <div className="space-y-6">
@@ -82,6 +104,11 @@ export default function CreatePage() {
             <TxStepper state={state} />
             {errors.form && <p className="text-xs text-danger" role="alert">{errors.form}</p>}
             {!wallet.hasWallet && <p className="text-center text-xs text-muted-foreground">Install BridgeKey to create a circle.</p>}
+            {wallet.hasWallet && !signedIn && (
+              <p className="text-center text-xs text-muted-foreground">
+                <Link href="/login?next=/create" className="text-primary hover:underline">Sign in</Link> to name your circle and get the Organizer dashboard.
+              </p>
+            )}
           </form>
         </Card>
         <CreateSummary v={v} />

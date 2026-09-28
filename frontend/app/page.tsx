@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CircleCard } from "@/components/CircleCard";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Logo } from "@/components/Logo";
+import { RolesStrip } from "@/components/RolesStrip";
 import { StatTile } from "@/components/StatTile";
 import { TestnetBadge } from "@/components/TestnetBadge";
 import { useCircles } from "@/hooks/useCircles";
@@ -53,6 +54,8 @@ export default function HomePage() {
       </section>
 
       <HowItWorks />
+
+      <RolesStrip />
 
       <section id="circles" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

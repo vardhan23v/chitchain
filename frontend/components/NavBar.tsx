@@ -2,26 +2,33 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleDot, LayoutDashboard, PlusCircle, User } from "lucide-react";
+import { CircleDot, LayoutDashboard, LifeBuoy, PlusCircle, User } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { NetworkPill } from "@/components/NetworkPill";
 import { TestnetBadge } from "@/components/TestnetBadge";
 import { WalletMenu } from "@/components/WalletMenu";
+import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/", label: "Circles", Icon: CircleDot },
-  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
-  { href: "/create", label: "Create", Icon: PlusCircle },
-] as const;
+type Item = { href: string; label: string; Icon: typeof CircleDot };
 
 export function NavBar() {
   const path = usePathname();
   const { account } = useWallet();
-  const profileHref = account ? `/member/${account}` : "/member/me";
-  const items = [...NAV, { href: profileHref, label: "Profile", Icon: User }];
-  const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href.split("/").slice(0, 2).join("/")));
+  const auth = useAuth();
+  const signedIn = auth.status === "authenticated";
+  // Role home: /dashboard, /organizer or /admin. Anonymous users go to /login.
+  const dashboard: Item = { href: signedIn ? auth.home : "/login", label: "Dashboard", Icon: LayoutDashboard };
+  const profileHref = signedIn && account ? `/member/${account}` : "/login";
+  const desktop: Item[] = [
+    { href: "/", label: "Circles", Icon: CircleDot },
+    ...(signedIn ? [dashboard] : []),
+    { href: "/create", label: "Create", Icon: PlusCircle },
+    { href: "/support", label: "Support", Icon: LifeBuoy },
+  ];
+  const mobile: Item[] = [{ href: "/", label: "Circles", Icon: CircleDot }, dashboard, { href: "/create", label: "Create", Icon: PlusCircle }, { href: profileHref, label: "Profile", Icon: User }];
+  const isActive = (href: string) => (href === "/" ? path === "/" : href !== "/login" && path.startsWith(href.split("/").slice(0, 2).join("/")));
 
   return (
     <>
@@ -32,7 +39,7 @@ export function NavBar() {
             <span className="text-foreground">ChitChain</span>
           </Link>
           <nav className="ml-4 hidden items-center gap-1 md:flex" aria-label="Main">
-            {items.map(({ href, label }) => (
+            {desktop.map(({ href, label }) => (
               <Link
                 key={label}
                 href={href}
@@ -54,7 +61,7 @@ export function NavBar() {
       </header>
       {/* Mobile bottom tab bar (DESIGN §5) */}
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t bg-background/95 backdrop-blur md:hidden" aria-label="Mobile">
-        {items.map(({ href, label, Icon }) => (
+        {mobile.map(({ href, label, Icon }) => (
           <Link
             key={label}
             href={href}

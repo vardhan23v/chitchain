@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Field } from "@/components/create/Field";
@@ -16,6 +17,12 @@ export interface FieldsProps {
 export function CoreFields({ v, set, errors }: FieldsProps) {
   return (
     <>
+      <Field label="Circle name" htmlFor="name" error={errors.name} hint="2–60 characters. Shown on the circle card and room. Stored off-chain by ChitChain, not in the contract.">
+        <Input id="name" maxLength={60} placeholder="e.g. Office Diwali circle" value={v.name} onChange={(e) => set("name", e.target.value)} />
+      </Field>
+      <Field label="Description (optional)" htmlFor="description" error={errors.description}>
+        <Textarea id="description" rows={2} maxLength={500} placeholder="Who this circle is for, how often you meet…" value={v.description ?? ""} onChange={(e) => set("description", e.target.value)} />
+      </Field>
       <Field label="Contribution per round (MST)" error={errors.contribution} htmlFor="contribution">
         <Input id="contribution" inputMode="decimal" className="tnum" value={v.contribution} onChange={(e) => set("contribution", e.target.value)} />
       </Field>

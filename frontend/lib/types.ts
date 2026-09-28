@@ -30,6 +30,10 @@ export interface CircleSummary {
   reserve: string;
   memberCount: number;
   isDemo: boolean;
+  /** v3: organizer-given name (null until claimed / named). */
+  name: string | null;
+  /** v3: wallet of the user who claimed the circle (lowercase) or null. */
+  organizerWallet: string | null;
 }
 
 export interface RoundInfo {
@@ -179,3 +183,112 @@ export interface DemoWallet {
 export interface DemoState { wallets: DemoWallet[]; txCount: number; contract: string; circleId: number | null }
 
 export type DataSource = "api" | "chain";
+
+/* ───────── v3 — wallet login, roles, audit, support ───────── */
+
+export type Role = "MEMBER" | "ORGANIZER" | "ADMIN";
+export type UserStatus = "ACTIVE" | "SUSPENDED";
+
+export interface User {
+  /** lowercase */
+  walletAddress: string;
+  role: Role;
+  status: UserStatus;
+  displayName: string | null;
+  createdAt: number;
+  lastLogin: number | null;
+}
+
+export interface Session { token: string; user: User; expiresAt: number }
+
+export interface MeOverview {
+  user: User;
+  /** wei */
+  balance: string;
+  risk: RiskResult | null;
+  totals: { contributions: string; payouts: string; dividends: string; defaults: number; circles: number };
+  activeCircle: (Omit<CircleSummary, "round"> & { me: MemberInfo; round: RoundInfo }) | null;
+}
+
+export interface Invite { circleId: number; circle: CircleSummary | null; invitedBy: string; createdAt: number }
+
+/** API.md: `round` here is the RoundInfo object; the round number lives at `round.round` (see `roundNo`). */
+export interface OrganizerCircle extends Omit<CircleSummary, "round"> {
+  members: MemberInfo[];
+  round: RoundInfo;
+  pendingContributions: number;
+  defaults: number;
+  collateralTotal: string;
+  lowestAcceptedPayout: string;
+}
+
+export interface CircleAnalytics {
+  circle: CircleSummary;
+  round: RoundInfo;
+  members: MemberInfo[];
+  rounds: RoundHistoryRow[];
+  defaults: DefaultRecord[];
+  /** 0..1 this round */
+  contributionRate: number;
+  agentDecisions: number;
+  recentEvents: FeedEvent[];
+}
+
+export interface AuditRow {
+  id: number;
+  ts: number;
+  actorWallet: string | null;
+  /** MEMBER|ORGANIZER|ADMIN|SYSTEM|KEEPER|AGENT|AUTOPILOT|ORACLE */
+  role: string;
+  action: string;
+  target: string | null;
+  result: string;
+  txHash: string | null;
+  meta: Record<string, unknown> | null;
+}
+
+export interface SupportTicket {
+  id: number;
+  userWallet: string;
+  subject: string;
+  message: string;
+  status: "OPEN" | "CLOSED";
+  adminNote: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface LoopStatus {
+  name: string;
+  everyMs: number;
+  ticks: number;
+  errors: number;
+  lastTickAt: number | null;
+  lastOkAt: number | null;
+  lastError: string | null;
+  busy: boolean;
+}
+
+export interface AdminOverview {
+  users: { total: number; active: number; byRole: Record<Role, number>; suspended: number };
+  circles: { total: number; open: number; active: number; completed: number; cancelled: number; demo: number };
+  /** wei */
+  mst: { locked: string; pots: string; collateral: string; reserve: string };
+  defaults: number;
+  tx: { total: number; sent: number; mined: number; failed: number; lastFailure: string | null };
+  tickets: { open: number };
+  audit: { last24h: number };
+  chain: { chainId: number; latestBlock: number; lastIndexedBlock: number | null; lag: number; connected: boolean };
+  contract: { address: string | null; status: "ACTIVE" | "NOT_CONFIGURED"; explorer: string };
+  loops: LoopStatus[];
+  keeper: { address: string | null; balance: string; status: "ONLINE" | "STALE" | "OFFLINE" };
+  wallets: { deployer: { address: string; balance: string } | null; oracle: { address: string; balance: string } | null };
+}
+
+export type AdminUser = User & { circles: number };
+
+/** Round number from either shape (`round: number` or `round: RoundInfo`). */
+export function roundNo(c: { round: number | RoundInfo | null | undefined }): number {
+  const r = c.round;
+  return typeof r === "number" ? r : r?.round ?? 0;
+}

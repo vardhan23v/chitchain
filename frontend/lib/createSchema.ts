@@ -9,6 +9,9 @@ const multiplier = (label: string) => z.number().min(0.01, `${label} multiplier 
 
 export const createSchema = z
   .object({
+    /** v3: off-chain circle name (stored by the backend on claim). */
+    name: z.string().trim().min(2, "Name must be 2–60 characters").max(60, "Name must be 2–60 characters"),
+    description: z.string().trim().max(500, "Keep the description under 500 characters").optional().or(z.literal("")),
     contribution: decimal("Contribution"),
     maxMembers: z.number().int().min(3).max(20),
     contributionDuration: z.number().int().positive(),
@@ -83,6 +86,8 @@ export const JOIN_WINDOW_OPTIONS = [
 ] as const;
 
 export const DEFAULTS: CreateInput = {
+  name: "",
+  description: "",
   contribution: "1",
   maxMembers: 5,
   contributionDuration: 30,

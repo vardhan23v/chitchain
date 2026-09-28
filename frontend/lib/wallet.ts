@@ -91,3 +91,11 @@ export function subscribe(handlers: { onAccounts: (a: string[]) => void; onChain
     eth.removeListener?.("chainChanged", chainHandler);
   };
 }
+
+/** Signs a plain message with the connected account (EIP-191 personal_sign). Used for wallet login. */
+export async function signMessage(message: string): Promise<string> {
+  const provider = getBrowserProvider();
+  if (!provider) throw new Error("No wallet found");
+  const signer = await provider.getSigner();
+  return signer.signMessage(message);
+}

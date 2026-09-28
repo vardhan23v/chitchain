@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { History, Wallet } from "lucide-react";
+import { History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RequireAuth } from "@/components/RequireAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { eventAmount, renderFeedEvent } from "@/components/FeedItem";
 import { TestnetBadge } from "@/components/TestnetBadge";
 import { TxLink } from "@/components/TxLink";
 import { useActivity } from "@/hooks/useActivity";
+import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
 import { formatMst, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -16,20 +18,18 @@ import { cn } from "@/lib/utils";
 const TH = "px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
 
 export default function ActivityPage() {
-  const wallet = useWallet();
-  const act = useActivity(wallet.account);
-  const events = act.data ?? [];
+  return (
+    <RequireAuth>
+      <Activity />
+    </RequireAuth>
+  );
+}
 
-  if (!wallet.account) {
-    return (
-      <Card className="rounded-2xl p-8 text-center">
-        <Wallet className="mx-auto h-8 w-8 text-primary" aria-hidden />
-        <h1 className="mt-3 text-2xl">Transaction history</h1>
-        <p className="mt-2 text-muted-foreground">Connect BridgeKey to see every on-chain event involving your wallet.</p>
-        {wallet.hasWallet && <Button className="mt-4" onClick={() => void wallet.connect()}>Connect BridgeKey</Button>}
-      </Card>
-    );
-  }
+function Activity() {
+  const auth = useAuth();
+  const wallet = useWallet();
+  const act = useActivity(auth.user?.walletAddress ?? wallet.account);
+  const events = act.data ?? [];
 
   return (
     <div className="space-y-5">

@@ -30,7 +30,10 @@ export function RoomHeader({ circle, round, txCount, onSettle, settling, source 
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <h1 className="text-2xl md:text-3xl">Circle #{circle.id}</h1>
+      <h1 className="text-2xl md:text-3xl">
+        {circle.name ?? `Circle #${circle.id}`}
+        {circle.name && <span className="ml-2 text-base font-normal text-muted-foreground">· Circle #{circle.id}</span>}
+      </h1>
       <Badge variant={STATUS_VARIANT[circle.status]}>{STATUS_LABEL[circle.status]}</Badge>
       {circle.isDemo && <DemoBadge />}
       {active && <span className="tnum text-sm text-muted-foreground">Round {circle.round} of {circle.maxMembers}</span>}

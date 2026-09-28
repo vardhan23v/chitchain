@@ -1,5 +1,9 @@
 import { API_URL } from "@/lib/chain";
-import type { AgentLog, CircleRoom, CircleSummary, DefaultRecord, DemoState, FeedEvent, Level, Mandate, MyCircle, RiskResult, RoundHistoryRow, Stats } from "@/lib/types";
+import { clearSession, emitSessionExpired, sessionToken } from "@/lib/session";
+import type {
+  AdminOverview, AdminUser, AgentLog, AuditRow, CircleAnalytics, CircleRoom, CircleSummary, DefaultRecord, DemoState, FeedEvent, Invite, Level, LoopStatus,
+  Mandate, MeOverview, MyCircle, OrganizerCircle, RiskResult, Role, RoundHistoryRow, Stats, SupportTicket, User, UserStatus,
+} from "@/lib/types";
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public code?: string) {
@@ -7,19 +11,34 @@ export class ApiError extends Error {
   }
 }
 
+/** 401 codes that mean the stored session is dead (API.md v3). */
+const AUTH_DEAD = new Set(["NO_AUTH", "BAD_TOKEN", "SESSION_REVOKED"]);
+
 async function request<T>(path: string, init?: RequestInit, timeoutMs = 8000): Promise<T> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
+    const token = sessionToken();
     const res = await fetch(`${API_URL}${path}`, {
       ...init,
       signal: ctrl.signal,
-      headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+      headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...(init?.headers ?? {}) },
       cache: "no-store",
     });
     const text = await res.text();
-    const body = text ? JSON.parse(text) : {};
-    if (!res.ok) throw new ApiError(body?.error ?? `HTTP ${res.status}`, res.status, body?.code);
+    let body: any = {};
+    try {
+      body = text ? JSON.parse(text) : {};
+    } catch {
+      body = {};
+    }
+    if (!res.ok) {
+      if (res.status === 401 && token && AUTH_DEAD.has(String(body?.code ?? "NO_AUTH"))) {
+        clearSession();
+        emitSessionExpired();
+      }
+      throw new ApiError(body?.error ?? body?.message ?? `HTTP ${res.status}`, res.status, body?.code);
+    }
     return body as T;
   } finally {
     clearTimeout(t);
@@ -28,6 +47,18 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = 8000): P
 
 const post = <T>(path: string, body?: unknown, timeoutMs?: number) =>
   request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }, timeoutMs);
+const patch = <T>(path: string, body: unknown) => request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+const del = <T>(path: string) => request<T>(path, { method: "DELETE" });
+
+function qs(p: Record<string, string | number | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(p)) if (v !== undefined && v !== "") q.set(k, String(v));
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
+export interface ClaimBody { name: string; description?: string; txHash?: string }
+export interface AdminUserPatch { role?: Role; status?: UserStatus; displayName?: string }
 
 export interface MandateBody {
   circleId: number;
@@ -79,6 +110,41 @@ export const api = {
     post<{ circleId: number; txHash: string }>("/demo/new-circle", body ?? { contributionDuration: 30, biddingDuration: 30 }, 180_000),
   demoWithdraw: (address: string, circleId: number) => post<{ txHash: string }>("/demo/withdraw", { address, circleId }, 60_000),
   settle: (id: number) => post<{ txHash: string }>(`/circles/${id}/settle`, undefined, 60_000),
+
+  /* ── v3 auth ── */
+  authNonce: (address: string) => post<{ nonce: string; message: string; expiresAt: number }>("/auth/nonce", { address }),
+  authVerify: (address: string, nonce: string, signature: string) =>
+    post<{ token: string; expiresAt: number; user: User }>("/auth/verify", { address, nonce, signature }),
+  authMe: () => request<{ user: User; session: { id: string; expiresAt: number } }>("/auth/me", undefined, 6000),
+  authLogout: () => post<{ ok: boolean }>("/auth/logout"),
+
+  /* ── v3 me ── */
+  me: () => request<MeOverview>("/me"),
+  meCircles: () => request<{ circles: MyCircle[] }>("/me/circles"),
+  meInvites: () => request<{ invites: Invite[] }>("/me/invites"),
+  updateMe: (body: { displayName: string }) => patch<{ user: User }>("/me", body),
+  claimCircle: (id: number, body: ClaimBody) => post<{ circle: CircleSummary; user: User }>(`/circles/${id}/claim`, body, 20_000),
+
+  /* ── v3 organizer ── */
+  organizerCircles: () => request<{ circles: OrganizerCircle[] }>("/organizer/circles"),
+  organizerMeta: (id: number, body: { name: string; description?: string }) => post<{ circle: CircleSummary }>(`/organizer/circles/${id}/meta`, body),
+  organizerInvite: (id: number, addresses: string[]) => post<{ invites: Invite[] }>(`/organizer/circles/${id}/invites`, { addresses }),
+  organizerUninvite: (id: number, addr: string) => del<{ ok: boolean }>(`/organizer/circles/${id}/invites/${addr}`),
+  organizerAnalytics: (id: number) => request<CircleAnalytics>(`/organizer/circles/${id}/analytics`),
+
+  /* ── v3 support ── */
+  supportCreate: (body: { subject: string; message: string }) => post<{ ticket: SupportTicket }>("/support", body),
+  supportMine: () => request<{ tickets: SupportTicket[] }>("/support/mine"),
+
+  /* ── v3 admin ── */
+  adminOverview: () => request<AdminOverview>("/admin/overview"),
+  adminUsers: (p: { role?: string; status?: string; q?: string; limit?: number } = {}) => request<{ users: AdminUser[] }>(`/admin/users${qs(p)}`),
+  adminUpdateUser: (addr: string, body: AdminUserPatch) => patch<{ user: User }>(`/admin/users/${addr}`, body),
+  adminAudit: (p: { limit?: number; actor?: string; action?: string; since?: number } = {}) => request<{ rows: AuditRow[] }>(`/admin/audit${qs(p)}`),
+  adminSupport: (status?: string) => request<{ tickets: SupportTicket[] }>(`/admin/support${qs({ status })}`),
+  adminUpdateTicket: (id: number, body: { status?: "OPEN" | "CLOSED"; adminNote?: string }) => patch<{ ticket: SupportTicket }>(`/admin/support/${id}`, body),
+  adminConfig: () => request<Record<string, unknown>>("/admin/config"),
+  healthLoops: () => request<{ loops?: LoopStatus[] }>("/health", undefined, 4000),
 };
 
 /** True when the backend itself is down (network error, timeout, bad gateway) rather than answering with an app error. */

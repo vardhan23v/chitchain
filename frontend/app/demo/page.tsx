@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddressPill } from "@/components/AddressPill";
+import { RequireAuth } from "@/components/RequireAuth";
 import { MstcAmount } from "@/components/MstcAmount";
 import { DemoBadge, TestnetBadge } from "@/components/TestnetBadge";
 import { TierChip } from "@/components/TierChip";
@@ -17,6 +18,14 @@ import { useDemo } from "@/hooks/useDemo";
 import { addrUrl, shortAddr } from "@/lib/format";
 
 export default function DemoPage() {
+  return (
+    <RequireAuth roles={["ADMIN"]}>
+      <Demo />
+    </RequireAuth>
+  );
+}
+
+function Demo() {
   const d = useDemo();
   const s = d.data;
   const Spin = ({ k }: { k: string }) => (d.busy === k ? <Loader2 className="animate-spin" aria-hidden /> : null);

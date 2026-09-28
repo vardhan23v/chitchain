@@ -55,6 +55,8 @@ export function toCircleSummary(id: number, c: Record<string, unknown>): CircleS
     reserve: s(c.reserve),
     memberCount: n(c.memberCount),
     isDemo: false,
+    name: null,
+    organizerWallet: null,
   };
 }
 
