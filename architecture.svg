@@ -61,7 +61,8 @@
   <line x1="880" y1="220" x2="1035" y2="220" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
   <text x="957" y="210" text-anchor="middle" font-size="12" fill="#475569">events / views</text>
   <line x1="1035" y1="300" x2="885" y2="300" stroke="#7C3AED" stroke-width="3" marker-end="url(#arrV)"/>
-  <text x="957" y="290" text-anchor="middle" font-size="12" fill="#7C3AED">setRiskTier · placeBid · settleRound</text>
+  <text x="957" y="318" text-anchor="middle" font-size="11" fill="#7C3AED">setRiskTier · placeBid</text>
+  <text x="957" y="332" text-anchor="middle" font-size="11" fill="#7C3AED">settleRound</text>
   <path d="M360,440 C 700,560 900,560 1040,440" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arr)"/>
   <text x="700" y="545" text-anchor="middle" font-size="12" fill="#475569">REST + polling (circles, feed, risk, agent)</text>
 
