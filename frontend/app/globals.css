@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* DESIGN.md §3 colour tokens as HSL triples (shadcn convention). */
+@layer base {
+  :root {
+    --background: 210 40% 98%;        /* #F8FAFC */
+    --foreground: 222 47% 11%;        /* #0F172A */
+    --card: 0 0% 100%;                /* #FFFFFF */
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 243 75% 59%;           /* #4F46E5 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;  /* #64748B */
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;         /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;            /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 243 75% 59%;
+    --radius: 0.75rem;
+
+    --pot: 199 89% 48%;               /* #0EA5E9 */
+    --pot-foreground: 0 0% 100%;
+    --success: 142 72% 29%;           /* #16A34A */
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 44%;            /* #D97706 */
+    --warning-foreground: 0 0% 100%;
+    --danger: 0 72% 51%;              /* #DC2626 */
+    --danger-foreground: 0 0% 100%;
+    --chain: 6 63% 46%;               /* #C0392B */
+    --chain-foreground: 0 0% 100%;
+    --agent: 263 84% 58%;             /* #7C3AED */
+    --agent-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222 49% 8%;         /* #0B1120 */
+    --foreground: 220 13% 91%;        /* #E5E7EB */
+    --card: 221 39% 11%;              /* #111827 */
+    --card-foreground: 220 13% 91%;
+    --popover: 221 39% 11%;
+    --popover-foreground: 220 13% 91%;
+    --primary: 234 89% 74%;           /* #818CF8 */
+    --primary-foreground: 222 49% 8%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 220 13% 91%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;  /* #94A3B8 */
+    --accent: 217 33% 17%;
+    --accent-foreground: 220 13% 91%;
+    --destructive: 0 84% 60%;         /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 28% 17%;            /* #1F2937 */
+    --input: 215 28% 17%;
+    --ring: 234 89% 74%;
+
+    --pot: 199 89% 59%;               /* #38BDF8 */
+    --pot-foreground: 222 49% 8%;
+    --success: 142 71% 45%;           /* #22C55E */
+    --success-foreground: 222 49% 8%;
+    --warning: 38 92% 50%;            /* #F59E0B */
+    --warning-foreground: 222 49% 8%;
+    --danger: 0 84% 60%;              /* #EF4444 */
+    --danger-foreground: 0 0% 100%;
+    --chain: 0 91% 71%;               /* #F87171 */
+    --chain-foreground: 222 49% 8%;
+    --agent: 255 92% 76%;             /* #A78BFA */
+    --agent-foreground: 222 49% 8%;
+  }
+
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; font-size: 15px; }
+  h1 { @apply text-3xl font-bold tracking-tight; }
+  h2 { @apply text-xl font-semibold; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  :focus-visible { @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background; }
+}
+
+@layer utilities {
+  .striped-primary {
+    background-image: repeating-linear-gradient(
+      45deg,
+      hsl(var(--primary)) 0 4px,
+      hsl(var(--primary) / 0.45) 4px 8px
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
