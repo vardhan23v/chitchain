@@ -24,7 +24,7 @@ export function ScoreGauge({ score }: { score: number }) {
         <span className="tnum text-3xl font-extrabold">{clamped}</span>
         <span className="text-xs text-muted-foreground">/100</span>
       </div>
-      <div className="absolute inset-x-0 -bottom-4 flex justify-between px-2 text-[9px] uppercase tracking-wide text-muted-foreground" aria-hidden>
+      <div className="absolute inset-x-0 -bottom-4 flex justify-between px-2 text-[9px] text-muted-foreground" aria-hidden>
         <span>safest</span>
         <span>riskiest</span>
       </div>

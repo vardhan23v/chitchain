@@ -56,7 +56,7 @@ export function AgentPanel({ circleId, member, isDemoWallet, logs, mandate, labe
       if (urgency) body.urgency = urgency;
       if (riskTolerance) body.riskTolerance = riskTolerance;
       const r = await api.mandate(body);
-      toast.success(r.decision ? (r.decision.bidThisRound ? "Agent placed a bid" : "Agent decided not to bid this round") : "Goal saved — agent will act when the circle is active");
+      toast.success(r.decision ? (r.decision.bidThisRound ? "Agent placed a bid" : "Agent decided not to bid this round") : "Goal saved, agent will act when the circle is active");
       onChanged();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Agent request failed");
@@ -65,12 +65,12 @@ export function AgentPanel({ circleId, member, isDemoWallet, logs, mandate, labe
     }
   };
 
-  const status = !member ? "Connect or pick a member." : !isDemoWallet ? "Agent bids only for custodial demo wallets (A–E)." : backendDown ? "Backend unreachable." : mandate?.active ? "Mandate active — re-planned each round." : "";
+  const status = !member ? "Connect or pick a member." : !isDemoWallet ? "Agent bids only for custodial demo wallets (A–E)." : backendDown ? "Backend unreachable." : mandate?.active ? "Mandate active, re-planned each round." : "";
 
   return (
     <Card className="border-agent/30 bg-agent/[0.03] p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="eyebrow inline-flex items-center gap-1.5 text-agent"><Bot className="h-3.5 w-3.5" aria-hidden /> AI bidding agent</span>
+        <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-agent"><Bot className="h-3.5 w-3.5" aria-hidden /> AI bidding agent</span>
         <Badge variant="agent">custodial demo wallet</Badge>
         <Badge variant="outline" className="text-muted-foreground">experimental</Badge>
       </div>

@@ -46,7 +46,7 @@ export function ActiveCircleTiles({ circle: summary, account }: { circle: MyCirc
         <StatTile label="Claimable" testnet value={<MstcAmount wei={claimable} size="lg" className={claimable > 0n ? "text-success" : undefined} />} hint={claimable > 0n ? "payouts, dividends and refunds" : "nothing to withdraw yet"} />
         <StatTile label="Won" value={me.hasWon ? "Yes" : "Not yet"} hint={me.hasWon ? "holdback released at completion" : "you can still bid"} />
       </div>
-      {room.error && !room.data && <p className="text-xs text-muted-foreground">Live round data unavailable — showing the last known state.</p>}
+      {room.error && !room.data && <p className="text-xs text-muted-foreground">Live round data unavailable, showing the last known state.</p>}
     </section>
   );
 }

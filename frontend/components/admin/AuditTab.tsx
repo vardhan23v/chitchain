@@ -29,7 +29,7 @@ export function AuditTab() {
         {audit.loading && !audit.data ? (
           <div className="space-y-2 p-4">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
         ) : audit.error && !audit.data ? (
-          <p className="p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load the audit log — {audit.error}</p>
+          <p className="p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load the audit log, {audit.error}</p>
         ) : (
           <TableScroll><table className="table-data w-full min-w-[820px] text-sm">
             <thead><tr><th className={TH}>When</th><th className={TH}>Actor</th><th className={TH}>Role</th><th className={TH}>Action</th><th className={TH}>Target</th><th className={TH}>Result</th><th className={TH}>Tx</th></tr></thead>

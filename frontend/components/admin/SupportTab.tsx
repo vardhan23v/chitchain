@@ -23,7 +23,7 @@ export function SupportTab() {
       {s.loading && !s.data ? (
         <Skeleton className="h-32 rounded-2xl" />
       ) : s.error && !s.data ? (
-        <Card className="rounded-2xl p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load tickets — {s.error}</Card>
+        <Card className="rounded-2xl p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load tickets, {s.error}</Card>
       ) : list.length === 0 ? (
         <Card className="rounded-2xl border-dashed p-6 text-center text-sm text-muted-foreground">No {status.toLowerCase()} tickets.</Card>
       ) : (

@@ -40,7 +40,7 @@ function Admin() {
         <span className="font-semibold text-foreground">No withdraw controls exist here.</span> Funds are controlled by the smart contract. All amounts are MST testnet coins.
       </InfoBanner>
       {ov.error && !ov.data && (
-        <Card className="p-6 text-center text-sm text-muted-foreground">{isUnreachable(ov.error) ? "Backend unreachable — the admin dashboard needs the ChitChain API." : ov.error}</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground">{isUnreachable(ov.error) ? "Backend unreachable, the admin dashboard needs the ChitChain API." : ov.error}</Card>
       )}
       <OverviewTiles o={ov.data} loading={ov.loading} />
       <Tabs defaultValue="users" className="space-y-4">

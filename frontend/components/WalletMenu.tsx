@@ -44,7 +44,7 @@ export function WalletMenu() {
               <span className="truncate text-sm font-semibold">{name}</span>
               <RoleBadge role="ADMIN" passwordAdmin size="xs" />
             </div>
-            <div className="text-[11px] font-normal text-muted-foreground">No wallet — website admin rights only. This account cannot move funds.</div>
+            <div className="text-[11px] font-normal text-muted-foreground">No wallet, website admin rights only. This account cannot move funds.</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <Item href="/admin" Icon={Shield} label="Admin dashboard" />

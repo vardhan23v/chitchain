@@ -16,7 +16,7 @@ const STATUS_VARIANT = { 0: "pot", 1: "default", 2: "status-paid", 3: "status-re
 function Cell({ label, value, warn }: { label: string; value: React.ReactNode; warn?: boolean }) {
   return (
     <div>
-      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-[11px] text-muted-foreground">{label}</dt>
       <dd className={`tnum text-sm font-semibold ${warn ? "text-danger" : ""}`}>{value}</dd>
     </div>
   );
@@ -26,7 +26,7 @@ export function OrganizerCircleCard({ c, onChanged }: { c: OrganizerCircle; onCh
   const joined = c.members.filter((m) => m.joined && !m.removed).length;
   const hasBid = big(c.round?.bestDiscount ?? "0") > 0n;
   return (
-    <Card className="card-hover flex flex-col gap-3 p-4 md:p-5">
+    <Card className="flex flex-col gap-3 p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
         {c.name ? (
           <h2 className="text-base">{c.name} <span className="font-normal text-muted-foreground">· Circle #{c.id}</span></h2>

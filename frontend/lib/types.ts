@@ -184,7 +184,7 @@ export interface DemoState { wallets: DemoWallet[]; txCount: number; contract: s
 
 export type DataSource = "api" | "chain";
 
-/* ───────── v3 — wallet login, roles, audit, support ───────── */
+/* ───────── v3, wallet login, roles, audit, support ───────── */
 
 export type Role = "MEMBER" | "ORGANIZER" | "ADMIN";
 export type UserStatus = "ACTIVE" | "SUSPENDED";
@@ -201,7 +201,7 @@ export interface User {
 
 export interface Session { token: string; user: User; expiresAt: number }
 
-/** Password-admin sessions (API.md v3 `/auth/admin-login`) have walletAddress `admin:<username>` — not an on-chain address. */
+/** Password-admin sessions (API.md v3 `/auth/admin-login`) have walletAddress `admin:<username>`, not an on-chain address. */
 export const ADMIN_LOGIN_PREFIX = "admin:";
 export const isPasswordAdmin = (u: { walletAddress: string } | null | undefined): boolean => !!u && u.walletAddress.startsWith(ADMIN_LOGIN_PREFIX);
 export const isEvmAddress = (v: string | null | undefined): boolean => !!v && /^0x[0-9a-fA-F]{40}$/.test(v);

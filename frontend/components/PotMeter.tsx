@@ -28,7 +28,7 @@ function Meta({ label, value, tip }: { label: string; value: string; tip?: strin
   );
 }
 
-/** DESIGN §6.3 POT column: the visual anchor — big number, animated bar, compact meta row with tooltips. */
+/** DESIGN §6.3 POT column: the visual anchor, big number, animated bar, compact meta row with tooltips. */
 export function PotMeter({ circle, round }: { circle: CircleSummary; round: RoundInfo }) {
   const reduce = useReducedMotion();
   const isActive = circle.status === 1;
@@ -38,7 +38,6 @@ export function PotMeter({ circle, round }: { circle: CircleSummary; round: Roun
 
   return (
     <Card className="relative overflow-hidden p-4 md:p-5">
-      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-pot/10 blur-2xl" aria-hidden />
       <SectionTitle
         Icon={Landmark}
         tone="text-pot"
@@ -52,7 +51,7 @@ export function PotMeter({ circle, round }: { circle: CircleSummary; round: Roun
           </>
         }
       >
-        Pot · in contract
+        Pot in the contract
       </SectionTitle>
       <div className="mt-3 flex flex-wrap items-baseline gap-x-2">
         <MstcAmount wei={collected} size="display" className="text-pot" unitClassName="hidden" />
@@ -63,7 +62,7 @@ export function PotMeter({ circle, round }: { circle: CircleSummary; round: Roun
       </div>
       <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-pot/15" role="progressbar" aria-valuenow={Math.round(percent)} aria-valuemin={0} aria-valuemax={100} aria-label="Pot collected">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-pot to-pot/80"
+          className="h-full rounded-full bg-pot"
           initial={false}
           animate={{ width: `${percent}%` }}
           transition={reduce ? { duration: 0 } : { duration: 0.4, ease: "easeOut" }}

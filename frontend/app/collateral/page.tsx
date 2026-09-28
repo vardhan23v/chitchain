@@ -52,7 +52,7 @@ function Collateral() {
       {mine.loading && !mine.data ? (
         <div className="space-y-3">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}</div>
       ) : mine.error && !mine.data ? (
-        <p className="text-sm text-muted-foreground">Couldn&apos;t load your circles — backend and contract both unreachable.</p>
+        <p className="text-sm text-muted-foreground">Couldn&apos;t load your circles, backend and contract both unreachable.</p>
       ) : circles.length === 0 ? (
         <EmptyState Icon={Lock} title="You haven't joined a circle yet" text="Collateral is locked when you join and shows up here per circle." action={<Button asChild variant="outline"><Link href="/#circles">Browse circles</Link></Button>} />
       ) : (

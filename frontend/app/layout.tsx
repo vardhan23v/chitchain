@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "ChitChain — the pot sits in a contract",
+  title: "ChitChain: the pot sits in a contract",
   description: "Transparent chit funds on MST Blockchain. The pot sits in a contract, not in anyone's account.",
 };
 

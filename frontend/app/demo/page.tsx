@@ -47,7 +47,7 @@ function Demo() {
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border-2 border-warning bg-warning/10 px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm font-bold uppercase tracking-widest text-warning">Demo controls <DemoBadge /> <TestnetBadge size="xs" /></div>
+        <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-warning">Demo controls <DemoBadge /> <TestnetBadge size="xs" /></div>
         <p className="text-xs text-muted-foreground">Operator-only. Wallets A–E are custodial demo wallets held by the backend. Every action here is a real MST testnet transaction with testnet coins of no monetary value.</p>
       </div>
 
@@ -96,7 +96,7 @@ function Demo() {
 
       <Card className="overflow-x-auto rounded-2xl">
         <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
             <tr><th className="p-3">Label</th><th className="p-3">Address</th><th className="p-3">Balance</th><th className="p-3">Tier</th><th className="p-3">Skip payment</th><th className="p-3">Withdraw</th></tr>
           </thead>
           <tbody>

@@ -11,7 +11,7 @@ function storage(): Storage | null {
   }
 }
 
-/** Reads the stored session; null when missing, malformed or expired. Roles are NOT trusted from here — useAuth re-validates with /auth/me. */
+/** Reads the stored session; null when missing, malformed or expired. Roles are NOT trusted from here, useAuth re-validates with /auth/me. */
 export function readSession(): Session | null {
   try {
     const raw = storage()?.getItem(SESSION_KEY);

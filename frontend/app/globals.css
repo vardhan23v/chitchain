@@ -86,10 +86,10 @@
 }
 
 @layer utilities {
-  /* Small-caps section eyebrow (DESIGN §4 small/meta). */
-  .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground; }
+  /* Sentence-case meta line above a page title (DESIGN §4 small/meta). */
+  .eyebrow { @apply text-[13px] font-medium text-muted-foreground; }
   /* Card lift on hover, 150 ms. */
-  .card-hover { @apply transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-md; }
+  .{ @apply transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-md; }
   /* Horizontal-scroll wrapper with a visible right edge fade on small screens. */
   .edge-fade { -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent); mask-image: linear-gradient(to right, black calc(100% - 28px), transparent); }
   @screen md { .edge-fade { -webkit-mask-image: none; mask-image: none; } }

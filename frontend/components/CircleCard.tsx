@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, CircleDot, Circle as CircleIcon, Timer, XCircle } from "lucide-react";
+import { CheckCircle2, CircleDot, Circle as CircleIcon, Timer, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,14 +27,14 @@ export function CircleCard({ c }: { c: CircleSummary }) {
   const done = c.status >= 2;
 
   return (
-    <Card className={cn("card-hover flex flex-col gap-4 p-4 md:p-5", done && "bg-card/70")}>
+    <Card className={cn("flex flex-col gap-4 p-4 md:p-5", done && "bg-card/70")}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-base font-semibold" title={c.name ? `${c.name} · Circle #${c.id}` : undefined}>{c.name ?? `Circle #${c.id}`}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="tnum">Circle #{c.id}</span>
-            {c.status === 1 && <span className="tnum">· Round {c.round} of {c.maxMembers}</span>}
-            {c.status === 0 && <span className="tnum">· {c.memberCount}/{c.maxMembers} joined</span>}
+            {c.name && <span className="tnum">Circle #{c.id} ·</span>}
+            {c.status === 1 && <span className="tnum">Round {c.round} of {c.maxMembers}</span>}
+            {c.status === 0 && <span className="tnum">{c.memberCount}/{c.maxMembers} joined</span>}
             {c.isDemo && <DemoBadge className="ml-0.5" />}
           </div>
         </div>
@@ -45,7 +45,7 @@ export function CircleCard({ c }: { c: CircleSummary }) {
       </div>
 
       <div>
-        <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{c.status === 0 ? "Pot per round" : c.status === 1 ? "Pot this round" : "Pot per round"}</div>
+        <div className="text-[11px] font-medium text-muted-foreground">{c.status === 0 ? "Pot per round" : c.status === 1 ? "Pot this round" : "Pot per round"}</div>
         <MstcAmount wei={pot} size="lg" className={done ? "text-foreground" : "text-pot"} />
         <div className="tnum mt-0.5 text-xs text-muted-foreground">
           {c.status === 2 || c.status === 3 ? `${c.maxMembers} rounds · ${c.memberCount} members` : <><MstcAmount wei={c.contribution} size="sm" className="text-foreground" /> per member · rounds of {formatDuration(c.contributionDuration + c.biddingDuration)}</>}
@@ -70,7 +70,7 @@ export function CircleCard({ c }: { c: CircleSummary }) {
       </div>
 
       <Button asChild variant={done ? "outline" : "default"} className="mt-auto w-full">
-        <Link href={`/circle/${c.id}`}>{cta} <ArrowRight aria-hidden /></Link>
+        <Link href={`/circle/${c.id}`}>{cta}</Link>
       </Button>
     </Card>
   );

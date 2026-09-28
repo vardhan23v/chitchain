@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 function Status({ label, tone }: { label: string; tone: "ok" | "warn" | "bad" }) {
   const cls = tone === "ok" ? "text-success" : tone === "warn" ? "text-warning" : "text-danger";
   const Icon = tone === "ok" ? CheckCircle2 : tone === "warn" ? AlertTriangle : XCircle;
-  return <span className={cn("inline-flex items-center gap-1.5 text-lg font-bold uppercase tracking-wide", cls)}><Icon className="h-4 w-4" aria-hidden />{label}</span>;
+  return <span className={cn("inline-flex items-center gap-1.5 text-lg font-bold", cls)}><Icon className="h-4 w-4" aria-hidden />{label}</span>;
 }
 
 /** CHITCHAIN ADMIN overview tiles from GET /admin/overview. Read-only: no fund controls exist. */
@@ -29,11 +29,11 @@ export function OverviewTiles({ o, loading }: { o: AdminOverview | null; loading
       <StatTile label="Collateral" Icon={Lock} testnet value={o ? `${formatMst(o.mst.collateral)} MST` : "—"} hint={o ? `reserve ${formatMst(o.mst.reserve)} MST` : undefined} loading={L} />
       <StatTile label="Defaults" Icon={ShieldHalf} iconClassName="text-warning" value={o?.defaults ?? "—"} hint="covered from collateral, all circles" loading={L} className={o?.defaults ? "border-danger/40" : undefined} />
       <StatTile label="Transactions" value={o?.tx.total ?? "—"} hint={o ? <span className={o.tx.failed ? "text-danger" : undefined}>{o.tx.failed} failed{o.tx.lastFailure ? ` · ${o.tx.lastFailure}` : ""}</span> : undefined} loading={L} />
-      <StatTile label="Keeper" Icon={Server} value={o ? <Status label={o.keeper.status} tone={o.keeper.status === "ONLINE" ? "ok" : o.keeper.status === "STALE" ? "warn" : "bad"} /> : "—"} hint={o?.keeper.address ? `${shortAddr(o.keeper.address)} · ${formatMst(o.keeper.balance)} MST` : undefined} loading={L} />
-      <StatTile label={CHAIN_NAME} Icon={Link2} value={o ? <Status label={o.chain.connected ? "CONNECTED" : "DISCONNECTED"} tone={o.chain.connected ? "ok" : "bad"} /> : "—"} hint={o ? `block ${o.chain.latestBlock} · indexer lag ${o.chain.lag}` : undefined} loading={L} />
+      <StatTile label="Keeper" Icon={Server} value={o ? <Status label={o.keeper.status === "ONLINE" ? "Online" : o.keeper.status === "STALE" ? "Stale" : "Offline"} tone={o.keeper.status === "ONLINE" ? "ok" : o.keeper.status === "STALE" ? "warn" : "bad"} /> : "—"} hint={o?.keeper.address ? `${shortAddr(o.keeper.address)} · ${formatMst(o.keeper.balance)} MST` : undefined} loading={L} />
+      <StatTile label={CHAIN_NAME} Icon={Link2} value={o ? <Status label={o.chain.connected ? "Connected" : "Disconnected"} tone={o.chain.connected ? "ok" : "bad"} /> : "—"} hint={o ? `block ${o.chain.latestBlock} · indexer lag ${o.chain.lag}` : undefined} loading={L} />
       <StatTile
         label="Smart contract"
-        value={o ? <Status label={o.contract.status === "ACTIVE" ? "ACTIVE" : "NOT CONFIGURED"} tone={o.contract.status === "ACTIVE" ? "ok" : "bad"} /> : "—"}
+        value={o ? <Status label={o.contract.status === "ACTIVE" ? "Active" : "Not configured"} tone={o.contract.status === "ACTIVE" ? "ok" : "bad"} /> : "—"}
         hint={o?.contract.address ? <a href={`${explorer}/address/${o.contract.address}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-chain hover:underline">{shortAddr(o.contract.address)} <ExternalLink className="h-3 w-3" aria-hidden /> MSTScan</a> : undefined}
         loading={L}
       />

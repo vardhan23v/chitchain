@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSupport } from "@/hooks/useSupport";
 import { timeAgo } from "@/lib/format";
 
-/** Ticket form + "My tickets" — needs a session (POST /support, GET /support/mine). */
+/** Ticket form + "My tickets", needs a session (POST /support, GET /support/mine). */
 export function TicketForm() {
   const auth = useAuth();
   const s = useSupport();
@@ -52,7 +52,7 @@ export function TicketForm() {
             <Textarea id="t-message" rows={4} maxLength={2000} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="What happened, which circle, and the MSTScan link if you have one." />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-muted-foreground">Never share your seed phrase or private key — we will never ask.</span>
+            <span className="text-xs text-muted-foreground">Never share your seed phrase or private key, we will never ask.</span>
             <Button type="submit" size="sm" disabled={!valid || s.sending}>{s.sending ? <Loader2 className="animate-spin" aria-hidden /> : null} Send</Button>
           </div>
         </form>
@@ -62,7 +62,7 @@ export function TicketForm() {
         {s.loading && !s.data ? (
           <Skeleton className="h-16 rounded-2xl" />
         ) : s.error && !s.data ? (
-          <p className="text-sm text-muted-foreground">Couldn&apos;t load your tickets — backend unreachable.</p>
+          <p className="text-sm text-muted-foreground">Couldn&apos;t load your tickets, backend unreachable.</p>
         ) : tickets.length === 0 ? (
           <EmptyState Icon={Inbox} tone="bg-muted text-muted-foreground" title="No tickets yet" className="py-6" />
         ) : (
@@ -70,7 +70,7 @@ export function TicketForm() {
             <Card key={t.id} className="p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold">#{t.id} · {t.subject}</span>
-                <Badge variant={t.status === "OPEN" ? "status-pending" : "status-paid"} className="uppercase tracking-wide">{t.status === "OPEN" ? "Open" : "Closed"}</Badge>
+                <Badge variant={t.status === "OPEN" ? "status-pending" : "status-paid"}>{t.status === "OPEN" ? "Open" : "Closed"}</Badge>
                 <span className="ml-auto text-xs text-muted-foreground">{timeAgo(t.createdAt)}</span>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{t.message}</p>

@@ -54,7 +54,7 @@ export function CollateralRow({ c, onWithdraw, pending }: Props) {
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-muted/40 p-3 text-sm sm:grid-cols-5">
         {cells.map(([k, v, cls]) => (
           <div key={k}>
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{k}</dt>
+            <dt className="text-[11px] font-medium text-muted-foreground">{k}</dt>
             <dd className={cn("tnum font-semibold", cls)}>{v}</dd>
           </div>
         ))}

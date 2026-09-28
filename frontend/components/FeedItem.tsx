@@ -32,14 +32,14 @@ export function renderFeedEvent(e: FeedEvent, labels: LabelMap): Rendered {
     case "DefaultDetected": {
       const shortfall = big(str(a.shortfall));
       if (shortfall > 0n) {
-        return { Icon: ShieldAlert, color: "text-danger", text: `${member} missed — partially covered, shortfall ${formatMst(shortfall)} MST` };
+        return { Icon: ShieldAlert, color: "text-danger", text: `${member} missed, partially covered, shortfall ${formatMst(shortfall)} MST` };
       }
-      return { Icon: ShieldHalf, color: "text-warning", text: `${member} missed — collateral covered ${formatMst(str(a.fromCollateral))} MST` };
+      return { Icon: ShieldHalf, color: "text-warning", text: `${member} missed, collateral covered ${formatMst(str(a.fromCollateral))} MST` };
     }
     case "Covered": // v1 event, kept for old indexed rows
-      return { Icon: ShieldHalf, color: "text-warning", text: `${member} missed — collateral covered ${formatMst(str(a.fromCollateral ?? a.amount))} MST` };
+      return { Icon: ShieldHalf, color: "text-warning", text: `${member} missed, collateral covered ${formatMst(str(a.fromCollateral ?? a.amount))} MST` };
     case "Removed":
-      return { Icon: XCircle, color: "text-danger", text: `${member} removed — collateral exhausted` };
+      return { Icon: XCircle, color: "text-danger", text: `${member} removed, collateral exhausted` };
     case "HoldbackApplied":
       return { Icon: Lock, color: "text-primary", text: `${formatMst(str(a.amount))} MST held back to secure ${member}'s future dues` };
     case "RoundSettled":
@@ -53,9 +53,9 @@ export function renderFeedEvent(e: FeedEvent, labels: LabelMap): Rendered {
     case "CircleCreated":
       return { Icon: Sparkles, color: "text-pot", text: `Circle #${str(a.circleId ?? e.circleId)} created by ${member}` };
     case "CircleStarted":
-      return { Icon: Play, color: "text-primary", text: `Circle #${str(a.circleId ?? e.circleId)} started — Round 1 is live` };
+      return { Icon: Play, color: "text-primary", text: `Circle #${str(a.circleId ?? e.circleId)} started, Round 1 is live` };
     case "CircleCancelled":
-      return { Icon: Ban, color: "text-danger", text: `Circle #${str(a.circleId ?? e.circleId)} cancelled — didn't fill in time` };
+      return { Icon: Ban, color: "text-danger", text: `Circle #${str(a.circleId ?? e.circleId)} cancelled, didn't fill in time` };
     case "CircleCompleted":
       return { Icon: Flag, color: "text-success", text: `Circle #${str(a.circleId ?? e.circleId)} completed` };
     case "Withdrawn":
@@ -67,7 +67,7 @@ export function renderFeedEvent(e: FeedEvent, labels: LabelMap): Rendered {
   }
 }
 
-/** Amount (wei string) an event moved, if any — used by the activity page. */
+/** Amount (wei string) an event moved, if any, used by the activity page. */
 export function eventAmount(e: FeedEvent): string | null {
   const a = e.args ?? {};
   const k = ["amount", "payout", "collateral", "refund", "discount", "fromCollateral"].find((key) => a[key] !== undefined);
@@ -85,7 +85,7 @@ export function FeedItem({ e, labels, now }: { e: FeedEvent; labels: LabelMap; n
       <div className="min-w-0 flex-1">
         <div className={cn(isAgent && "font-medium text-agent")}>
           {r.text}
-          {r.reason && <span className="font-normal text-muted-foreground"> — <em>{r.reason}</em></span>}
+          {r.reason && <span className="font-normal text-muted-foreground">, <em>{r.reason}</em></span>}
         </div>
         <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
           <span className="tnum">{timeAgo(e.ts, now)}</span>

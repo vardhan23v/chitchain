@@ -21,7 +21,7 @@ export function getReadContract(): Contract | null {
 
 /** Signer-bound contract via the injected wallet. */
 export async function getSignerContract(): Promise<Contract> {
-  if (!HAS_CONTRACT) throw new Error("Contract not deployed yet — set NEXT_PUBLIC_CHITCHAIN_ADDRESS");
+  if (!HAS_CONTRACT) throw new Error("Contract not deployed yet. Set NEXT_PUBLIC_CHITCHAIN_ADDRESS");
   const provider = getBrowserProvider();
   if (!provider) throw new Error("No wallet found");
   const signer = await provider.getSigner();

@@ -5,7 +5,7 @@ import { InfoBanner } from "@/components/InfoBanner";
 export function OrganizerNotice({ plural }: { plural?: boolean }) {
   return (
     <InfoBanner Icon={FileCode2} tone="chain">
-      You manage {plural ? "these circles" : "this circle"}. The smart contract holds the pot — you cannot move funds.
+      You manage {plural ? "these circles" : "this circle"}. The smart contract holds the pot, you cannot move funds.
     </InfoBanner>
   );
 }

@@ -34,12 +34,12 @@ function Activity() {
 
   return (
     <div className="space-y-5">
-      <PageHeader eyebrow="My activity" title="Transaction history" description="Every indexed on-chain event where you were the member, winner or bidder — each one verifiable on MSTScan." actions={events.length ? <span className="tnum text-xs text-muted-foreground">{events.length} events</span> : undefined} />
+      <PageHeader eyebrow="My activity" title="Transaction history" description="Every indexed on-chain event where you were the member, winner or bidder, each one verifiable on MSTScan." actions={events.length ? <span className="tnum text-xs text-muted-foreground">{events.length} events</span> : undefined} />
       <Card className="overflow-hidden">
         {act.loading && !act.data ? (
           <div className="space-y-2 p-4">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
         ) : act.error && !act.data ? (
-          <p className="p-6 text-center text-sm text-muted-foreground">History needs the backend indexer — it is unreachable right now.</p>
+          <p className="p-6 text-center text-sm text-muted-foreground">History needs the backend indexer, which is unreachable right now.</p>
         ) : events.length === 0 ? (
           <EmptyState Icon={History} className="border-0" title="No on-chain activity yet" text="Join a circle and every contribution, bid and payout will appear here." action={<Button asChild variant="outline"><Link href="/#circles">Join a circle</Link></Button>} />
         ) : (

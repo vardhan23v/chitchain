@@ -28,7 +28,7 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
     return (
       <Card className="flex flex-wrap items-center gap-3 border-danger/30 bg-danger/5 p-4">
         <AlertTriangle className="h-5 w-5 text-danger" aria-hidden />
-        <span className="font-medium">Didn&apos;t fill in time — withdraw your collateral</span>
+        <span className="font-medium">Didn&apos;t fill in time, withdraw your collateral</span>
         {claimable > 0n && <WithdrawDialog claimable={me!.claimable} onConfirm={onWithdraw} disabled={pending} className="ml-auto" />}
       </Card>
     );

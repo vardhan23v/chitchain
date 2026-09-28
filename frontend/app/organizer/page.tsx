@@ -47,9 +47,9 @@ function Organizer() {
       {circles.loading && !circles.data ? (
         <div className="grid gap-4 md:grid-cols-2">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}</div>
       ) : circles.error && !circles.data ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">{isUnreachable(circles.error) ? "Backend unreachable — organizer data needs the ChitChain API." : circles.error}</Card>
+        <Card className="p-8 text-center text-sm text-muted-foreground">{isUnreachable(circles.error) ? "Backend unreachable, organizer data needs the ChitChain API." : circles.error}</Card>
       ) : list.length === 0 ? (
-        <EmptyState Icon={Users} title="You don't organize a circle yet" text="Create one — the contract stores you as creator and ChitChain lets you name it." action={<Button asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>} />
+        <EmptyState Icon={Users} title="You don't organize a circle yet" text="Create one. The contract stores you as creator and ChitChain lets you name it." action={<Button asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">{list.map((c) => <OrganizerCircleCard key={c.id} c={c} onChanged={() => void circles.refetch()} />)}</div>
       )}

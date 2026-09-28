@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CircleCard } from "@/components/CircleCard";
 import { EmptyState } from "@/components/EmptyState";
 import { HowItWorks } from "@/components/HowItWorks";
-import { Logo } from "@/components/Logo";
+import { FeaturedCircle, pickFeatured } from "@/components/FeaturedCircle";
 import { SectionTitle } from "@/components/PageHeader";
 import { RolesStrip } from "@/components/RolesStrip";
 import { StatTile } from "@/components/StatTile";
@@ -33,28 +33,27 @@ export default function HomePage() {
   const circles = all.filter((c) => FILTERS[filter](c.status));
   const stats = data?.stats ?? null;
   const count = (f: Filter) => all.filter((c) => FILTERS[f](c.status)).length;
+  const featured = pickFeatured(all);
 
   return (
     <div className="space-y-12">
       <section className="grid items-center gap-8 pt-2 md:grid-cols-[3fr_2fr] md:pt-6">
         <div>
-          <div className="eyebrow flex items-center gap-2">
+          <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
             <span>Chit funds on MST Blockchain</span>
             <TestnetBadge size="xs" />
           </div>
           <h1 className="mt-3 text-[34px] font-extrabold leading-[1.08] tracking-tight md:text-5xl">
             The pot sits in a contract,<br className="hidden sm:block" /> not in anyone&apos;s account.
           </h1>
-          <p className="mt-4 max-w-xl text-[15px] text-muted-foreground md:text-lg">Contributions, auctions, payouts and penalties are enforced by code — every step verifiable on MSTScan.</p>
+          <p className="mt-4 max-w-xl text-[15px] text-muted-foreground md:text-lg">Contributions, auctions, payouts and penalties are enforced by code. Every step is verifiable on MSTScan.</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button size="lg" asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>
             <Button size="lg" variant="outline" asChild><a href="#circles">Browse circles</a></Button>
           </div>
         </div>
         <div className="hidden justify-center md:flex">
-          <div className="relative flex h-56 w-56 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 via-pot/10 to-transparent">
-            <Logo className="h-36 w-36 text-primary drop-shadow-sm" />
-          </div>
+          {featured ? <FeaturedCircle c={featured} /> : <Skeleton className="h-64 w-64 rounded-full" />}
         </div>
       </section>
 
@@ -82,7 +81,7 @@ export default function HomePage() {
             </TabsList>
           </Tabs>
         </div>
-        {slow && !data && <p className="text-sm text-warning" role="status">MST testnet is slow — retrying</p>}
+        {slow && !data && <p className="text-sm text-warning" role="status">MST testnet is slow, retrying</p>}
         {loading && !data ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-52 rounded-2xl" />)}</div>
         ) : circles.length === 0 ? (
@@ -90,7 +89,7 @@ export default function HomePage() {
             Icon={Sparkles}
             tone="bg-pot/10 text-pot"
             title={error && !data ? "Couldn't reach the backend or the contract" : all.length ? `No ${filter} circles` : "No circles here yet"}
-            text={error && !data ? "Check your connection and try again." : "Set the rules once — the contract enforces them for everyone."}
+            text={error && !data ? "Check your connection and try again." : "Set the rules once. The contract enforces them for everyone."}
             action={<Button asChild><Link href="/create"><Plus aria-hidden /> Create the first circle</Link></Button>}
           />
         ) : (

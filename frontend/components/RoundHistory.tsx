@@ -54,7 +54,7 @@ export function RoundHistory({ rounds, loading, labelFor, source, className }: P
               {rounds.map((r) => (
                 <tr key={r.round}>
                   <td className={cn(TD, "tnum font-semibold")}>R{r.round}</td>
-                  <td className={cn(TD, "font-medium")}>{r.winner ? r.winnerLabel ?? labelFor(r.winner) : <span className="text-muted-foreground">No bids — shared</span>}</td>
+                  <td className={cn(TD, "font-medium")}>{r.winner ? r.winnerLabel ?? labelFor(r.winner) : <span className="text-muted-foreground">No bids, shared</span>}</td>
                   <td className={NUM}>{formatMst(r.pot)} MST</td>
                   <td className={cn(NUM, "font-semibold text-success")}>{formatMst(r.payout)} MST</td>
                   <td className={NUM}>{formatMst(r.discount)} MST</td>

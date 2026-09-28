@@ -77,7 +77,7 @@ function Dashboard() {
 
       <nav className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="More">
         {QUICK.map(({ href, label, Icon }) => (
-          <Link key={label} href={href.replace("ACCOUNT", account)} className="card-hover flex items-center gap-2 rounded-2xl border bg-card px-4 py-3 text-sm font-medium">
+          <Link key={label} href={href.replace("ACCOUNT", account)} className="flex items-center gap-2 rounded-2xl border bg-card px-4 py-3 text-sm font-medium">
             <Icon className="h-4 w-4 text-primary" aria-hidden /> {label} <ExternalLink className="ml-auto h-3.5 w-3.5 text-muted-foreground/60" aria-hidden />
           </Link>
         ))}

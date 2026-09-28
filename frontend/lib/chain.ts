@@ -22,7 +22,7 @@ export const KEEPER_LATE_MS = 15_000;
 
 export const BPS = 10_000;
 
-/** Default collateral multipliers (bps of baseCollateral) indexed by Tier — used when a circle's own values are unknown. */
+/** Default collateral multipliers (bps of baseCollateral) indexed by Tier, used when a circle's own values are unknown. */
 export const DEFAULT_TIER_BPS: Record<Tier, number> = { 0: 20000, 1: 5000, 2: 10000, 3: 20000 };
 /** Legacy view of the defaults as plain multipliers (0.5×/1×/2×). */
 export const TIER_MULTIPLIER: Record<number, number> = { 0: 2, 1: 0.5, 2: 1, 3: 2 };

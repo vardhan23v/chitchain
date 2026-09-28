@@ -26,7 +26,7 @@ function Count({ n }: { n: number }) {
   return <span className="tnum rounded-full bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground">{n}</span>;
 }
 
-/** "Live" (members + agent) | "Round history" | "Defaults" — keeps the hero screen uncluttered. */
+/** "Live" (members + agent) | "Round history" | "Defaults", keeps the hero screen uncluttered. */
 export function RoomTabs({ data, me, viewer, events, labelFor, onChanged }: Props) {
   const { circle, members, round } = data;
   const backendDown = data.source !== "api";

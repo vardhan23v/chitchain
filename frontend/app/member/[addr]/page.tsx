@@ -32,7 +32,7 @@ export default function MemberPage() {
     return (
       <div className="space-y-6">
         <PageHeader eyebrow="Member profile" title="My profile" description="Your risk tier and on-chain history." />
-        <EmptyState Icon={Wallet} title="Connect BridgeKey to see your profile" text={wallet.hasWallet ? "Your risk tier and on-chain history show here." : "No wallet detected — install the BridgeKey extension or Android app."} action={wallet.hasWallet ? <Button onClick={() => void wallet.connect()}><Wallet aria-hidden /> Connect BridgeKey</Button> : undefined} />
+        <EmptyState Icon={Wallet} title="Connect BridgeKey to see your profile" text={wallet.hasWallet ? "Your risk tier and on-chain history show here." : "No wallet detected, install the BridgeKey extension or Android app."} action={wallet.hasWallet ? <Button onClick={() => void wallet.connect()}><Wallet aria-hidden /> Connect BridgeKey</Button> : undefined} />
       </div>
     );
   }
@@ -90,13 +90,13 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
               <div className="flex flex-wrap items-center gap-2">
                 <TierChip tier={data.tier} />
                 <span className={cn("text-sm font-semibold", BAND_CLS[scoreBand(data.score)])}>{scoreBand(data.score)} risk band</span>
-                {data.onChainTier !== data.tier && <Badge variant="outline" className="text-xs">on-chain: {TIER_NAME[data.onChainTier]} — re-assess to update</Badge>}
+                {data.onChainTier !== data.tier && <Badge variant="outline" className="text-xs">on-chain: {TIER_NAME[data.onChainTier]}, re-assess to update</Badge>}
               </div>
               <p className="text-[15px]">
                 &ldquo;{data.explanation}&rdquo; <span className="text-xs text-muted-foreground">({data.explanationSource === "llm" ? "AI" : "template"})</span>
               </p>
               <RiskFactors factors={data.factors} reputation={data.reputation} />
-              <InfoBanner Icon={Info}>Demo heuristic risk model on {data.dataSource === "SYNTHETIC" ? "synthetic demo history" : data.dataSource === "ONCHAIN" ? "on-chain history" : "mixed synthetic and on-chain history"} — not a credit score.</InfoBanner>
+              <InfoBanner Icon={Info}>Demo heuristic risk model on {data.dataSource === "SYNTHETIC" ? "synthetic demo history" : data.dataSource === "ONCHAIN" ? "on-chain history" : "mixed synthetic and on-chain history"}, not a credit score.</InfoBanner>
               <div className="flex flex-wrap items-center gap-3">
                 <Button onClick={onAssess} disabled={assessing}>
                   <RefreshCw className={assessing ? "animate-spin" : ""} aria-hidden /> {assessing ? "Assessing…" : "Re-assess (sets tier on-chain)"}

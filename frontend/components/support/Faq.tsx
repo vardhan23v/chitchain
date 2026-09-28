@@ -8,7 +8,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     q: "Wallet connection",
     a: (
       <>
-        Install <A href={BRIDGEKEY_URL}>BridgeKey</A> (Chrome or Android), then click <em>Connect BridgeKey</em>. If the network pill says wrong network, click <em>Switch to {CHAIN_NAME}</em> — BridgeKey adds the chain if it doesn&apos;t know it. Signing in only asks for a signature: no gas, no funds move.
+        Install <A href={BRIDGEKEY_URL}>BridgeKey</A> (Chrome or Android), then click <em>Connect BridgeKey</em>. If the network pill says wrong network, click <em>Switch to {CHAIN_NAME}</em>, BridgeKey adds the chain if it doesn&apos;t know it. Signing in only asks for a signature: no gas, no funds move.
       </>
     ),
   },
@@ -16,7 +16,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     q: "MST testnet & faucet",
     a: (
       <>
-        Every amount in ChitChain is an MST testnet coin with no monetary value. Get test MST from the <A href={FAUCET_URL}>faucet</A> — 10 MST per wallet every 24 hours. You need a little MST for gas plus your contribution and collateral.
+        Every amount in ChitChain is an MST testnet coin with no monetary value. Get test MST from the <A href={FAUCET_URL}>faucet</A>, 10 MST per wallet every 24 hours. You need a little MST for gas plus your contribution and collateral.
       </>
     ),
   },
@@ -32,7 +32,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     q: "Roles: member, organizer, admin, contract",
     a: (
       <>
-        A <strong>member</strong> joins, contributes, bids and withdraws. A <strong>circle organizer</strong> names their circle, invites wallets and reads analytics. A <strong>platform admin</strong> manages users, the audit log and support. The <strong>smart contract</strong> controls the funds — no role can move a member&apos;s money; payouts are pull-only.
+        A <strong>member</strong> joins, contributes, bids and withdraws. A <strong>circle organizer</strong> names their circle, invites wallets and reads analytics. A <strong>platform admin</strong> manages users, the audit log and support. The <strong>smart contract</strong> controls the funds, no role can move a member&apos;s money; payouts are pull-only.
       </>
     ),
   },

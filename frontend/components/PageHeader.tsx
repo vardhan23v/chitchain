@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface Props {
-  /** Small-caps label above the title, e.g. "MY DASHBOARD". */
+  /** Short sentence-case line above the title, e.g. "My dashboard". */
   eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
@@ -13,7 +13,7 @@ interface Props {
   className?: string;
 }
 
-/** One page-header pattern for every page: eyebrow + H1 + one-line description, badges right-aligned. */
+/** One page-header pattern for every page: meta line + H1 + one-line description, badges right-aligned. */
 export function PageHeader({ eyebrow, title, description, actions, back, className }: Props) {
   return (
     <header className={cn("flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between", className)}>
@@ -28,12 +28,12 @@ export function PageHeader({ eyebrow, title, description, actions, back, classNa
   );
 }
 
-/** Small-caps section title with an icon and optional trailing content (counts, filters). */
+/** Section heading (DESIGN §4 H2, sentence case) with an optional icon and trailing content (counts, filters). */
 export function SectionTitle({ Icon, children, trailing, className, tone }: { Icon?: React.ComponentType<{ className?: string }>; children: ReactNode; trailing?: ReactNode; className?: string; tone?: string }) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      {Icon && <Icon className={cn("h-3.5 w-3.5", tone ?? "text-muted-foreground")} aria-hidden />}
-      <span className={cn("eyebrow", tone)}>{children}</span>
+      {Icon && <Icon className={cn("h-4 w-4", tone ?? "text-muted-foreground")} aria-hidden />}
+      <h2 className="text-[17px] font-semibold leading-tight tracking-tight md:text-lg">{children}</h2>
       {trailing && <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">{trailing}</span>}
     </div>
   );

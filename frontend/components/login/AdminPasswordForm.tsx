@@ -13,7 +13,7 @@ interface Props {
   onSubmit: (username: string, password: string) => Promise<boolean>;
 }
 
-/** Platform-admin password fallback (shown only when GET /health reports it enabled). Website rights only — never wallet or fund control. */
+/** Platform-admin password fallback (shown only when GET /health reports it enabled). Website rights only, never wallet or fund control. */
 export function AdminPasswordForm({ signing, done, onSubmit }: Props) {
   const [show, setShow] = useState(false);
   const [username, setUsername] = useState("");
@@ -50,7 +50,7 @@ export function AdminPasswordForm({ signing, done, onSubmit }: Props) {
             <Button type="submit" className="w-full" disabled={signing || done || !username.trim() || !password}>
               {done ? <><Check aria-hidden /> Admin verified.</> : signing ? <><Loader2 className="animate-spin" aria-hidden /> Checking…</> : "Sign in as admin"}
             </Button>
-            <p className="text-center text-[11px] text-muted-foreground">Grants website admin rights only — never wallet or fund control.</p>
+            <p className="text-center text-[11px] text-muted-foreground">Grants website admin rights only, never wallet or fund control.</p>
           </form>
         </Card>
       )}

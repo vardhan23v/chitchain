@@ -39,7 +39,7 @@ export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, 
   const claimable = BigInt(me?.claimable ?? "0");
   const busyLabel = "Confirm in BridgeKey…";
 
-  if (me?.removed) return <Button size="lg" className={cls} disabled>Removed — collateral exhausted</Button>;
+  if (me?.removed) return <Button size="lg" className={cls} disabled>Removed, collateral exhausted</Button>;
   if (claimable > 0n) return <WithdrawDialog claimable={me!.claimable} disabled={pending} onConfirm={on.withdraw} className={cls} />;
 
   const now = Math.floor(Date.now() / 1000);

@@ -7,7 +7,7 @@ const STEPS: { title: string; text: string; Icon: LucideIcon; color: string; bg:
   { title: "Contribute", text: "Pay the fixed amount each round while contributions are open.", Icon: Coins, color: "text-pot", bg: "bg-pot/10" },
   { title: "Bid", text: "Say the lowest payout you'd accept. The lowest accepted payout wins.", Icon: Gavel, color: "text-agent", bg: "bg-agent/10" },
   { title: "Settle", text: "Anyone can settle after bidding closes. The discount becomes dividends.", Icon: Trophy, color: "text-success", bg: "bg-success/10" },
-  { title: "Protect", text: "Miss a payment and your collateral covers it — shortfalls are shown, never hidden.", Icon: ShieldCheck, color: "text-warning", bg: "bg-warning/10" },
+  { title: "Protect", text: "Miss a payment and your collateral covers it. Shortfalls are shown, never hidden.", Icon: ShieldCheck, color: "text-warning", bg: "bg-warning/10" },
 ];
 
 /** Landing strip: JOIN → CONTRIBUTE → BID → SETTLE → PROTECT. Equal-height cards with a light hover lift. */
@@ -18,7 +18,7 @@ export function HowItWorks() {
       <ol className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {STEPS.map((s, i) => (
           <li key={s.title} className="min-w-0">
-            <Card className="card-hover flex h-full flex-col gap-3 p-4 md:p-5">
+            <Card className="flex h-full flex-col gap-3 p-4 md:p-5">
               <div className="flex items-center justify-between">
                 <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.bg}`}>
                   <s.Icon className={`h-[18px] w-[18px] ${s.color}`} aria-hidden />

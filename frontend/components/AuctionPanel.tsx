@@ -59,11 +59,11 @@ export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor
   const hint = !active
     ? "Bidding opens when the circle is active."
     : phase === "settling"
-      ? "Bidding is closed for this round — waiting for settlement."
+      ? "Bidding is closed for this round, waiting for settlement."
       : !me?.joined
         ? "Join the circle to bid."
         : me.hasWon
-          ? "You've already won — no more bids."
+          ? "You've already won, no more bids."
           : me.removed
             ? "Removed members can't bid."
             : tooLow

@@ -38,17 +38,17 @@ export function RoomHeader({ circle, round, txCount, onSettle, settling, source 
     <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       <div className="min-w-0">
         <div className="eyebrow flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="tnum">Circle #{circle.id}</span>
-          {active && <span className="tnum normal-case tracking-normal">· Round {circle.round} of {circle.maxMembers}</span>}
-          {circle.status === 0 && <span className="tnum normal-case tracking-normal">· {circle.memberCount}/{circle.maxMembers} members</span>}
-          <span className="inline-flex items-center gap-1 normal-case tracking-normal" title={source === "api" ? "Indexed by the ChitChain backend" : "Backend offline — reading the contract directly"}>
+          {circle.name && <span className="tnum">Circle #{circle.id}</span>}
+          {active && <span className="tnum font-normal">Round {circle.round} of {circle.maxMembers}</span>}
+          {circle.status === 0 && <span className="tnum font-normal">{circle.memberCount}/{circle.maxMembers} members</span>}
+          <span className="inline-flex items-center gap-1 font-normal" title={source === "api" ? "Indexed by the ChitChain backend" : "Backend offline, reading the contract directly"}>
             <Hash className="h-3 w-3" aria-hidden />
             {source === "api" ? <span className="tnum">{txCount} on-chain transactions</span> : <span>reading directly from the contract</span>}
           </span>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <h1 className="min-w-0 truncate">{circle.name ?? `Circle #${circle.id}`}</h1>
-          <Badge variant={st.variant} className="uppercase tracking-wide"><st.Icon className="h-3 w-3" aria-hidden />{STATUS_LABEL[circle.status]}</Badge>
+          <Badge variant={st.variant}><st.Icon className="h-3 w-3" aria-hidden />{STATUS_LABEL[circle.status]}</Badge>
           {circle.isDemo && <DemoBadge />}
         </div>
       </div>

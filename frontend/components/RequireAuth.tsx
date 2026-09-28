@@ -18,7 +18,7 @@ export function ForbiddenCard({ title = "This page isn't for your role", detail 
     <Card className="mx-auto max-w-md rounded-2xl p-8 text-center">
       <ShieldOff className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
       <h1 className="mt-3 text-2xl">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{detail ?? "Roles only gate website actions — the smart contract still holds every pot."}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{detail ?? "Roles only gate website actions, the smart contract still holds every pot."}</p>
       {auth.user && (
         <div className="mt-3 flex justify-center">
           <RoleBadge role={auth.user.role} />

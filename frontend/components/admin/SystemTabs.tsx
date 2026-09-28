@@ -18,7 +18,7 @@ export function ConfigTab() {
       {c.loading && !c.data ? (
         <div className="space-y-2 p-4">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
       ) : c.error && !c.data ? (
-        <p className="p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load config — {c.error}</p>
+        <p className="p-6 text-center text-sm text-muted-foreground">Couldn&apos;t load config, {c.error}</p>
       ) : (
         <TableScroll><table className="table-data w-full text-sm">
           <thead><tr><th className={TH}>Key</th><th className={TH}>Value</th></tr></thead>

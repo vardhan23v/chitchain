@@ -10,7 +10,7 @@ export const ROLE_META: Record<Role, { label: string; tip: string; Icon: LucideI
 };
 
 /** Shown for password-admin sessions (walletAddress `admin:<username>`): website admin rights only, no wallet. */
-const PASSWORD_ADMIN_META = { label: "Platform admin (password)", tip: "Signed in with the admin password — website admin rights only, no wallet", Icon: KeyRound, cls: ROLE_META.ADMIN.cls };
+const PASSWORD_ADMIN_META = { label: "Platform admin (password)", tip: "Signed in with the admin password, website admin rights only, no wallet", Icon: KeyRound, cls: ROLE_META.ADMIN.cls };
 
 /** MEMBER / CIRCLE ORGANIZER / PLATFORM ADMIN chip with a one-line tooltip. Roles only gate website actions, never funds. */
 export function RoleBadge({ role, passwordAdmin = false, className, size = "sm" }: { role: Role; passwordAdmin?: boolean; className?: string; size?: "xs" | "sm" }) {
@@ -20,7 +20,7 @@ export function RoleBadge({ role, passwordAdmin = false, className, size = "sm" 
       <TooltipTrigger asChild>
         <span
           className={cn(
-            "inline-flex shrink-0 cursor-default items-center gap-1 whitespace-nowrap rounded-full border font-semibold uppercase tracking-wider",
+            "inline-flex shrink-0 cursor-default items-center gap-1 whitespace-nowrap rounded-full border font-semibold",
             size === "xs" ? "px-1.5 py-px text-[9px]" : "px-2 py-0.5 text-[10px]",
             m.cls,
             className

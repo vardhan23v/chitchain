@@ -3,7 +3,7 @@ import { formatMst } from "@/lib/format";
 
 export interface UiError {
   message: string;
-  /** true for "Cancelled in wallet." — render neutral, not red. */
+  /** true for "Cancelled in wallet.", render neutral, not red. */
   neutral: boolean;
   name?: string;
 }
@@ -37,24 +37,24 @@ const MESSAGES: Record<string, (args: readonly unknown[]) => string> = {
   AlreadyPaid: () => "You've already paid this round.",
   ContributionClosed: () => "Contributions for this round are closed.",
   BiddingClosed: () => "Bidding for this round is closed.",
-  BiddingNotOver: () => "Bidding is still open — settle after the deadline.",
-  BidNotHigher: (a) => `Someone already offers a ${formatMst(a[0] as bigint)} MST discount — accept a lower payout to lead.`,
-  BidTooHigh: (a) => `Max discount this round is ${formatMst(a[0] as bigint)} MST — your accepted payout is too low.`,
+  BiddingNotOver: () => "Bidding is still open. Settle after the deadline.",
+  BidNotHigher: (a) => `Someone already offers a ${formatMst(a[0] as bigint)} MST discount. Accept a lower payout to lead.`,
+  BidTooHigh: (a) => `Max discount this round is ${formatMst(a[0] as bigint)} MST. Your accepted payout is too low.`,
   JoinWindowClosed: () => "This circle is no longer accepting members.",
-  JoinWindowStillOpen: () => "The join window is still open — the circle can't be cancelled yet.",
+  JoinWindowStillOpen: () => "The join window is still open, the circle can't be cancelled yet.",
   NotOpen: () => "This circle is no longer open.",
   NotActive: () => "This circle is not active.",
   AlreadyJoined: () => "You're already in this circle.",
   NotMember: () => "You're not a member of this circle.",
   CircleFull: () => "This circle is full.",
   NotEligibleToBid: () => "Only members who haven't won yet can bid.",
-  MemberRemoved: () => "You were removed from this circle — collateral exhausted.",
+  MemberRemoved: () => "You were removed from this circle, collateral exhausted.",
   NothingToWithdraw: () => "Nothing to withdraw.",
   InvalidParams: () =>
     "Invalid circle parameters. Check: 3–20 members, base collateral ≥ contribution, fee ≤ 3%, holdback ≤ 100%, max discount ≤ 50%, and Low ≤ Medium ≤ High multipliers.",
   OnlyOracle: () => "Only the risk oracle can do this.",
   OnlyTreasury: () => "Only the treasury can do this.",
-  DirectPaymentRejected: () => "Direct payments are rejected — use the app.",
+  DirectPaymentRejected: () => "Direct payments are rejected, use the app.",
   ReentrancyGuardReentrantCall: () => "The contract rejected a re-entrant call. Try again.",
 };
 
@@ -79,9 +79,9 @@ export function parseTxError(e: unknown): UiError {
   if (o?.code === "INSUFFICIENT_FUNDS" || /insufficient funds/i.test(`${o?.message ?? ""} ${o?.shortMessage ?? ""}`)) {
     return { message: "Not enough MST for this transaction plus gas.", neutral: false };
   }
-  if (o?.code === "NETWORK_ERROR" || o?.code === "TIMEOUT") return { message: "MST testnet didn't answer — check your connection and try again.", neutral: false };
-  if (o?.code === "CALL_EXCEPTION" || o?.code === "UNPREDICTABLE_GAS_LIMIT") return { message: "The contract rejected this transaction. The round may have moved on — refresh and try again.", neutral: false };
+  if (o?.code === "NETWORK_ERROR" || o?.code === "TIMEOUT") return { message: "MST testnet didn't answer, check your connection and try again.", neutral: false };
+  if (o?.code === "CALL_EXCEPTION" || o?.code === "UNPREDICTABLE_GAS_LIMIT") return { message: "The contract rejected this transaction. The round may have moved on, refresh and try again.", neutral: false };
   const msg = o?.reason && !RAW_PATTERNS.some((p) => p.test(o.reason!)) ? o.reason : o?.shortMessage ?? o?.message ?? "Transaction failed";
-  if (RAW_PATTERNS.some((p) => p.test(msg))) return { message: "Transaction failed — the contract rejected it.", neutral: false };
+  if (RAW_PATTERNS.some((p) => p.test(msg))) return { message: "Transaction failed, the contract rejected it.", neutral: false };
   return { message: msg.length > 160 ? msg.slice(0, 157) + "…" : msg, neutral: false };
 }

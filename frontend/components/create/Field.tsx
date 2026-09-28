@@ -39,7 +39,7 @@ export function FormSection({ Icon, title, text, children, first }: { Icon: Luci
       <div className="flex items-start gap-2.5">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary" aria-hidden><Icon className="h-3.5 w-3.5" /></span>
         <div>
-          <h2 className="eyebrow leading-7">{title}</h2>
+          <h2 className="text-[15px] font-semibold leading-7">{title}</h2>
           {text && <p className="-mt-1 text-xs text-muted-foreground">{text}</p>}
         </div>
       </div>

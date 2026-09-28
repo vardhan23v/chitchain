@@ -67,7 +67,7 @@ export function MembersTable({ circle, members, viewer, extras, className }: Pro
                   <td className={TD}>
                     <div className="flex flex-wrap gap-1">
                       {m.removed ? (
-                        <Badge variant="status-removed" className="uppercase tracking-wide"><XCircle className="h-3 w-3" aria-hidden />Removed</Badge>
+                        <Badge variant="status-removed"><XCircle className="h-3 w-3" aria-hidden />Removed</Badge>
                       ) : active ? (
                         <ContributionChip status={m.contributionStatus} />
                       ) : null}

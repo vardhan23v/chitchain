@@ -16,7 +16,7 @@ const META: Record<ContributionStatus, { variant: "status-paid" | "status-pendin
 export function ContributionChip({ status, className }: { status: ContributionStatus; className?: string }) {
   const { variant, Icon } = META[status] ?? META.PENDING;
   return (
-    <Badge variant={variant} className={cn("whitespace-nowrap uppercase tracking-wide", className)}>
+    <Badge variant={variant} className={cn("whitespace-nowrap", className)}>
       <Icon className="h-3 w-3" aria-hidden />
       {CONTRIBUTION_STATUS_LABEL[status] ?? status}
     </Badge>
@@ -25,7 +25,7 @@ export function ContributionChip({ status, className }: { status: ContributionSt
 
 export function WonChip({ round, className }: { round?: number | null; className?: string }) {
   return (
-    <Badge variant="status-won" className={cn("whitespace-nowrap uppercase tracking-wide", className)}>
+    <Badge variant="status-won" className={cn("whitespace-nowrap", className)}>
       <Trophy className="h-3 w-3" aria-hidden />
       Won{round ? ` R${round}` : ""}
     </Badge>
@@ -35,7 +35,7 @@ export function WonChip({ round, className }: { round?: number | null; className
 export function DefaultStatusChip({ status, className }: { status: DefaultStatus; className?: string }) {
   const partial = status === "PARTIALLY_COVERED";
   return (
-    <Badge variant={partial ? "status-partial" : "status-covered"} className={cn("whitespace-nowrap uppercase tracking-wide", className)}>
+    <Badge variant={partial ? "status-partial" : "status-covered"} className={cn("whitespace-nowrap", className)}>
       {partial ? <ShieldAlert className="h-3 w-3" aria-hidden /> : <ShieldHalf className="h-3 w-3" aria-hidden />}
       {DEFAULT_STATUS_LABEL[status]}
     </Badge>

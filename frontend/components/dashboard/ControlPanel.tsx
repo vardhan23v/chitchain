@@ -2,7 +2,7 @@ import { Check, FileCode2, Lock, User } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { SectionTitle } from "@/components/PageHeader";
 
-const YOU = ["Join a circle and lock your collateral", "Contribute each round while contributions are open", "Bid the lowest payout you'd accept", "Withdraw whatever is claimable — payouts, dividends, refunds"];
+const YOU = ["Join a circle and lock your collateral", "Contribute each round while contributions are open", "Bid the lowest payout you'd accept", "Withdraw whatever is claimable, payouts, dividends, refunds"];
 const CONTRACT = ["Holds the pot for every round", "Holds and sizes collateral by risk tier", "Pays the winner and computes dividends", "Covers a missed payment from that member's collateral", "Keeps the holdback until the circle completes"];
 
 function Column({ Icon, title, items, tone, bg, className }: { Icon: typeof User; title: string; items: string[]; tone: string; bg: string; className?: string }) {

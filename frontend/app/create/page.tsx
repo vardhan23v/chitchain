@@ -45,7 +45,7 @@ export default function CreatePage() {
     let canClaim = signedIn;
     if (!canClaim) {
       canClaim = !!(await auth.signIn());
-      if (!canClaim) toast("Creating without a name — sign in later to claim and name this circle.");
+      if (!canClaim) toast("Creating without a name, sign in later to claim and name this circle.");
     }
     const { name, description } = parsed.data;
     const params = toCircleParams(parsed.data);
@@ -74,7 +74,7 @@ export default function CreatePage() {
           try {
             const r = await api.claimCircle(id, { name, description: description || undefined, txHash: hash });
             auth.setUser(r.user);
-            toast.success(`"${r.circle.name ?? name}" is yours — you're the organizer.`);
+            toast.success(`"${r.circle.name ?? name}" is yours, you're the organizer.`);
             router.push("/organizer");
           } catch (e) {
             toast.error(`Circle #${id} is on-chain, but naming it failed: ${e instanceof Error ? e.message : "backend unreachable"}. You can name it later from the Organizer dashboard.`);

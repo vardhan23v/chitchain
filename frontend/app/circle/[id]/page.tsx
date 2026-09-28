@@ -49,7 +49,7 @@ export default function CircleRoomPage() {
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-9 w-64" />
         <div className="grid gap-4 lg:grid-cols-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}</div>
-        {room.slow && <p className="text-sm text-warning" role="status">MST testnet is slow — retrying</p>}
+        {room.slow && <p className="text-sm text-warning" role="status">MST testnet is slow, retrying</p>}
         {room.error && !HAS_CONTRACT && <p className="text-sm text-muted-foreground">Backend unreachable and no contract address configured.</p>}
         {room.error && HAS_CONTRACT && room.slow && <p className="text-sm text-muted-foreground">Circle #{id} could not be loaded: {room.error}</p>}
       </div>

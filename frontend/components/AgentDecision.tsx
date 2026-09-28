@@ -26,12 +26,12 @@ export function AgentDecision({ log, labelFor, pot }: Props) {
       <p className="mt-1">
         {log.bidThisRound ? (
           <>
-            Bid placed — accepts <span className="tnum font-semibold">{accepted !== null ? `${formatMst(accepted)} MST` : "a lower payout"}</span> (discount {formatMst(discount)} MST)
+            Bid placed, accepts <span className="tnum font-semibold">{accepted !== null ? `${formatMst(accepted)} MST` : "a lower payout"}</span> (discount {formatMst(discount)} MST)
           </>
         ) : (
           <>Not bidding this round</>
         )}
-        {log.reason && <span className="text-muted-foreground"> — {log.reason}</span>}
+        {log.reason && <span className="text-muted-foreground">, {log.reason}</span>}
       </p>
       {log.txHash && <TxLink hash={log.txHash} label="View bid on MSTScan" className="mt-1" />}
       {log.error && <p className="mt-1 text-xs text-danger">{log.error}</p>}

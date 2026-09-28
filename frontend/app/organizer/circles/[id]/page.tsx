@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ShieldHalf } from "lucide-react";
+import { ArrowLeft, ShieldHalf } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DefaultEventCard } from "@/components/DefaultEventCard";
@@ -51,7 +51,7 @@ function Analytics({ id }: { id: number }) {
         actions={
           <>
             {auth.user && <RoleBadge role={auth.user.role} />}
-            <Button asChild size="sm" variant="outline"><Link href={`/circle/${id}`}>Open room <ArrowRight aria-hidden /></Link></Button>
+            <Button asChild size="sm" variant="outline"><Link href={`/circle/${id}`}>Open room</Link></Button>
           </>
         }
       />
@@ -61,7 +61,7 @@ function Analytics({ id }: { id: number }) {
       {a.loading && !d ? (
         <Skeleton className="h-40 rounded-2xl" />
       ) : a.error && !d ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">{isUnreachable(a.error) ? "Backend unreachable — analytics need the ChitChain API." : a.error}</Card>
+        <Card className="p-8 text-center text-sm text-muted-foreground">{isUnreachable(a.error) ? "Backend unreachable, analytics need the ChitChain API." : a.error}</Card>
       ) : d ? (
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Circle analytics">

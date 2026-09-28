@@ -13,6 +13,6 @@ export function TableScroll({ children, className }: { children: ReactNode; clas
   );
 }
 
-export const TH = "px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground whitespace-nowrap";
+export const TH = "px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap";
 export const TD = "px-3 py-2.5 align-middle";
 export const NUM = "tnum text-right whitespace-nowrap";

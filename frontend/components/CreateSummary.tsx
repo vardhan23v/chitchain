@@ -65,7 +65,7 @@ export function CreateSummary({ v }: { v: CreateInput }) {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-muted/40 p-3 text-sm">
             {facts.map(([k, val]) => (
               <div key={k}>
-                <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{k}</dt>
+                <dt className="text-[11px] font-medium text-muted-foreground">{k}</dt>
                 <dd className="tnum font-semibold">{val}</dd>
               </div>
             ))}
