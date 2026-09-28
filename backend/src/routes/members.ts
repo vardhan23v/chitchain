@@ -1,9 +1,43 @@
 import { Router } from "express";
-import { contractAs, isConfigured, oracle, sendTx, type Tier } from "../chain";
+import { contractAs, getCircle, getCircleCount, getMember, isConfigured, oracle, sendTx, type Tier } from "../chain";
+import { eventsInvolving, isDemoCircle } from "../db";
 import { assessRisk, type RiskResult } from "../risk";
-import { ApiError, parseAddress, wrap } from "./util";
+import { circleSummary, defaultsOf, memberInfo } from "./circles";
+import { eventRowToFeed } from "./feedShape";
+import { ApiError, optionalInt, parseAddress, wrap } from "./util";
 
 export const members = Router();
+
+/** GET /members/:addr/activity?limit= — every indexed event naming the address (member / winner / bidder), newest first. */
+members.get("/members/:addr/activity", wrap(async (req, res) => {
+  const address = parseAddress(req.params.addr);
+  const limit = Math.min(Math.max(optionalInt(req.query.limit) ?? 50, 1), 200);
+  const rows = await eventsInvolving(address, limit);
+  res.json({ events: await Promise.all(rows.map(eventRowToFeed)) });
+}));
+
+/** GET /members/:addr/circles — circles the address joined (bounded scan over circleCount; cached 5 s per address). */
+const CIRCLES_CACHE_MS = 5000;
+const circlesCache = new Map<string, { at: number; body: unknown }>();
+members.get("/members/:addr/circles", wrap(async (req, res) => {
+  if (!isConfigured()) throw new ApiError(503, "CHITCHAIN_ADDRESS not configured", "NO_CONTRACT");
+  const address = parseAddress(req.params.addr);
+  const key = address.toLowerCase();
+  const hit = circlesCache.get(key);
+  if (hit && Date.now() - hit.at < CIRCLES_CACHE_MS) { res.json(hit.body); return; }
+  const count = await getCircleCount();
+  const out = [];
+  for (let id = count; id >= 1; id--) { // newest first
+    const m = await getMember(id, address);
+    if (!m.joined) continue;
+    const [c, isDemo, defaults] = await Promise.all([getCircle(id), isDemoCircle(id), defaultsOf(id)]);
+    const me = await memberInfo(id, address, c.round, defaults.latestByMember.get(key));
+    out.push({ ...(circleSummary(id, c, isDemo) as Record<string, unknown>), me });
+  }
+  const body = { circles: out };
+  circlesCache.set(key, { at: Date.now(), body });
+  res.json(body);
+}));
 
 members.get("/members/:addr/risk", wrap(async (req, res) => {
   const address = parseAddress(req.params.addr);

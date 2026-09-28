@@ -52,6 +52,9 @@ model Mandate {
   member         String
   goal           String
   maxDiscountPct Float?  @map("max_discount_pct")
+  desiredPayout  String? @map("desired_payout") // wei as decimal string
+  urgency        String? // "low" | "medium" | "high"
+  riskTolerance  String? @map("risk_tolerance") // "low" | "medium" | "high"
   active         Boolean @default(true)
   createdAt      Int     @map("created_at")
 

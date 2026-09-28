@@ -1,18 +1,26 @@
 import { Router } from "express";
+import { ZeroAddress } from "ethers";
 import {
-  contractAddress, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, getRound, isConfigured, labelOf, provider, toJson,
-  type CircleView,
+  contractAddress, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, getRound, getRoundHistory, isConfigured, labelOf, provider,
+  roundPhase, toJson, type CircleView, type MemberView, type RoundView,
 } from "../chain";
-import { activeMandates, countDistinctTx, countEventsForCircle } from "../db";
+import { activeMandates, countDistinctTx, countEventsForCircle, eventsForCircleByName, isDemoCircle, type EventRow } from "../db";
 import { settleNow } from "../keeper";
-import { mandateToApi } from "./feedShape";
+import { defaultInfoFrom, mandateToApi, type ContributionStatus, type DefaultInfo } from "./feedShape";
 import { ApiError, parseId, wrap } from "./util";
 
 export const circles = Router();
 
 function requireContract(): void { if (!isConfigured()) throw new ApiError(503, "CHITCHAIN_ADDRESS not configured", "NO_CONTRACT"); }
 
-export function circleSummary(id: number, c: CircleView): unknown { return toJson({ id, ...c }); }
+/** CircleSummary = contract CircleView (v2) + id + isDemo. bigint → string at the JSON edge. */
+export function circleSummary(id: number, c: CircleView, isDemo: boolean): unknown { return toJson({ id, ...c, isDemo }); }
+
+/** RoundInfo = contract RoundView + phase + lowestAcceptedPayout (expectedPot − bestDiscount). */
+export function roundInfo(r: RoundView, nowSec = Math.floor(Date.now() / 1000)): unknown {
+  const lowest = r.bestDiscount >= r.expectedPot ? 0n : r.expectedPot - r.bestDiscount;
+  return toJson({ ...r, lowestAcceptedPayout: lowest, phase: roundPhase(r, nowSec) });
+}
 
 async function allCircles(): Promise<{ id: number; c: CircleView }[]> {
   const count = await getCircleCount();
@@ -21,27 +29,129 @@ async function allCircles(): Promise<{ id: number; c: CircleView }[]> {
   return ids.map((id, i) => ({ id, c: views[i] }));
 }
 
+async function requireCircle(id: number): Promise<void> {
+  if (id > (await getCircleCount())) throw new ApiError(404, "circle not found", "NOT_FOUND");
+}
+
+/** Latest indexed DefaultDetected row per member (lowercase address) for a circle, plus all rows newest first. */
+export async function defaultsOf(circleId: number): Promise<{ latestByMember: Map<string, EventRow>; all: EventRow[] }> {
+  const rows = await eventsForCircleByName(circleId, ["DefaultDetected"]);
+  const latestByMember = new Map<string, EventRow>();
+  for (const r of rows) {
+    const a = JSON.parse(r.args_json) as { member?: string };
+    if (typeof a.member === "string") latestByMember.set(a.member.toLowerCase(), r); // ascending → last write wins
+  }
+  return { latestByMember, all: rows.reverse() };
+}
+
+/**
+ * Contribution status for the CURRENT round: paid → PAID; removed → DEFAULTED; a default recorded at the most recent
+ * settlement (round − 1, or this round once the circle is Completed) → how it was covered; otherwise PENDING.
+ */
+export function contributionStatusOf(m: MemberView, circleRound: number, lastDefault: DefaultInfo | null): ContributionStatus {
+  if (m.paidThisRound) return "PAID";
+  if (m.removed) return "DEFAULTED";
+  if (lastDefault && lastDefault.round >= circleRound - 1) return lastDefault.status;
+  return "PENDING";
+}
+
+/** MemberInfo for one address (shared by /circles/:id and /members/:addr/circles). */
+export async function memberInfo(circleId: number, address: string, circleRound: number, lastDefaultRow: EventRow | undefined): Promise<Record<string, unknown>> {
+  const [m, required] = await Promise.all([getMember(circleId, address), getRequiredCollateral(address, circleId)]);
+  const lastDefault = lastDefaultRow ? defaultInfoFrom(lastDefaultRow, m.collateral) : null;
+  let lastDefaultOut: DefaultInfo | null = null;
+  if (lastDefault) { const { member: _member, ...rest } = lastDefault; lastDefaultOut = rest; }
+  return {
+    ...(toJson({ address, label: labelOf(address), custodial: labelOf(address) !== null, ...m, requiredCollateral: required }) as Record<string, unknown>),
+    contributionStatus: contributionStatusOf(m, circleRound, lastDefault),
+    lastDefault: lastDefaultOut,
+  };
+}
+
 circles.get("/circles", wrap(async (_req, res) => {
   requireContract();
   const list = await allCircles();
-  res.json({ circles: list.reverse().map(({ id, c }) => circleSummary(id, c)) });
+  const out = await Promise.all(list.reverse().map(async ({ id, c }) => circleSummary(id, c, await isDemoCircle(id))));
+  res.json({ circles: out });
 }));
 
 circles.get("/circles/:id", wrap(async (req, res) => {
   requireContract();
   const id = parseId(req.params.id);
-  const count = await getCircleCount();
-  if (id > count) throw new ApiError(404, "circle not found", "NOT_FOUND");
-  const [c, round, addrs] = await Promise.all([getCircle(id), getRound(id), getMembers(id)]);
+  await requireCircle(id);
+  const [c, round, addrs, isDemo, defaults] = await Promise.all([getCircle(id), getRound(id), getMembers(id), isDemoCircle(id), defaultsOf(id)]);
   const [members, txCount, mandates] = await Promise.all([
-    Promise.all(addrs.map(async (address) => {
-      const [m, required] = await Promise.all([getMember(id, address), getRequiredCollateral(address, id)]);
-      return toJson({ address, label: labelOf(address), ...m, requiredCollateral: required });
-    })),
+    Promise.all(addrs.map((address) => memberInfo(id, address, c.round, defaults.latestByMember.get(address.toLowerCase())))),
     countEventsForCircle(id),
     activeMandates(id),
   ]);
-  res.json({ circle: circleSummary(id, c), round: toJson(round), members, txCount, mandates: mandates.map(mandateToApi) });
+  let latestDefault: (DefaultInfo & { member: string; label: string | null }) | null = null;
+  const newest = defaults.all[0];
+  if (newest) {
+    const info = defaultInfoFrom(newest, 0n);
+    const state = members.find((m) => String(m.address).toLowerCase() === info.member.toLowerCase());
+    latestDefault = { ...info, remainingCollateral: state ? String(state.collateral) : "0", label: labelOf(info.member) };
+  }
+  res.json({
+    circle: circleSummary(id, c, isDemo), round: roundInfo(round), members, txCount, mandates: mandates.map(mandateToApi), latestDefault,
+  });
+}));
+
+/** GET /circles/:id/rounds — settled rounds ascending from getRoundHistory + indexed RoundSettled / DividendCredited. */
+circles.get("/circles/:id/rounds", wrap(async (req, res) => {
+  requireContract();
+  const id = parseId(req.params.id);
+  await requireCircle(id);
+  const [c, addrs, events] = await Promise.all([getCircle(id), getMembers(id), eventsForCircleByName(id, ["RoundSettled", "DividendCredited"])]);
+  const settledUpTo = c.status === 2 ? c.round : c.status === 1 ? c.round - 1 : 0;
+  const settledTx = new Map<number, string>();
+  const dividendCount = new Map<number, number>();
+  for (const e of events) {
+    if (e.round === null) continue;
+    if (e.name === "RoundSettled") settledTx.set(e.round, e.tx_hash);
+    else dividendCount.set(e.round, (dividendCount.get(e.round) ?? 0) + 1);
+  }
+  let activeCount: number | null = null; // fallback when the index has no DividendCredited rows for a round
+  const rounds = [];
+  for (let r = 1; r <= settledUpTo; r++) {
+    const h = await getRoundHistory(id, r);
+    if (h.settledAt === 0) continue; // not settled (should not happen below settledUpTo)
+    const hasWinner = h.winner !== ZeroAddress;
+    const dividendsTotal = hasWinner ? h.discount : h.pot - h.fee;
+    let n = dividendCount.get(r) ?? 0;
+    if (n === 0 && dividendsTotal > 0n) {
+      if (activeCount === null) {
+        const states = await Promise.all(addrs.map((a) => getMember(id, a)));
+        activeCount = states.filter((s) => !s.removed).length;
+      }
+      n = Math.max(activeCount - (hasWinner ? 1 : 0), 1);
+    }
+    rounds.push(toJson({
+      round: r, winner: hasWinner ? h.winner : null, winnerLabel: hasWinner ? labelOf(h.winner) : null,
+      pot: h.pot, payout: h.payout, discount: h.discount, fee: h.fee, holdback: h.holdback,
+      dividendsTotal, dividendPerMember: n > 0 ? dividendsTotal / BigInt(n) : 0n,
+      settledAt: h.settledAt, txHash: settledTx.get(r) ?? null,
+    }));
+  }
+  res.json({ rounds });
+}));
+
+/** GET /circles/:id/defaults — every indexed DefaultDetected for the circle, newest first. */
+circles.get("/circles/:id/defaults", wrap(async (req, res) => {
+  requireContract();
+  const id = parseId(req.params.id);
+  await requireCircle(id);
+  const { all } = await defaultsOf(id);
+  const collateral = new Map<string, bigint>();
+  const out = [];
+  for (const r of all) {
+    const a = (JSON.parse(r.args_json) as { member?: string }).member ?? "";
+    const key = a.toLowerCase();
+    if (!collateral.has(key)) collateral.set(key, a ? (await getMember(id, a)).collateral : 0n);
+    const info = defaultInfoFrom(r, collateral.get(key) ?? 0n);
+    out.push({ ...info, label: labelOf(info.member) });
+  }
+  res.json({ defaults: out });
 }));
 
 circles.post("/circles/:id/settle", wrap(async (req, res) => {
@@ -49,7 +159,7 @@ circles.post("/circles/:id/settle", wrap(async (req, res) => {
   const id = parseId(req.params.id);
   const c = await getCircle(id);
   if (c.status !== 1) throw new ApiError(409, "circle is not active", "NotActive");
-  if (Math.floor(Date.now() / 1000) <= c.roundDeadline) throw new ApiError(409, "round deadline has not passed", "RoundNotOver");
+  if (Math.floor(Date.now() / 1000) <= c.roundDeadline) throw new ApiError(409, "bidding deadline has not passed", "BiddingNotOver");
   const txHash = await settleNow(id, "api settle");
   res.json({ txHash });
 }));

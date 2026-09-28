@@ -8,7 +8,7 @@ import { loop } from "./bus";
 
 /**
  * Demo autopilot: for circles created via /demo/new-circle, contribute for every custodial demo wallet
- * ~5 s into each round unless the wallet is marked `skip`. One tx at a time per wallet.
+ * ~5 s into each round (while the contribution phase is open) unless the wallet is marked `skip`. One tx at a time per wallet.
  */
 const CONTRIBUTE_DELAY_SEC = 5;
 const busy = new Set<string>(); // wallet addresses with a tx in flight
@@ -68,7 +68,7 @@ async function contributeFor(circleId: number, round: number, label: string, wal
       done.add(key);
     } catch (e) {
       const msg = errorMessage(e);
-      if (/AlreadyPaid|RoundClosed|NotActive|MemberRemoved/.test(msg)) done.add(key);
+      if (/AlreadyPaid|ContributionClosed|NotActive|MemberRemoved/.test(msg)) done.add(key);
       console.error(`[autopilot] ${label} circle ${circleId} round ${round}: ${msg}`);
     }
   });
@@ -98,8 +98,9 @@ async function autopilotTick(): Promise<void> {
     let circle;
     try { circle = await getCircle(circleId); } catch (e) { console.error(`[autopilot] circle ${circleId}: ${errorMessage(e)}`); continue; }
     if (circle.status !== 1) continue;
-    const roundStart = circle.roundDeadline - circle.roundDuration;
-    if (nowSec < roundStart + CONTRIBUTE_DELAY_SEC || nowSec >= circle.roundDeadline - 2) continue;
+    // v2: contributions are only accepted until contributionDeadline (bidding continues after that).
+    const roundStart = circle.contributionDeadline - circle.contributionDuration;
+    if (nowSec < roundStart + CONTRIBUTE_DELAY_SEC || nowSec >= circle.contributionDeadline - 2) continue;
     const members = new Set((await getMembers(circleId)).map((a) => a.toLowerCase()));
     for (const w of demoWallets) {
       if (!members.has(w.address.toLowerCase())) continue;

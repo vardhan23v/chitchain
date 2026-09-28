@@ -45,16 +45,27 @@ export type Tier = 0 | 1 | 2 | 3;
 export type Status = 0 | 1 | 2 | 3;
 export const TIER_NAME = ["Unassessed", "Low", "Medium", "High"] as const;
 
+export interface CircleParams {
+  contribution: bigint; baseCollateral: bigint; maxMembers: number; contributionDuration: number; biddingDuration: number; joinWindow: number;
+  feeBps: number; holdbackBps: number; maxDiscountBps: number; lowBps: number; mediumBps: number; highBps: number;
+}
+/** Demo defaults for the bps knobs (ARCHITECTURE.md): 10% holdback, 40% max discount, 50/100/200% collateral by tier. */
+export const DEFAULT_BPS = { feeBps: 100, holdbackBps: 1000, maxDiscountBps: 4000, lowBps: 5000, mediumBps: 10_000, highBps: 20_000 } as const;
+
 export interface CircleView {
-  creator: string; contribution: bigint; maxMembers: number; roundDuration: number; joinDeadline: number;
-  feeBps: number; baseCollateral: bigint; status: Status; round: number; roundDeadline: number; reserve: bigint; memberCount: number;
+  creator: string; contribution: bigint; baseCollateral: bigint; maxMembers: number; contributionDuration: number; biddingDuration: number;
+  joinDeadline: number; feeBps: number; holdbackBps: number; maxDiscountBps: number; lowBps: number; mediumBps: number; highBps: number;
+  status: Status; round: number; contributionDeadline: number; roundDeadline: number /* = bidding deadline */; reserve: bigint; memberCount: number;
 }
 export interface MemberView {
   joined: boolean; tier: Tier; hasWon: boolean; removed: boolean; collateral: bigint; claimable: bigint; paidThisRound: boolean; bidThisRound: bigint;
+  defaults: number; collateralUsed: bigint;
 }
 export interface RoundView {
-  round: number; deadline: number; expectedPot: bigint; collected: bigint; bestBidder: string; bestDiscount: bigint; maxDiscount: bigint;
+  round: number; contributionDeadline: number; deadline: number /* bidding deadline */; expectedPot: bigint; collected: bigint;
+  bestBidder: string; bestDiscount: bigint; maxDiscount: bigint;
 }
+export interface RoundRecord { winner: string; settledAt: number; pot: bigint; payout: bigint; discount: bigint; fee: bigint; holdback: bigint }
 export interface ReputationView { paidOnTime: number; missed: number; circlesCompleted: number; circlesRemoved: number }
 
 const n = (v: unknown): number => Number(v);
@@ -64,9 +75,11 @@ export async function getCircleCount(c = readContract()): Promise<number> { retu
 export async function getCircle(id: number, c = readContract()): Promise<CircleView> {
   const r = (await c.getCircle(id)) as Result;
   return {
-    creator: String(r.creator), contribution: b(r.contribution), maxMembers: n(r.maxMembers), roundDuration: n(r.roundDuration),
-    joinDeadline: n(r.joinDeadline), feeBps: n(r.feeBps), baseCollateral: b(r.baseCollateral), status: n(r.status) as Status,
-    round: n(r.round), roundDeadline: n(r.roundDeadline), reserve: b(r.reserve), memberCount: n(r.memberCount),
+    creator: String(r.creator), contribution: b(r.contribution), baseCollateral: b(r.baseCollateral), maxMembers: n(r.maxMembers),
+    contributionDuration: n(r.contributionDuration), biddingDuration: n(r.biddingDuration), joinDeadline: n(r.joinDeadline),
+    feeBps: n(r.feeBps), holdbackBps: n(r.holdbackBps), maxDiscountBps: n(r.maxDiscountBps), lowBps: n(r.lowBps), mediumBps: n(r.mediumBps), highBps: n(r.highBps),
+    status: n(r.status) as Status, round: n(r.round), contributionDeadline: n(r.contributionDeadline), roundDeadline: n(r.roundDeadline),
+    reserve: b(r.reserve), memberCount: n(r.memberCount),
   };
 }
 export async function getMembers(id: number, c = readContract()): Promise<string[]> {
@@ -77,14 +90,34 @@ export async function getMember(id: number, addr: string, c = readContract()): P
   return {
     joined: Boolean(r.joined), tier: n(r.tier) as Tier, hasWon: Boolean(r.hasWon), removed: Boolean(r.removed),
     collateral: b(r.collateral), claimable: b(r.claimable), paidThisRound: Boolean(r.paidThisRound), bidThisRound: b(r.bidThisRound),
+    defaults: n(r.defaults), collateralUsed: b(r.collateralUsed),
   };
 }
 export async function getRound(id: number, c = readContract()): Promise<RoundView> {
   const r = (await c.getRound(id)) as Result;
   return {
-    round: n(r.round), deadline: n(r.deadline), expectedPot: b(r.expectedPot), collected: b(r.collected),
+    round: n(r.round), contributionDeadline: n(r.contributionDeadline), deadline: n(r.biddingDeadline), expectedPot: b(r.expectedPot), collected: b(r.collected),
     bestBidder: String(r.bestBidder), bestDiscount: b(r.bestDiscount), maxDiscount: b(r.maxDiscount),
   };
+}
+/** Settlement record for a past round (winner = zero address means the pot was shared as dividends). */
+export async function getRoundHistory(id: number, round: number, c = readContract()): Promise<RoundRecord> {
+  const r = (await c.getRoundHistory(id, round)) as Result;
+  return { winner: String(r.winner), settledAt: n(r.settledAt), pot: b(r.pot), payout: b(r.payout), discount: b(r.discount), fee: b(r.fee), holdback: b(r.holdback) };
+}
+/** Phase of the current round at `nowSec` (contribution → bidding → settling once the bidding deadline passed). */
+export function roundPhase(r: { contributionDeadline: number; deadline: number }, nowSec = Math.floor(Date.now() / 1000)): "contribution" | "bidding" | "settling" {
+  if (nowSec <= r.contributionDeadline) return "contribution";
+  if (nowSec <= r.deadline) return "bidding";
+  return "settling";
+}
+/** Sends createCircle(CircleParams) from `wallet`. The struct is passed as a plain object (ethers encodes named tuples). */
+export function createCircleCall(wallet: ManagedWallet, p: CircleParams): Promise<ContractTransactionResponse> {
+  return contractAs(wallet).createCircle({
+    contribution: p.contribution, baseCollateral: p.baseCollateral, maxMembers: p.maxMembers,
+    contributionDuration: p.contributionDuration, biddingDuration: p.biddingDuration, joinWindow: p.joinWindow,
+    feeBps: p.feeBps, holdbackBps: p.holdbackBps, maxDiscountBps: p.maxDiscountBps, lowBps: p.lowBps, mediumBps: p.mediumBps, highBps: p.highBps,
+  }) as Promise<ContractTransactionResponse>;
 }
 export async function getRequiredCollateral(addr: string, id: number, c = readContract()): Promise<bigint> {
   return b(await c.requiredCollateral(addr, id));
@@ -113,7 +146,7 @@ export function toJson(v: unknown): Json {
 /**
  * Dry-runs a state-changing call so we never send a tx that would revert.
  * Uses the `pending` block (correct timestamp on Hardhat/automine chains); falls back to `latest` if the RPC rejects the tag.
- * Throws the decoded contract error (e.g. RoundNotOver) when the call would revert.
+ * Throws the decoded contract error (e.g. BiddingNotOver) when the call would revert.
  */
 export async function preflight(contract: Contract, method: string, args: unknown[], overrides: Record<string, unknown> = {}): Promise<void> {
   const fn = contract.getFunction(method);
@@ -146,7 +179,7 @@ export async function sendTx(ctx: string, signer: ManagedWallet, send: () => Pro
   return rc;
 }
 
-/** Decodes a contract revert into a readable error name (e.g. "RoundNotOver"), or null. */
+/** Decodes a contract revert into a readable error name (e.g. "BiddingNotOver"), or null. */
 export function revertName(e: unknown): string | null {
   const err = e as { data?: unknown; error?: { data?: unknown }; info?: { error?: { data?: unknown } }; reason?: string; shortMessage?: string };
   const data = [err?.data, err?.error?.data, err?.info?.error?.data].find((d) => typeof d === "string" && d.startsWith("0x"));

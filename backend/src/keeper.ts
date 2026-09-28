@@ -3,9 +3,10 @@ import { bus, loop } from "./bus";
 
 const pending = new Set<string>(); // `${circleId}:${round}` while a settle tx is in flight
 const finished = new Set<number>(); // Completed / Cancelled circles — no need to re-read every tick
-const NON_FATAL = ["RoundNotOver", "NotActive"];
+const biddingPlanned = new Set<string>(); // `${circleId}:${round}` once the agent was re-planned for the bidding-only window
+const NON_FATAL = ["BiddingNotOver", "NotActive"];
 
-/** Settles `circleId` now if its deadline passed. Returns the tx hash, or throws a readable error. */
+/** Settles `circleId` now if its bidding deadline passed. Returns the tx hash, or throws a readable error. */
 export async function settleNow(circleId: number, ctx = "keeper"): Promise<string> {
   if (!keeper) throw new Error("KEEPER_PRIVATE_KEY not configured");
   const c = await getCircle(circleId);
@@ -32,16 +33,24 @@ async function keeperTick(): Promise<void> {
     if (finished.has(id)) continue;
     let status: number;
     let roundDeadline: number;
+    let contributionDeadline: number;
     let round: number;
     try {
       const c = await getCircle(id);
-      status = c.status; roundDeadline = c.roundDeadline; round = c.round;
+      status = c.status; roundDeadline = c.roundDeadline; contributionDeadline = c.contributionDeadline; round = c.round;
     } catch (e) {
       console.error(`[keeper] circle ${id}: read failed: ${errorMessage(e)}`);
       continue;
     }
     if (status === 2 || status === 3) { finished.add(id); continue; }
-    if (status !== 1 || nowSec <= roundDeadline) continue;
+    if (status !== 1) continue;
+    // Contribution phase just ended → bidding-only window: let the agent re-plan once against the final pot.
+    const bidKey = `${id}:${round}`;
+    if (nowSec > contributionDeadline && nowSec <= roundDeadline && !biddingPlanned.has(bidKey)) {
+      biddingPlanned.add(bidKey);
+      bus.emit("biddingPhase", id);
+    }
+    if (nowSec <= roundDeadline) continue;
     if (pending.has(`${id}:${round}`)) continue;
     try {
       await settleNow(id);

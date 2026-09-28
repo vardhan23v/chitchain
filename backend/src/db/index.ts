@@ -67,6 +67,25 @@ export async function eventsForAddress(addr: string, limit = 50): Promise<EventR
   });
   return rows.map(toEventRow).reverse();
 }
+/** Newest-first indexed events whose args name `addr` as member / winner / bestBidder / creator (case-insensitive match on args_json). */
+export async function eventsInvolving(addr: string, limit = 50): Promise<EventRow[]> {
+  const rows = await prisma.event.findMany({
+    where: { argsJson: { contains: `"${addr.toLowerCase()}"`, mode: "insensitive" } },
+    orderBy: { id: "desc" },
+    take: Math.min(Math.max(limit, 1), 500) * 2, // over-fetch: other args (e.g. txHash-like strings) could match too
+  });
+  const a = addr.toLowerCase();
+  const KEYS = ["member", "winner", "bestBidder", "bidder", "creator"];
+  return rows
+    .filter((r) => { const args = JSON.parse(r.argsJson) as Record<string, unknown>; return KEYS.some((k) => typeof args[k] === "string" && (args[k] as string).toLowerCase() === a); })
+    .slice(0, limit)
+    .map(toEventRow);
+}
+/** All indexed events of the given names for one circle, oldest → newest. */
+export async function eventsForCircleByName(circleId: number, names: string[]): Promise<EventRow[]> {
+  const rows = await prisma.event.findMany({ where: { circleId, name: { in: names } }, orderBy: { id: "asc" } });
+  return rows.map(toEventRow);
+}
 export async function countEventsForCircle(circleId: number): Promise<number> {
   return prisma.event.count({ where: { circleId } });
 }
@@ -120,17 +139,29 @@ export async function agentLogForRound(circleId: number, round: number, member: 
 }
 
 // ───────────── mandates ─────────────
-export interface MandateRow { circle_id: number; member: string; goal: string; max_discount_pct: number | null; active: number; created_at: number }
+export type Level = "low" | "medium" | "high";
+export interface MandateRow {
+  circle_id: number; member: string; goal: string; max_discount_pct: number | null;
+  desired_payout: string | null; urgency: Level | null; risk_tolerance: Level | null; active: number; created_at: number;
+}
+export interface MandateInput { goal: string; maxDiscountPct: number | null; desiredPayout: bigint | null; urgency: Level | null; riskTolerance: Level | null }
+const asLevel = (v: string | null): Level | null => (v === "low" || v === "medium" || v === "high" ? v : null);
 const toMandateRow = (m: PMandate): MandateRow => ({
-  circle_id: m.circleId, member: m.member, goal: m.goal, max_discount_pct: m.maxDiscountPct, active: m.active ? 1 : 0, created_at: m.createdAt,
+  circle_id: m.circleId, member: m.member, goal: m.goal, max_discount_pct: m.maxDiscountPct,
+  desired_payout: m.desiredPayout, urgency: asLevel(m.urgency), risk_tolerance: asLevel(m.riskTolerance),
+  active: m.active ? 1 : 0, created_at: m.createdAt,
 });
 /** Member is stored as given (checksummed by the API layer); lookups are case-insensitive. */
-export async function upsertMandate(circleId: number, member: string, goal: string, maxDiscountPct: number | null): Promise<MandateRow> {
+export async function upsertMandate(circleId: number, member: string, input: MandateInput): Promise<MandateRow> {
   const ts = now();
+  const data = {
+    goal: input.goal, maxDiscountPct: input.maxDiscountPct, desiredPayout: input.desiredPayout === null ? null : input.desiredPayout.toString(),
+    urgency: input.urgency, riskTolerance: input.riskTolerance, active: true, createdAt: ts,
+  };
   const row = await prisma.mandate.upsert({
     where: { circleId_member: { circleId, member } },
-    create: { circleId, member, goal, maxDiscountPct, active: true, createdAt: ts },
-    update: { goal, maxDiscountPct, active: true, createdAt: ts },
+    create: { circleId, member, ...data },
+    update: data,
   });
   return toMandateRow(row);
 }

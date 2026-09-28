@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { parseEther } from "ethers";
 import { z } from "zod";
-import { contractAddress, contractAs, demoWallet, demoWallets, deployer, getRiskTier, isConfigured, preflight, provider, readContract, sendTx } from "../chain";
+import { contractAddress, contractAs, createCircleCall, DEFAULT_BPS, demoWallet, demoWallets, deployer, getRiskTier, isConfigured, preflight, provider, readContract, sendTx } from "../chain";
 import { addDemoCircle, countDistinctTx, findEvent, getSkip, latestDemoCircle, setSkip } from "../db";
 import { ensureFunded, joinAll } from "../autopilot";
 import { assessAndSetTier } from "./members";
@@ -29,7 +29,7 @@ demo.get("/demo/state", wrap(async (_req, res) => {
   res.json({ wallets, txCount, contract: contractAddress, circleId });
 }));
 
-/** POST /demo/fund — top up every demo wallet below 1 MSTC to 2 MSTC from the deployer. */
+/** POST /demo/fund — top up every demo wallet below 1 MST to 2 MST from the deployer. */
 demo.post("/demo/fund", wrap(async (_req, res) => {
   requireDemo(); requireDeployer();
   const txHashes: string[] = [];
@@ -61,22 +61,30 @@ demo.post("/demo/skip", wrap(async (req, res) => {
 }));
 
 const newCircleBody = z.object({
-  roundDuration: z.coerce.number().int().min(10).max(86_400).default(30),
+  contributionDuration: z.coerce.number().int().min(10).max(86_400).default(30),
+  biddingDuration: z.coerce.number().int().min(10).max(86_400).default(30),
   contribution: z.string().default("0.1"),
+  holdbackBps: z.coerce.number().int().min(0).max(10_000).default(DEFAULT_BPS.holdbackBps),
+  maxDiscountBps: z.coerce.number().int().min(0).max(5000).default(DEFAULT_BPS.maxDiscountBps),
 });
-/** POST /demo/new-circle — createCircle from the deployer, then join all 5 demo wallets. */
+/** POST /demo/new-circle — createCircle(CircleParams) from the deployer, then join all 5 demo wallets. */
 demo.post("/demo/new-circle", wrap(async (req, res) => {
   requireDemo(); requireDeployer();
   const parsed = newCircleBody.safeParse(req.body ?? {});
-  if (!parsed.success) throw new ApiError(400, "body: { roundDuration?: number, contribution?: string (MSTC) }", "BAD_BODY");
+  if (!parsed.success) {
+    throw new ApiError(400, "body: { contributionDuration?: number (>=10), biddingDuration?: number (>=10), contribution?: string (MST), holdbackBps?: number, maxDiscountBps?: number }", "BAD_BODY");
+  }
   let contribution: bigint;
   try { contribution = parseEther(parsed.data.contribution); } catch { throw new ApiError(400, "invalid contribution", "BAD_BODY"); }
   if (contribution <= 0n) throw new ApiError(400, "contribution must be > 0", "BAD_BODY");
   const members = Math.max(demoWallets.length, 3);
 
-  const rc = await sendTx("demo createCircle", deployer!, () =>
-    contractAs(deployer!).createCircle(contribution, members, parsed.data.roundDuration, 1800, 100, contribution),
-  );
+  const rc = await sendTx("demo createCircle", deployer!, () => createCircleCall(deployer!, {
+    contribution, baseCollateral: contribution, maxMembers: members,
+    contributionDuration: parsed.data.contributionDuration, biddingDuration: parsed.data.biddingDuration, joinWindow: 1800,
+    feeBps: DEFAULT_BPS.feeBps, holdbackBps: parsed.data.holdbackBps, maxDiscountBps: parsed.data.maxDiscountBps,
+    lowBps: DEFAULT_BPS.lowBps, mediumBps: DEFAULT_BPS.mediumBps, highBps: DEFAULT_BPS.highBps,
+  }));
   const iface = readContract().interface;
   let circleId: number | null = null;
   for (const log of rc.logs) {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { chatJSON } from "../llm";
 import type { Factor, Tier } from "./score";
-import { TIER_LABEL } from "./score";
+import { COLD_START_SCORE, TIER_LABEL } from "./score";
 
 export interface Explanation { explanation: string; explanationSource: "llm" | "template" }
 
@@ -11,9 +11,10 @@ const schema = z.object({ explanation: z.string().min(1).max(600) });
 export async function explainScore(score: number, tier: Tier, factors: Factor[], dataSource: string): Promise<Explanation> {
   const template = templateExplanation(score, tier, factors, dataSource);
   const prompt = [
-    "Explain a chit-fund member's risk score to them in AT MOST two short sentences.",
+    "Explain a chit-fund member's RISK score to them in AT MOST two short sentences.",
+    "The score runs 0–100 where LOWER IS SAFER (Low risk ≤ 39, Medium 40–69, High ≥ 70). Negative factor effects reduce risk; positive ones add risk.",
     "Use ONLY the factors listed; do not invent history, do not mention credit bureaus, do not give advice.",
-    `Score: ${score}/100 → tier ${TIER_LABEL[tier]}. Data source: ${dataSource}.`,
+    `Risk score: ${score}/100 → ${TIER_LABEL[tier]} risk. Data source: ${dataSource}.`,
     "Factors:",
     ...factors.map((f) => `- ${f.name}: ${f.value} (${f.effect})`),
     'Reply as JSON: {"explanation": "..."}',
@@ -27,9 +28,9 @@ export async function explainScore(score: number, tier: Tier, factors: Factor[],
 export function templateExplanation(score: number, tier: Tier, factors: Factor[], dataSource: string): string {
   const cold = factors.some((f) => f.effect.includes("cold start"));
   const src = dataSource === "SYNTHETIC" ? " (synthetic demo history)" : "";
-  if (cold) return `No payment history yet${src}, so the score defaults to 60 and the tier is Medium. Complete a circle on time to move to Low risk.`;
+  if (cold) return `No payment history yet${src}, so the risk score defaults to ${COLD_START_SCORE}/100 (lower is safer) and the tier is Medium. Paying on time and completing a circle brings it down to Low risk.`;
   const parts = factors.filter((f) => f.name !== "Base").map((f) => `${f.name.toLowerCase()} ${f.value} (${f.effect})`);
-  return `Score ${score}/100 → ${TIER_LABEL[tier]} risk${src}: ${parts.join(", ")}. Collateral is priced from this tier.`;
+  return `Risk score ${score}/100 (lower is safer) → ${TIER_LABEL[tier]} risk${src}: ${parts.join(", ")}. Collateral is priced from this tier.`;
 }
 
 function limitSentences(s: string, max: number): string {

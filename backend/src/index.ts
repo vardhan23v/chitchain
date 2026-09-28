@@ -43,6 +43,10 @@ app.use(errorMiddleware);
 bus.on("roundStarted", (circleId) => {
   planRound(circleId).catch((e) => console.error(`[agent] circle ${circleId}: ${e instanceof Error ? e.message : String(e)}`));
 });
+// Contribution phase over (bidding-only window) → one more plan per mandate so the agent can react to the final pot.
+bus.on("biddingPhase", (circleId) => {
+  planRound(circleId, "bidding").catch((e) => console.error(`[agent] circle ${circleId} (bidding): ${e instanceof Error ? e.message : String(e)}`));
+});
 
 process.on("unhandledRejection", (e) => console.error(`[process] unhandled rejection: ${e instanceof Error ? e.stack ?? e.message : String(e)}`));
 process.on("uncaughtException", (e) => console.error(`[process] uncaught exception: ${e.stack ?? e.message}`));

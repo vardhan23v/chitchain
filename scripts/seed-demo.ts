@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
  * One-command demo setup on MST testnet:
  *   1. funds the agent wallets from the deployer (so they can pay gas for placeBid)
  *   2. sets demo risk tiers via the oracle (A Low, B Medium, C Low, D High, E Medium)
- *   3. creates a 5-member circle with 30 s rounds
+ *   3. creates a 5-member circle with 30 s contribution + 30 s bidding phases (v2 CircleParams struct)
  * Members join from their own BridgeKey wallets in the UI; that is part of the live demo.
  */
 async function main() {
@@ -33,7 +33,20 @@ async function main() {
     await tx.wait();
     console.log(`setRiskTier(${demoAddrs[i]}, ${tiers[i]})  tx ${tx.hash}`);
   }
-  const tx = await chit.createCircle(ethers.parseEther("0.1"), 5, 30, 1800, 100, ethers.parseEther("0.1"));
+  const tx = await chit.createCircle({
+    contribution: ethers.parseEther("0.1"),
+    baseCollateral: ethers.parseEther("0.1"),
+    maxMembers: 5,
+    contributionDuration: 30,
+    biddingDuration: 30,
+    joinWindow: 1800,
+    feeBps: 100,
+    holdbackBps: 1000,     // 10% of a winner's payout locked until completion
+    maxDiscountBps: 4000,  // bids capped at 40% of the expected pot
+    lowBps: 5000,
+    mediumBps: 10_000,
+    highBps: 20_000,
+  });
   const rc = await tx.wait();
   console.log(`createCircle tx ${tx.hash} block ${rc!.blockNumber}  circleCount=${await chit.circleCount()}`);
 }

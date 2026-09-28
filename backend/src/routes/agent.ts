@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { parseEther } from "ethers";
 import { z } from "zod";
 import { demoWallet, getCircle, getCircleCount, isConfigured } from "../chain";
 import { deactivateMandate, listAgentLogs, upsertMandate } from "../db";
@@ -12,7 +13,10 @@ const mandateBody = z.object({
   circleId: z.coerce.number().int().positive(),
   member: z.string(),
   goal: z.string().trim().min(3).max(500),
-  maxDiscountPct: z.coerce.number().min(0).max(40).nullable().optional(),
+  maxDiscountPct: z.coerce.number().min(0).max(50).nullable().optional(),
+  desiredPayout: z.string().trim().regex(/^\d+(\.\d+)?$/, "MST decimal string, e.g. \"0.45\"").nullable().optional(),
+  urgency: z.enum(["low", "medium", "high"]).nullable().optional(),
+  riskTolerance: z.enum(["low", "medium", "high"]).nullable().optional(),
 });
 
 /** POST /agent/mandate — store the goal and run one decision now if the circle is Active. */
@@ -24,7 +28,15 @@ agent.post("/agent/mandate", wrap(async (req, res) => {
   if (!demoWallet(member)) throw new ApiError(400, AGENT_ONLY_DEMO, "NOT_DEMO_WALLET"); // custodial demo wallet only
   if (!isConfigured()) throw new ApiError(503, "CHITCHAIN_ADDRESS not configured", "NO_CONTRACT");
   if (circleId > (await getCircleCount())) throw new ApiError(404, "circle not found", "NOT_FOUND");
-  const row = await upsertMandate(circleId, member, goal, parsed.data.maxDiscountPct ?? null);
+  let desiredPayout: bigint | null = null;
+  if (parsed.data.desiredPayout) {
+    try { desiredPayout = parseEther(parsed.data.desiredPayout); } catch { throw new ApiError(400, "desiredPayout: invalid MST amount", "BAD_BODY"); }
+    if (desiredPayout <= 0n) throw new ApiError(400, "desiredPayout must be > 0", "BAD_BODY");
+  }
+  const row = await upsertMandate(circleId, member, {
+    goal, maxDiscountPct: parsed.data.maxDiscountPct ?? null, desiredPayout,
+    urgency: parsed.data.urgency ?? null, riskTolerance: parsed.data.riskTolerance ?? null,
+  });
   const circle = await getCircle(circleId);
   const decision = circle.status === 1 ? await decideForMandate(row, true) : null;
   res.json({ mandate: mandateToApi(row), decision: decision ? agentLogToApi(decision) : null });
