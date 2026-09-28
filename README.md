@@ -59,8 +59,21 @@ Built in 24 h for **MST Blockchain × NEWRRO Buildathon 2026 — MST Blockchain 
 
 Rows above are from the v1 contract's demo circle. The v2 rows (two-phase rounds, `DefaultDetected`) are added below after the v2 demo run. Every event in the live app links to the same explorer.
 
-### v2 demo transactions
-_(pending — filled after the v2 rehearsal)_
+### v2 demo transactions (circle #2 on the v2 contract)
+| Action | Tx |
+|---|---|
+| Deploy `ChitChain` v2 | [`0x2f2321f3…fe55e5`](https://testnet.mstscan.com/tx/0x2f2321f3b9e9f142de0c0c21f9e1f73607e12bc2a9c8b23ec186f0b80afe55e5) |
+| `setRiskTier(D, HIGH)` — risk score 74 | [`0x524d1ca9…0f3a6b`](https://testnet.mstscan.com/tx/0x524d1ca9a5e92bded8de28db571755e666e55a916367c37e5ab82256860f3a6b) |
+| `setRiskTier(A, LOW)` — risk score 13 | [`0x5a3972c9…e8da86`](https://testnet.mstscan.com/tx/0x5a3972c9ce9cab7a102bed50169389c65a4d10a4898544fac418c4cf85e8da86) |
+| `createCircle` (5 members, 30 s contributions + 30 s bidding, 0.1 MST, 10 % holdback) | [`0x3fd50967…cc4405`](https://testnet.mstscan.com/tx/0x3fd5096720c05059ab614373786785104b099f118521e01764b039ca92cc4405) |
+| Join — D (HIGH, locks 2× = 0.20 MST) | [`0x49f83c3e…59660d`](https://testnet.mstscan.com/tx/0x49f83c3e77c996e1661c85f8fb385afdd72938e2f5e6aa31215d4b0bef59660d) |
+| Join — A (LOW, locks 0.5× = 0.05 MST) | [`0xe420c982…4024b4`](https://testnet.mstscan.com/tx/0xe420c982a3fa0d9e1cac366bd718597aa8e86646f6fba5e77db28230f44024b4) |
+| Agent bid for B (goal "I need money this month", desired payout 0.45 → discount 0.05) | [`0xdacf5436…47b7bd`](https://testnet.mstscan.com/tx/0xdacf5436f6323523cea68bd95d5dbfb3b26ebb387b10581dae0d7761d647b7bd) |
+| `settleRound` #1 — B wins 0.25 MST after 0.20 holdback; **`DefaultDetected(D)` covered 0.10 from collateral, shortfall 0**; dividends 0.0125 each | [`0x039b272b…f95766`](https://testnet.mstscan.com/tx/0x039b272b2dfb14d6a700cecf1c286aa2c84e0d87a0d5061cb4cea5b7acf95766) |
+| `settleRound` #2 — A wins; D covered from collateral again (collateral now 0) | [`0x425ddc61…f5e539`](https://testnet.mstscan.com/tx/0x425ddc61d6dcf7dc48d925b616d534bd171c51cbd8c1cd67299f35f834f5e539) |
+| `settleRound` #3 — **D partially covered**: 0.01 from reserve, shortfall 0.09, D removed; pot 0.41 (shown as "short by 0.09 MST") | [`0x550248b8…92ceaf`](https://testnet.mstscan.com/tx/0x550248b803a7c31fd49d613e83ff7c27c66a274e6435d1680da433173092ceaf) |
+
+Rounds 1–2 show the full-cover case (pot fully funded); round 3 shows the honest partial-cover case once D's collateral was exhausted.
 
 ## How it works
 
