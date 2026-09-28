@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleDot, LayoutDashboard, PlusCircle, User } from "lucide-react";
+import { CircleDot, LayoutGrid, Orbit, SquarePlus, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ export function useNavItems() {
   const auth = useAuth();
   const signedIn = auth.status === "authenticated";
   // Role home: /dashboard, /organizer or /admin. Anonymous users go to /login.
-  const dashboard: NavItem = { href: signedIn ? auth.home : "/login", label: "Dashboard", Icon: LayoutDashboard };
+  const dashboard: NavItem = { href: signedIn ? auth.home : "/login", label: "Dashboard", Icon: LayoutGrid };
   const profileHref = signedIn && account ? `/member/${account}` : "/login";
   const isActive = (href: string) => (href === "/" ? path === "/" || path.startsWith("/circle/") : href !== "/login" && path.startsWith(href.split("/").slice(0, 2).join("/")));
   return { signedIn, dashboard, profileHref, isActive };
@@ -25,7 +25,7 @@ export function useNavItems() {
 /** Mobile bottom tab bar (DESIGN §5). Desktop uses the icon rail instead. */
 export function MobileTabs() {
   const { dashboard, profileHref, isActive } = useNavItems();
-  const mobile: NavItem[] = [{ href: "/", label: "Circles", Icon: CircleDot }, dashboard, { href: "/create", label: "Create", Icon: PlusCircle }, { href: profileHref, label: "Profile", Icon: User }];
+  const mobile: NavItem[] = [{ href: "/", label: "Circles", Icon: Orbit }, dashboard, { href: "/create", label: "Create", Icon: SquarePlus }, { href: profileHref, label: "Profile", Icon: UserRound }];
   return (
     <nav className="glass-strong fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 rounded-t-3xl border-b-0 pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Mobile">
       {mobile.map(({ href, label, Icon }) => {
