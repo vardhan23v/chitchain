@@ -1,59 +1,99 @@
-# ChitChain — Contract Interface (v2)
+# ChitChain — Contract Interface (v3, deployed as contract v2)
 
 Reference for `ChitChain.sol` on **MST Testnet**. Frontend, backend and tests should code against this file. Matches `ARCHITECTURE.md` v2.
 
 - Language: Solidity `^0.8.20` · Libraries: OpenZeppelin `ReentrancyGuard`
-- Currency: native **MSTC** (all amounts in wei, 18 decimals)
-- RPC: `https://testnetrpc.mstblockchain.com` · Chain ID: `VERIFY` · Explorer: `https://mstscan.com`
-- Contract address: `TBD after deploy` (put in README + `.env`)
+- Currency: native **MST** (all amounts in wei, 18 decimals)
+- RPC: `https://testnetrpc.mstblockchain.com` · Chain ID: `91562037` · Explorer: `https://testnet.mstscan.com`
+- Contract address: see `deployments/mstTestnet.json` and README
+- Currency: native **MST** testnet coin (18 decimals, no monetary value)
 
 ---
 
 ## 1. Solidity interface
 
+The file `contracts/IChitChain.sol` is the source of truth; reproduced here:
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/// @title IChitChain v2 — types, events, errors and function signatures (see INTERFACE.md)
 interface IChitChain {
     // ───────────────────────── Types ─────────────────────────
     enum Status { Open, Active, Completed, Cancelled }
     enum Tier   { Unassessed, Low, Medium, High } // Unassessed = 0 → treated as High
 
+    /// @notice Everything a circle creator configures. Passed as calldata to avoid stack-too-deep.
+    struct CircleParams {
+        uint256 contribution;          // per member per round (wei)
+        uint256 baseCollateral;        // Medium-tier reference; must be >= contribution
+        uint8   maxMembers;            // 3..20
+        uint32  contributionDuration;  // seconds contributions stay open each round (demo: 30)
+        uint32  biddingDuration;       // seconds bidding stays open after contributions close (demo: 30)
+        uint32  joinWindow;            // seconds to fill the circle
+        uint16  feeBps;                // <= 300; goes to circle reserve, leftover to treasury
+        uint16  holdbackBps;           // 0..10000; flat share of a winner's payout locked until completion
+        uint16  maxDiscountBps;        // 0..5000; max bid discount as share of expected pot
+        uint16  lowBps;                // collateral multipliers (of baseCollateral), low <= medium <= high
+        uint16  mediumBps;
+        uint16  highBps;               // Unassessed uses highBps
+    }
+
     struct CircleView {
         address creator;
         uint256 contribution;
+        uint256 baseCollateral;
         uint8   maxMembers;
-        uint32  roundDuration;
+        uint32  contributionDuration;
+        uint32  biddingDuration;
         uint64  joinDeadline;
         uint16  feeBps;
-        uint256 baseCollateral;
+        uint16  holdbackBps;
+        uint16  maxDiscountBps;
+        uint16  lowBps;
+        uint16  mediumBps;
+        uint16  highBps;
         Status  status;
         uint8   round;
-        uint64  roundDeadline;
+        uint64  contributionDeadline;  // current round: contributions close
+        uint64  roundDeadline;         // current round: bidding closes (= settle-able time)
         uint256 reserve;
         uint8   memberCount;
     }
 
     struct MemberView {
         bool    joined;
-        Tier    tier;        // snapshot at join
+        Tier    tier;            // snapshot at join
         bool    hasWon;
         bool    removed;
-        uint256 collateral;
-        uint256 claimable;
+        uint256 collateral;      // currently locked (incl. holdback)
+        uint256 claimable;       // pull balance
         bool    paidThisRound;
-        uint256 bidThisRound;
+        uint256 bidThisRound;    // discount offered this round (0 = none)
+        uint32  defaults;        // missed contributions in this circle
+        uint256 collateralUsed;  // total collateral consumed to cover misses in this circle
     }
 
     struct RoundView {
         uint8   round;
-        uint64  deadline;
-        uint256 expectedPot;   // contribution × active members
-        uint256 collected;     // contributions received so far
+        uint64  contributionDeadline;
+        uint64  biddingDeadline;
+        uint256 expectedPot;     // contribution × active members
+        uint256 collected;       // contributions received so far this round
         address bestBidder;
         uint256 bestDiscount;
-        uint256 maxDiscount;   // 40% of expectedPot
+        uint256 maxDiscount;     // maxDiscountBps of expectedPot
+    }
+
+    struct RoundRecord {          // written at settlement, one per round
+        address winner;          // address(0) = pot shared as dividends
+        uint64  settledAt;
+        uint256 pot;
+        uint256 payout;          // credited to winner after holdback
+        uint256 discount;
+        uint256 fee;
+        uint256 holdback;
     }
 
     struct Reputation {
@@ -64,14 +104,15 @@ interface IChitChain {
     }
 
     // ───────────────────────── Events ─────────────────────────
-    event CircleCreated(uint256 indexed circleId, address indexed creator, uint256 contribution, uint8 maxMembers, uint32 roundDuration, uint64 joinDeadline);
+    event CircleCreated(uint256 indexed circleId, address indexed creator, uint256 contribution, uint8 maxMembers, uint32 contributionDuration, uint32 biddingDuration, uint64 joinDeadline);
     event Joined(uint256 indexed circleId, address indexed member, Tier tier, uint256 collateral);
     event Left(uint256 indexed circleId, address indexed member, uint256 refund);
-    event CircleStarted(uint256 indexed circleId, uint64 firstDeadline);
+    event CircleStarted(uint256 indexed circleId, uint64 contributionDeadline, uint64 biddingDeadline);
     event CircleCancelled(uint256 indexed circleId);
     event Contributed(uint256 indexed circleId, uint8 indexed round, address indexed member, uint256 amount);
     event BidPlaced(uint256 indexed circleId, uint8 indexed round, address indexed member, uint256 discount);
-    event Covered(uint256 indexed circleId, uint8 indexed round, address indexed member, uint256 fromCollateral, uint256 fromReserve);
+    /// @notice A member missed a contribution. shortfall = required − fromCollateral − fromReserve (the real hole in the pot).
+    event DefaultDetected(uint256 indexed circleId, uint8 indexed round, address indexed member, uint256 required, uint256 fromCollateral, uint256 fromReserve, uint256 shortfall);
     event Removed(uint256 indexed circleId, uint8 indexed round, address indexed member);
     event HoldbackApplied(uint256 indexed circleId, address indexed member, uint256 amount);
     event RoundSettled(uint256 indexed circleId, uint8 indexed round, address indexed winner, uint256 pot, uint256 payout, uint256 discount, uint256 fee);
@@ -91,8 +132,9 @@ interface IChitChain {
     error JoinWindowStillOpen();
     error WrongAmount(uint256 expected, uint256 sent);
     error AlreadyPaid();
-    error RoundClosed();
-    error RoundNotOver();
+    error ContributionClosed();
+    error BiddingClosed();
+    error BiddingNotOver();
     error NotEligibleToBid();
     error BidTooHigh(uint256 max);
     error BidNotHigher(uint256 currentBest);
@@ -103,44 +145,15 @@ interface IChitChain {
     error DirectPaymentRejected();
 
     // ───────────────────────── Write ─────────────────────────
-    /// @notice Create a circle. Requires baseCollateral ≥ contribution, 3 ≤ maxMembers ≤ 20, feeBps ≤ 300.
-    function createCircle(
-        uint256 contribution,
-        uint8   maxMembers,
-        uint32  roundDuration,
-        uint32  joinWindow,
-        uint16  feeBps,
-        uint256 baseCollateral
-    ) external returns (uint256 circleId);
-
-    /// @notice Join by locking pre-win collateral. msg.value must equal requiredCollateral(msg.sender, circleId).
-    ///         Snapshots the caller's tier. Starts the circle when full.
+    function createCircle(CircleParams calldata p) external returns (uint256 circleId);
     function join(uint256 circleId) external payable;
-
-    /// @notice Leave an Open circle; collateral moves to claimable.
     function leave(uint256 circleId) external;
-
-    /// @notice Cancel a circle that did not fill before joinDeadline; everyone's collateral → claimable.
     function cancel(uint256 circleId) external;
-
-    /// @notice Pay this round's contribution. msg.value must equal contribution.
     function contribute(uint256 circleId) external payable;
-
-    /// @notice Offer a discount (portion of pot given up) to win this round.
-    ///         Must be > current best and ≤ maxDiscount. Only active members who haven't won.
     function placeBid(uint256 circleId, uint256 discount) external;
-
-    /// @notice Settle the current round after its deadline. Callable by anyone (keeper in MVP).
-    ///         Covers missed payments, picks winner, applies holdback, credits dividends, advances or completes.
     function settleRound(uint256 circleId) external;
-
-    /// @notice Pull the caller's claimable balance for a circle.
     function withdraw(uint256 circleId) external;
-
-    /// @notice Treasury pulls accumulated fees/reserve leftovers.
     function withdrawTreasury() external;
-
-    /// @notice Risk oracle sets a member's tier for FUTURE joins.
     function setRiskTier(address member, Tier tier) external;
 
     // ───────────────────────── Read ─────────────────────────
@@ -149,6 +162,7 @@ interface IChitChain {
     function getMembers(uint256 circleId) external view returns (address[] memory);
     function getMember(uint256 circleId, address member) external view returns (MemberView memory);
     function getRound(uint256 circleId) external view returns (RoundView memory);
+    function getRoundHistory(uint256 circleId, uint8 round) external view returns (RoundRecord memory);
     function requiredCollateral(address member, uint256 circleId) external view returns (uint256);
     function riskTier(address member) external view returns (Tier);
     function reputation(address member) external view returns (Reputation memory);
@@ -168,13 +182,14 @@ Constructor: `constructor(address riskOracle, address treasury)`.
 |---|---|
 | Members per circle | 3–20 |
 | Rounds | Until every active member has won (≤ maxMembers) |
-| Pre-win collateral | `baseCollateral × {Unassessed 2, Low 0.5, Medium 1, High 2}` |
-| Post-win security (holdback) | `owed × {Unassessed 100%, High 100%, Medium 75%, Low 50%}` where `owed = contribution × active members who haven't won` |
-| Max bid discount | 40% of expected pot |
+| Round phases | contributions open for `contributionDuration`, then bidding stays open for `biddingDuration` (bids accepted from round start); `settleRound` after the bidding deadline |
+| Pre-win collateral | `baseCollateral × {Low lowBps, Medium mediumBps, High/Unassessed highBps} / 10000` (defaults 0.5× / 1× / 2×, per circle) |
+| Post-win security (holdback) | `max(tierGap, payout × holdbackBps / 10000)`, capped at payout, where `tierGap = owed × {Low 50%, Medium 75%, High/Unassessed 100%} − collateral` and `owed = contribution × active members who haven't won` |
+| Max bid discount | `maxDiscountBps` of expected pot (≤ 50%, default 40%) |
 | Tie-break | Earliest bid (new bid must be strictly higher) |
 | No bids | First eligible member in join order wins |
 | No eligible member | Pot shared as dividends |
-| Missed payment | Collateral → then reserve → else member removed |
+| Missed payment | `DefaultDetected(required, fromCollateral, fromReserve, shortfall)`: collateral → then reserve; if collateral < due the member is removed; `shortfall` is the real hole in the pot (never hidden) |
 | Fee | `feeBps` of pot → circle reserve → leftover to treasury at completion |
 | Dividend dust | To first eligible recipient in join order |
 | All payouts | Pull only via `withdraw` |
@@ -192,7 +207,7 @@ Constructor: `constructor(address riskOracle, address treasury)`.
    │                            ▼
    │ last seat filled       CANCELLED ──► withdraw refunds
    ▼
- ACTIVE ──► round r: contribute · placeBid ──► deadline ──► settleRound
+ ACTIVE ──► round r: contribute (≤ contributionDeadline) · placeBid (≤ biddingDeadline) ──► settleRound
    ▲                                                            │
    └──────────────── more members still to win ◄───────────────┘
                                                                 │ all active members have won
@@ -226,8 +241,13 @@ const provider = new BrowserProvider((window as any).ethereum);
 const signer = await provider.getSigner();
 const chit = new Contract(process.env.NEXT_PUBLIC_CHITCHAIN_ADDRESS!, abi, signer);
 
-// Create: 1 MSTC per round, 5 members, 30 s rounds, 10 min to fill, 1% fee, 1 MSTC base collateral
-const tx = await chit.createCircle(parseEther("1"), 5, 30, 600, 100, parseEther("1"));
+// Create: 1 MST per round, 5 members, 30 s contributions + 30 s bidding, 10 min to fill, 1% fee,
+// 1 MST base collateral, 10% flat holdback, 40% max discount, 0.5×/1×/2× collateral multipliers
+const tx = await chit.createCircle({
+  contribution: parseEther("1"), baseCollateral: parseEther("1"), maxMembers: 5,
+  contributionDuration: 30, biddingDuration: 30, joinWindow: 600, feeBps: 100,
+  holdbackBps: 1000, maxDiscountBps: 4000, lowBps: 5000, mediumBps: 10000, highBps: 20000,
+});
 const rc = await tx.wait();
 
 // Join with the exact required collateral
@@ -238,7 +258,7 @@ await (await chit.join(id, { value: need })).wait();
 const c = await chit.getCircle(id);
 await (await chit.contribute(id, { value: c.contribution })).wait();
 
-// Bid: give up 0.5 MSTC of the pot to win now
+// Bid: accept 4.5 of a 5 MST pot → discount 0.5 (UI shows "payout I'd accept"; contract stores the discount)
 await (await chit.placeBid(id, parseEther("0.5"))).wait();
 
 // Withdraw payouts / dividends / refunds
@@ -273,7 +293,7 @@ catch (e: any) {
 | `CircleStarted` | Countdown starts |
 | `Contributed` | ✓ on member card, pot counter rises |
 | `BidPlaced` | Bid shown in auction panel; agent reason if placed by agent |
-| `Covered` | ⚠ on member card, collateral bar drops, "pot still full" toast |
+| `DefaultDetected` | Default event card: required / used / from reserve / shortfall; "Pot fully funded" only when shortfall = 0 |
 | `Removed` | Member card greyed out |
 | `HoldbackApplied` | Winner's collateral bar rises, "secured" tag |
 | `RoundSettled` | Winner banner, payout + discount shown, MSTScan link |
@@ -287,6 +307,6 @@ catch (e: any) {
 
 1. `contract balance == Σ collateral + Σ claimable + Σ reserve + treasuryClaimable + current-round collected`
 2. A member is paid out **at most once** per circle.
-3. `settleRound` can succeed **once per round** and only after `roundDeadline`.
+3. `settleRound` can succeed **once per round** and only after the bidding deadline.
 4. A removed member can never win or receive dividends afterwards.
 5. Tier used for a circle never changes after join.

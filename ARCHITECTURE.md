@@ -1,8 +1,10 @@
-# ChitChain — Architecture (v2)
+# ChitChain — Architecture (v3)
 
 > A trust-minimised chit fund on MST Blockchain. **The pot sits in a smart contract, not in anyone's account.** The contract collects contributions, runs the auction, pays the winner and covers missed payments from collateral automatically. An AI risk engine prices each member's collateral, and an AI agent bids on members' behalf.
 
 Built for MST Blockchain × NEWRRO Buildathon 2026 — MST Blockchain Track.
+
+**v3 changes:** two-phase rounds (contribution window, then bidding window), per-circle `holdbackBps`, `maxDiscountBps` and collateral multipliers, `DefaultDetected` event with explicit `shortfall`, per-circle `defaults`/`collateralUsed`, on-chain round history, risk score flipped to 0 = safest / 100 = riskiest, currency shown as MST with an MST TESTNET badge, Postgres + Prisma index.
 
 **v2 changes (from review):** `Unassessed` tier with max collateral, tier snapshotted at join, post-win security holdback + circle reserve, defined rules for removed members and early completion, join deadline + cancel/leave, fees and dividends via pull payments, dust rule, cold-start scoring, `nonReentrant` on settle, revised cut order (keep the agent), corrected demo transaction count, custodial-agent disclosure.
 
@@ -17,10 +19,10 @@ Built for MST Blockchain × NEWRRO Buildathon 2026 — MST Blockchain Track.
 | Scaffold | Verified (npm: `@mstblockchain/mst-vibe-kit`) | Hardhat + Next.js + MST testnet config |
 | Explorer | From guide | `https://mstscan.com` |
 | Faucet | From guide | `https://faucet.masterstroke.academy` |
-| Chain ID | **TO VERIFY** | Read from VibeKit config / BridgeKey network settings |
+| Chain ID | Verified (RPC `eth_chainId`, VibeKit) | `91562037` |
 | Block time & gas cost | **TO VERIFY** | Check on MSTScan before claiming in pitch |
 | BridgeKey provider API | **TO VERIFY** | Assume EIP-1193 (`window.ethereum`-style); confirm |
-| MSTScan tx URL format | **TO VERIFY** | Assume `/tx/<hash>`; confirm |
+| MSTScan tx URL format | Verified (Blockscout) | `https://testnet.mstscan.com/tx/<hash>`, `/address/<addr>` |
 | MCP endpoint write support | **TO VERIFY** | `https://mcp.mstblockchain.com/sse` — read-only or can send txs? |
 
 ---
@@ -44,7 +46,7 @@ Frontend (Next.js) ◄──REST/poll──►  Backend: Keeper · Indexer · Ri
 
 ## 3. Smart contract — `ChitChain.sol`
 
-Single contract, many circles (one address for the submission form). Native MSTC. Solidity ^0.8.20, OpenZeppelin `ReentrancyGuard`.
+Single contract, many circles (one address for the submission form). Native MST. Solidity ^0.8.20, OpenZeppelin `ReentrancyGuard`.
 
 ### 3.1 Types and state
 
@@ -52,28 +54,41 @@ Single contract, many circles (one address for the submission form). Native MSTC
 enum Status { Open, Active, Completed, Cancelled }
 enum Tier   { Unassessed, Low, Medium, High }   // Unassessed = zero value = treated as High
 
+struct CircleParams {         // everything the creator configures (one calldata struct)
+    uint256 contribution;         // per member per round (wei)
+    uint256 baseCollateral;       // Medium-tier reference; ≥ contribution
+    uint8   maxMembers;           // 3–20
+    uint32  contributionDuration; // seconds contributions stay open (demo: 30)
+    uint32  biddingDuration;      // seconds bidding stays open after that (demo: 30)
+    uint32  joinWindow;
+    uint16  feeBps;               // ≤ 300; to circle reserve first
+    uint16  holdbackBps;          // 0–10000 flat share of a winner's payout locked until completion
+    uint16  maxDiscountBps;       // ≤ 5000; max bid discount as share of expected pot
+    uint16  lowBps; uint16 mediumBps; uint16 highBps;   // collateral multipliers (defaults 5000/10000/20000)
+}
 struct Circle {
     address creator;
-    uint256 contribution;     // per member per round (wei)
-    uint8   maxMembers;       // 3–20
-    uint32  roundDuration;    // seconds (demo: 30)
-    uint64  joinDeadline;     // circle must fill by this time
-    uint16  feeBps;           // e.g. 100 = 1%; goes to circle reserve first
-    uint256 baseCollateral;   // Medium-tier pre-win collateral; must be ≥ contribution
+    CircleParams params;
+    uint64  joinDeadline;
     Status  status;
-    uint8   round;            // current round, 1-based
-    uint64  roundDeadline;
-    uint256 reserve;          // fees + forfeits; covers shortfalls; leftover → treasury at end
-    address[] members;        // join order (used for deterministic tie-breaks)
+    uint8   round;                // 1-based
+    uint64  contributionDeadline; // round start + contributionDuration
+    uint64  biddingDeadline;      // contributionDeadline + biddingDuration (= settle-able time)
+    uint256 reserve;              // fees + forfeits; covers shortfalls; leftover → treasury at end
+    uint256 collected;
+    address[] members;            // join order (deterministic tie-breaks)
 }
+struct RoundRecord { address winner; uint64 settledAt; uint256 pot; uint256 payout; uint256 discount; uint256 fee; uint256 holdback; }
 
 struct MemberState {
     bool    joined;
     Tier    tier;             // SNAPSHOT at join — later oracle updates don't affect this circle
     bool    hasWon;
     bool    removed;          // could not cover a missed payment → out of the circle
-    uint256 collateral;       // locked; covers missed payments
+    uint256 collateral;       // locked; covers missed payments (includes holdback)
     uint256 claimable;        // pull balance: payouts, dividends, refunds
+    uint32  defaults;         // missed contributions in this circle
+    uint256 collateralUsed;   // collateral consumed to cover misses in this circle
 }
 
 struct Reputation { uint32 paidOnTime; uint32 missed; uint32 circlesCompleted; uint32 circlesRemoved; }
@@ -93,7 +108,8 @@ address public riskOracle; address public treasury;
 
 **Pre-win collateral (at `join`):**
 ```
-preWin(tier) = baseCollateral × { Low: 0.5, Medium: 1, High: 2, Unassessed: 2 }
+preWin(tier) = baseCollateral × { Low: lowBps, Medium: mediumBps, High: highBps, Unassessed: highBps } / 10000
+defaults: 0.5× / 1× / 2×  (per circle, low ≤ medium ≤ high)
 createCircle requires baseCollateral ≥ contribution
 ```
 An unassessed (possibly Sybil) wallet pays the maximum — fixes the enum-default bug.
@@ -102,24 +118,35 @@ An unassessed (possibly Sybil) wallet pays the maximum — fixes the enum-defaul
 After winning, the member still owes `owed = contribution × k`, where `k` = number of active members who have not yet won (upper bound on remaining rounds).
 ```
 coverage(tier) = { Low: 50%, Medium: 75%, High: 100%, Unassessed: 100% }
-required = owed × coverage(tier)
-if collateral < required:
-    holdback = min(required − collateral, payout)
-    payout  −= holdback ; collateral += holdback      // winner's own money secures their future dues
+tierGap  = max(0, owed × coverage(tier) − collateral)
+flatHold = payout × holdbackBps / 10000              // per-circle, configurable
+holdback = min(payout, max(tierGap, flatHold))
+payout  −= holdback ; collateral += holdback         // winner's own money secures their future dues
+emit HoldbackApplied
 ```
 - High/Unassessed winners are **fully** secured → the pool cannot be left short by them.
 - Low/Medium winners get more cash up front (the reward for reputation); the uncovered slice is backed by the **circle reserve** (fees + forfeits). Pitch honestly: *"trust is priced, not free."*
 - Holdback is returned with remaining collateral at completion.
 
-### 3.3 Round settlement — `settleRound(circleId)` (anyone, after deadline, `nonReentrant`, no external calls)
+### 3.3 Round phases and settlement
+
+Each round starts at `T` (circle start or previous settlement):
+- `contribute` allowed while `now ≤ T + contributionDuration` (else `ContributionClosed`)
+- `placeBid` allowed while `now ≤ T + contributionDuration + biddingDuration` (else `BiddingClosed`); bids may be placed during the contribution phase too
+- `settleRound` allowed only after the bidding deadline (else `BiddingNotOver`)
+
+`settleRound(circleId)` (anyone — the keeper in the MVP — `nonReentrant`, no external calls). **The deduction happens inside the contract**; the keeper only triggers it.
 
 ```
 1. MISSED PAYMENTS — for each active (not removed) member who didn't pay this round:
-     if collateral ≥ contribution: collateral −= contribution; counts as paid; missed++
-                                   emit Covered(circle, round, member, contribution)
-     else: shortfall = contribution − collateral; collateral = 0
-           cover shortfall from reserve (up to reserve); any remaining gap reduces pot
-           removed = true; circlesRemoved++ ; emit Removed(circle, round, member)
+     defaults++ ; missed++
+     if collateral ≥ contribution: collateral −= contribution; collateralUsed += contribution; pot += contribution
+                                   emit DefaultDetected(circle, round, member, required, fromCollateral=contribution, fromReserve=0, shortfall=0)
+     else: fromCollateral = collateral; fromReserve = min(contribution − fromCollateral, reserve)
+           shortfall = contribution − fromCollateral − fromReserve     // the real hole in the pot, never hidden
+           collateral = 0; reserve −= fromReserve; pot += fromCollateral + fromReserve
+           removed = true; circlesRemoved++
+           emit DefaultDetected(…, shortfall) ; emit Removed(circle, round, member)
    For each member who paid on time: paidOnTime++
 2. pot = sum of contributions actually collected/covered this round
 3. fee = pot × feeBps / 10000 → reserve
@@ -131,10 +158,11 @@ if collateral < required:
 6. dividends = discount split equally among OTHER active (not removed) members
      remainder (dust) → first eligible recipient in join order
 7. credit winner.claimable += payout ; hasWon = true ; emit RoundSettled(...)
+7b. store RoundRecord{winner, settledAt, pot, payout, discount, fee, holdback} (getRoundHistory)
 8. COMPLETION — if every active member has won → Completed:
-     each active member: claimable += collateral; collateral = 0; circlesCompleted++
+     each active member: claimable += collateral (incl. holdback); collateral = 0; circlesCompleted++
      treasuryClaimable += reserve; reserve = 0 ; emit CircleCompleted
-   else round++, roundDeadline = now + roundDuration
+   else round++, contributionDeadline = now + contributionDuration, biddingDeadline = contributionDeadline + biddingDuration
 ```
 
 **Removed members (never won):** their collateral and past contributions are **forfeited** to the pool (already distributed via pots/reserve). MVP rule, stated plainly; production would refund past contributions minus a penalty after the circle ends.
@@ -145,23 +173,23 @@ if collateral < required:
 
 | Function | Who | Notes |
 |---|---|---|
-| `createCircle(contribution, maxMembers, roundDuration, joinWindow, feeBps, baseCollateral)` | anyone | Validates ranges; `baseCollateral ≥ contribution`; `feeBps ≤ 300` |
+| `createCircle(CircleParams)` | anyone | Validates ranges; `baseCollateral ≥ contribution`; `feeBps ≤ 300`; `holdbackBps ≤ 10000`; `maxDiscountBps ≤ 5000`; `lowBps ≤ mediumBps ≤ highBps`, `highBps > 0` |
 | `join(id)` payable | member | Before `joinDeadline`; `msg.value == preWin(riskTier[sender])`; snapshots tier; auto-starts when full |
 | `leave(id)` | member | Only while `Open`; refunds collateral to `claimable` |
 | `cancel(id)` | anyone | After `joinDeadline` if not full → `Cancelled`; all collateral → `claimable` |
-| `contribute(id)` payable | active member | `msg.value == contribution`, before deadline, once per round |
-| `placeBid(id, discount)` | eligible member | `discount ≤ 40% of expected pot`; must be **strictly greater** than current best (earliest wins ties) |
+| `contribute(id)` payable | active member | `msg.value == contribution`, before the contribution deadline, once per round |
+| `placeBid(id, discount)` | eligible member | `discount ≤ maxDiscountBps of expected pot`; strictly greater than current best (earliest wins ties); UI shows it as "payout I'd accept" = pot − discount |
 | `settleRound(id)` | anyone (keeper) | §3.3; `nonReentrant` |
 | `setRiskTier(member, tier)` | `riskOracle` | Global; affects only future joins (snapshot at join) |
 | `withdraw(id)` | member | Pull `claimable`; `nonReentrant` |
 | `withdrawTreasury()` | treasury | Pull `treasuryClaimable` |
-| views | anyone | `getCircle`, `getMembers`, `getMemberState`, `getRoundState`, `preWin(addr, id)` |
+| views | anyone | `getCircle`, `getMembers`, `getMember`, `getRound`, `getRoundHistory`, `requiredCollateral` |
 
 `receive()` and `fallback()` revert.
 
 ### 3.5 Events
 
-`CircleCreated`, `Joined(id, member, tier, collateral)`, `Left`, `CircleStarted`, `CircleCancelled`, `Contributed(id, round, member)`, `BidPlaced(id, round, member, discount)`, `Covered(id, round, member, amount)`, `Removed(id, round, member)`, `HoldbackApplied(id, member, amount)`, `RoundSettled(id, round, winner, payout, discount)`, `CircleCompleted`, `RiskTierSet(member, tier)`.
+`CircleCreated`, `Joined(id, member, tier, collateral)`, `Left`, `CircleStarted(id, contributionDeadline, biddingDeadline)`, `CircleCancelled`, `Contributed(id, round, member, amount)`, `BidPlaced(id, round, member, discount)`, `DefaultDetected(id, round, member, required, fromCollateral, fromReserve, shortfall)`, `Removed(id, round, member)`, `HoldbackApplied(id, member, amount)`, `RoundSettled(id, round, winner, payout, discount)`, `CircleCompleted`, `RiskTierSet(member, tier)`.
 
 ### 3.6 Known limits (put in README)
 
@@ -201,12 +229,13 @@ backend/src/
 ### 4.1 Risk engine — a heuristic, not a credit score
 
 - **Features:** `onTimeRate = paidOnTime / (paidOnTime + missed)`, `circlesCompleted`, `circlesRemoved`, plus synthetic seeded history for demo wallets (labelled `SYNTHETIC`).
-- **Cold start:** if `paidOnTime + missed == 0` → score = 60 (Medium). No division by zero.
-- **Heuristic (weights are judgement calls — say so):**
+- **Cold start:** if `paidOnTime + missed == 0` → riskScore = 40 (MEDIUM). No division by zero.
+- **Heuristic (weights are judgement calls — say so). 0 = safest, 100 = riskiest:**
   ```
-  score = 40 + 40 × onTimeRate + 10 × min(circlesCompleted, 3)/3 − 30 × (circlesRemoved > 0)
-  Low risk ≥ 75 · Medium 50–74 · High < 50
+  riskScore = clamp(60 − 40 × onTimeRate − 10 × min(circlesCompleted, 3)/3 + 30 × (circlesRemoved > 0), 0, 100)
+  LOW risk ≤ 39 · MEDIUM 40–69 · HIGH ≥ 70      (cold start = 40 → MEDIUM)
   ```
+  Labelled "Demo heuristic risk model" in the UI.
 - **LLM:** 2-sentence explanation from the factors only. Template fallback if the call fails.
 - **On-chain:** `POST /members/:addr/assess` → `setRiskTier`.
 
@@ -295,7 +324,7 @@ Claim in pitch: **"20+ real testnet transactions in about three minutes; nobody 
 - Keeper, risk oracle and **agent wallets are custodial/centralised** in the MVP.
 - Public bids can be sniped; commit-reveal later.
 - Low/Medium early winners are partially secured; residual risk backed by the circle reserve.
-- MSTC is volatile → production needs a rupee-pegged asset.
+- MST is volatile → production needs a rupee-pegged asset.
 - Records are **tamper-evident**; contracts still need testing and an audit before real money.
 - **Business model:** 1–2% fee per circle + software for registered chit companies.
 - **Legal:** chit funds are regulated under the Chit Funds Act, 1982 → ChitChain is infrastructure for registered organisers and informal friend circles, not an unregistered chit company.
