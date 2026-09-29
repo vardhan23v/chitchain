@@ -7,7 +7,7 @@ export function Footer() {
       <div className="mx-auto max-w-2xl space-y-1 px-4">
         <p>{TESTNET_DISCLAIMER}</p>
         <p>{HONEST_LIMITS}</p>
-        <p>Prototype on MST Testnet · Not a registered chit company · Chit Funds Act, 1982</p>
+        <p>Not a registered chit company under the Chit Funds Act, 1982.</p>
         <div className="pt-3"><MotionToggle variant="pill" /></div>
       </div>
     </footer>

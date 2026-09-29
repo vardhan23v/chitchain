@@ -4,6 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { WifiOff } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { AuctionPanel } from "@/components/AuctionPanel";
@@ -81,6 +83,9 @@ export default function CircleRoomPage() {
   const labelFor = (a: string) => { const m = byAddr.get(a.toLowerCase()); return nameOf(m ?? { address: a }); };
 
   if (!Number.isFinite(id) || id < 1) return <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="That circle does not exist." text="Check the link and try again." />;
+  if (!data && /not found/i.test(room.error ?? "")) {
+    return <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="That circle does not exist." text={`There is no circle #${id} on the current contract. Browse the open circles instead.`} action={<Button asChild variant="secondary"><Link href="/#circles">Browse circles</Link></Button>} />;
+  }
   if (!data) {
     return (
       <div className="space-y-4">
