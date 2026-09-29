@@ -24,6 +24,7 @@ import { auction } from "./routes/auction";
 import { aiBidding } from "./routes/aiBidding";
 import { startAiBidding } from "./ai/loop";
 import { ipOf, rateLimit } from "./auth/ratelimit";
+import expressRateLimit from "express-rate-limit";
 import { errorMiddleware, wrap } from "./routes/util";
 import { demoWalletHealth } from "./demo/funding";
 import { crewHealth } from "./ai/crewClient";
@@ -42,6 +43,16 @@ app.use(cors({
   origin: (origin, cb) => cb(null, !origin || origins.has(origin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)),
 }));
 app.use(express.json({ limit: "64kb" }));
+// App-wide per-IP limit in front of every route (express-rate-limit; `trust proxy` above makes req.ip the client IP).
+// Generous because the UI polls several endpoints every few seconds and a demo room may share one Wi-Fi IP; the
+// stricter per-route limits (auth, settle, usernames) still apply on top.
+app.use(expressRateLimit({
+  windowMs: 60_000,
+  limit: 1200,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "too many requests, try again in a minute", code: "RATE_LIMITED" },
+}));
 app.use((req, _res, next) => { if (req.method !== "GET") console.log(`[api] ${req.method} ${req.path}`); next(); });
 
 app.get("/health", wrap(async (_req, res) => {

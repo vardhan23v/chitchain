@@ -30,9 +30,12 @@ type Auth = NonNullable<Request["auth"]>;
 export async function resolveAuth(req: Request, d: AuthDeps = deps): Promise<Auth | null> {
   const header = req.headers.authorization;
   if (!header) return null;
-  const m = /^Bearer\s+(.+)$/i.exec(header);
-  if (!m) throw new ApiError(401, "malformed Authorization header", "BAD_TOKEN");
-  const v = verifyJwt(m[1].trim(), d.secret());
+  // Plain parsing instead of a regex (no backtracking on crafted headers): "Bearer <token>".
+  const sp = header.indexOf(" ");
+  const scheme = sp < 0 ? header : header.slice(0, sp);
+  const token = sp < 0 ? "" : header.slice(sp + 1).trim();
+  if (scheme.toLowerCase() !== "bearer" || !token) throw new ApiError(401, "malformed Authorization header", "BAD_TOKEN");
+  const v = verifyJwt(token, d.secret());
   if (!v.ok) throw new ApiError(401, v.reason === "expired" ? "session expired" : "invalid token", "BAD_TOKEN");
   const session = await d.getSession(v.claims.jti);
   if (!session || session.walletAddress !== v.claims.sub.toLowerCase()) throw new ApiError(401, "unknown session", "SESSION_REVOKED");
