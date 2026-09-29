@@ -22,5 +22,5 @@ interface Props {
 
 /** Room auction panel: the same tiles, timeline and BidDialog as the dashboard AuctionCard. */
 export function AuctionPanel({ circle, round, phase, me, activeMembers, labelFor, account, onBid, pending, highlight }: Props) {
-  return <AuctionCard circle={circle} round={round} phase={phase} me={me} activeMembers={activeMembers} labelFor={labelFor} account={account} onBid={onBid} pending={pending} highlight={highlight} className="h-full" />;
+  return <AuctionCard circle={circle} round={round} phase={phase} me={me} activeMembers={activeMembers} labelFor={labelFor} account={account} onBid={onBid} pending={pending} highlight={highlight} className="h-full" wide />;
 }

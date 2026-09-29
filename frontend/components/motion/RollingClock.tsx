@@ -12,14 +12,16 @@ export function RollingClock({ seconds, className }: { seconds: number; classNam
   const text = formatClock(seconds);
   if (!ok) return <span className={cn("tnum", className)}>{text}</span>;
   return (
-    <span className={cn("tnum inline-flex leading-[1.2]", className)} role="timer" aria-label={text}>
+    <span className={cn("tnum inline-flex", className)} role="timer" aria-label={text}>
       {text.split("").map((ch, i) =>
         ch === ":" ? (
           <span key={`c${i}`} aria-hidden>
             :
           </span>
         ) : (
-          <span key={`d${i}`} className="relative inline-block h-[1.2em] w-[0.62em] overflow-hidden text-center" aria-hidden>
+          <span key={`d${i}`} className="relative inline-block overflow-hidden text-center" aria-hidden>
+            {/* In-flow twin of the digit keeps the slot's width and baseline; the animated copies sit on top. */}
+            <span className="invisible">{ch}</span>
             <AnimatePresence initial={false}>
               <motion.span
                 key={ch}

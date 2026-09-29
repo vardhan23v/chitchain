@@ -117,7 +117,7 @@ export function MoneyFlow({ live, compact, className }: MoneyFlowProps) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [open, setOpen] = useState<string | null>(null);
   // Scroll trace: a solid line draws over the dashed connector as the flow enters the viewport, and nodes switch on left to right.
-  const { scrollYProgress } = useScroll({ target: wrap, offset: ["start 95%", "start 40%"] });
+  const { scrollYProgress } = useScroll({ target: wrap, offset: ["start 100%", "start 50%"] });
   const draw = useTransform(scrollYProgress, [0, 1], [0, 1]);
   const [lit, setLit] = useState(NODES.length);
   useMotionValueEvent(draw, "change", (v) => setLit(Math.round(v * NODES.length)));

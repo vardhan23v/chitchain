@@ -39,6 +39,8 @@ interface Props {
   /** Increment to pulse a ring around the card (the room does this on "Place a bid"). */
   highlight?: number;
   className?: string;
+  /** Four tiles in a row (only when the card has a full-width column; the room gives it a narrow one). */
+  wide?: boolean;
 }
 
 function Tile({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
@@ -54,7 +56,7 @@ function Tile({ label, children, className }: { label: string; children: React.R
  * Live auction: pot, best discount (flashes on change), time remaining (warning under 30 s), participants,
  * a bid timeline (newest first, fresh rows slide in) and "Place a bid" through BidDialog → existing onBid.
  */
-export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor, account, onBid, pending, linkToRoom, highlight = 0, className }: Props) {
+export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor, account, onBid, pending, linkToRoom, highlight = 0, className, wide }: Props) {
   const active = circle.status === 1;
   const bidding = active && phase === "bidding";
   const clock = useCountdown(round.deadline || null, bidding);
@@ -98,7 +100,7 @@ export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor,
         </Tooltip>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <div className={cn("mt-3 grid grid-cols-2 gap-2.5", wide && "lg:grid-cols-4")}>
         <Tile label="Current pot"><span className="text-pot">{formatMst(round.expectedPot)}</span> <span className="text-[12px] font-medium text-muted-foreground">MST</span></Tile>
         <Tile label="Current best discount">
           <Flash value={`${round.bestBidder}:${round.bestDiscount}`} tint="bg-primary/15">

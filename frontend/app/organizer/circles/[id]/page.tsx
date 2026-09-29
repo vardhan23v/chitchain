@@ -78,7 +78,7 @@ function Analytics({ id }: { id: number }) {
           </RevealGroup>
           <MembersTable circle={d.circle} members={d.members} viewer={auth.user?.walletAddress ?? null} extras={{}} />
           <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
-            <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
               <RoundHistory rounds={d.rounds} loading={false} labelFor={labelFor} source="api" />
               {d.defaults.length > 0 && (
                 <section className="space-y-3">
@@ -88,7 +88,7 @@ function Analytics({ id }: { id: number }) {
               )}
               <InviteForm circleId={id} />
             </div>
-            <Feed events={d.recentEvents} down={false} loading={false} labels={labels} title="Recent events" />
+            <Feed events={d.recentEvents} down={false} loading={false} labels={labels} title="Recent events" className="min-w-0" />
           </div>
         </>
       ) : null}

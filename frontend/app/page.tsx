@@ -97,9 +97,9 @@ export default function HomePage() {
       <SpotlightGroup>
       <RevealGroup as="section" className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Network stats">
         <StatTile label="Circles live" Icon={CircleDot} iconClassName="text-primary" value={stats?.circlesLive ?? (data ? all.filter((c) => c.status <= 1).length : "—")} loading={loading && !data} hint={stats ? `${stats.circlesTotal} total` : data?.source === "chain" ? "read from contract" : undefined} />
-        <StatTile label="MST in contracts" Icon={Coins} iconClassName="text-pot" testnet value={stats ? <CountUpMst wei={stats.mstcInContract} fromZero /> : "—"} valueClassName="text-pot" loading={loading && !data} hint={stats ? "held by the contract, not by anyone" : "temporarily unavailable"} />
-        <StatTile label="On-chain transactions" Icon={Activity} iconClassName="text-chain" value={stats ? <CountUp value={stats.txCount} fromZero /> : "—"} loading={loading && !data} hint={stats ? "every one verifiable on MSTScan" : "temporarily unavailable"} />
-        <StatTile label="Members in live circles" Icon={Users} iconClassName="text-agent" value={data ? <CountUp value={liveMembers} fromZero /> : "—"} loading={loading && !data} hint={data ? "seats taken in open and active circles" : "temporarily unavailable"} />
+        <StatTile label="MST locked" Icon={Coins} iconClassName="text-pot" testnet value={stats ? <CountUpMst wei={stats.mstcInContract} fromZero /> : "—"} valueClassName="text-pot" loading={loading && !data} hint={stats ? "held by the contract, not by anyone" : "temporarily unavailable"} />
+        <StatTile label="Transactions" Icon={Activity} iconClassName="text-chain" value={stats ? <CountUp value={stats.txCount} fromZero /> : "—"} loading={loading && !data} hint={stats ? "every one verifiable on MSTScan" : "temporarily unavailable"} />
+        <StatTile label="Live members" Icon={Users} iconClassName="text-agent" value={data ? <CountUp value={liveMembers} fromZero /> : "—"} loading={loading && !data} hint={data ? "seats taken in open and active circles" : "temporarily unavailable"} />
       </RevealGroup>
       </SpotlightGroup>
 

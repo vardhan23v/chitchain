@@ -68,7 +68,7 @@ export function UsersTab() {
                       <div className="flex items-center gap-2">
                         <RoleBadge role={u.role} size="xs" />
                         <Select value={u.role} disabled={self || users.busy === u.walletAddress} onValueChange={(v) => setPending({ u, role: v as Role })}>
-                          <SelectTrigger className="h-7 w-32 text-xs" aria-label={`Role for ${u.walletAddress}`}><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-7 w-36 text-xs" aria-label={`Role for ${u.walletAddress}`}><SelectValue /></SelectTrigger>
                           <SelectContent>{ROLES.map((r) => <SelectItem key={r} value={r}>{ROLE_META[r].label}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>

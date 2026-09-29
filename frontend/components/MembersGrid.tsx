@@ -36,7 +36,7 @@ export function MembersGrid({ circle, members, viewer, events, rounds }: Props) 
   return (
     <section aria-label="Members" className="space-y-3">
       <SectionTitle Icon={Users} trailing={<span className="tnum">{members.length}/{circle.maxMembers} seats filled</span>}>Members</SectionTitle>
-      <RevealGroup mode="load" stagger={0.05} className="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-5">
+      <RevealGroup mode="load" stagger={0.05} className="hidden gap-3 md:grid md:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]">
         {members.map((m) => (
           <RevealItem key={m.address} className="flex min-w-0">
             <MemberCard m={m} circle={circle} isYou={sameAddr(m.address, viewer)} extra={extras[m.address.toLowerCase()]} />

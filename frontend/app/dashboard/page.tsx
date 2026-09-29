@@ -138,9 +138,9 @@ function StatRow({ me, circles, loading }: { me: MeOverview | null; circles: MyC
         label="Next contribution"
         Icon={Coins}
         tone="text-warning"
-        value={nextDue ? mstNumber(nextDue.contribution) : "Paid"}
+        value={nextDue ? mstNumber(nextDue.contribution) : ac ? "Paid" : "None"}
         unit={nextDue ? "MST" : undefined}
-        support={nextDue && ac && ac.id === nextDue.id && clock.roundPhase === "contribution" ? `Due in ${formatClock(clock.current.remaining)}` : nextDue ? `${nextDue.name ?? `Circle #${nextDue.id}`}` : "Nothing due this round"}
+        support={nextDue && ac && ac.id === nextDue.id && clock.roundPhase === "contribution" ? `Due in ${formatClock(clock.current.remaining)}` : nextDue ? `${nextDue.name ?? `Circle #${nextDue.id}`}` : ac ? "Nothing due this round" : "No active chit"}
         chip={nextDue && ac && ac.id === nextDue.id && clock.roundPhase === "contribution" && clock.current.remaining < 60 ? <Badge variant="status-covered" className="text-[10px]">Due soon</Badge> : undefined}
         loading={loading}
       />
@@ -148,7 +148,7 @@ function StatRow({ me, circles, loading }: { me: MeOverview | null; circles: MyC
         label="Reputation"
         Icon={ShieldCheck}
         tone="text-agent"
-        value={r ? r.score : "Not assessed"}
+        value={r ? r.score : "Unassessed"}
         unit={r ? "/100" : undefined}
         decimals={0}
         support={r ? `${paid} paid on time · ${r.reputation.circlesCompleted} completed · heuristic score` : "Assess once you join a circle"}
@@ -177,7 +177,7 @@ function ActiveSection({ summary, account }: { summary: MyCircle; account: strin
       <div className="grid gap-4 lg:grid-cols-2">
         <ActiveChitCard summary={summary} room={data} loading={room.loading && !data} />
         {round && clock.roundPhase === "bidding" ? (
-          <AuctionCard circle={circle} round={round} phase={clock.roundPhase} me={room.me} activeMembers={activeMembers} labelFor={labelFor} account={null} onBid={async () => undefined} pending={false} linkToRoom />
+          <AuctionCard circle={circle} round={round} phase={clock.roundPhase} me={room.me} activeMembers={activeMembers} labelFor={labelFor} account={null} onBid={async () => undefined} pending={false} linkToRoom wide />
         ) : room.loading && !data ? (
           <Card className="p-5" aria-busy="true"><Skeleton className="h-5 w-32" /><div className="mt-3 grid grid-cols-2 gap-2"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div></Card>
         ) : (

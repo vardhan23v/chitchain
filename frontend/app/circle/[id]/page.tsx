@@ -39,7 +39,7 @@ function RoomSkeleton() {
       </div>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5">
-          <div className="grid gap-4 md:grid-cols-[3fr_2fr]">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
             <Skeleton className="h-56 rounded-[22px]" />
             <Skeleton className="h-72 rounded-[22px] md:h-auto" />
           </div>
@@ -128,7 +128,7 @@ export default function CircleRoomPage() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">
-          <div className="grid gap-4 md:grid-cols-[3fr_2fr]">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
             <RevealItem className="min-w-0 space-y-3">
               <PotMeter circle={circle} round={round} />
               <div className="hidden md:block">{primary}</div>

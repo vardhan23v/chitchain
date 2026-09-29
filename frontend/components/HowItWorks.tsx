@@ -77,7 +77,7 @@ export function HowItWorks({ example = null }: { example?: PotExample | null }) 
 
   return (
     <section id="how" aria-label="How it works" className="scroll-mt-20">
-      <SectionTitle Icon={ListOrdered}>How it works</SectionTitle>
+      <SectionTitle Icon={ListOrdered} className="lg:hidden">How it works</SectionTitle>
 
       <DrawLine as="ol" className="mt-4 space-y-3 pl-5 lg:hidden" color="bg-primary/70">
         {STEPS.map((s, i) => (
@@ -92,12 +92,15 @@ export function HowItWorks({ example = null }: { example?: PotExample | null }) 
 
       <div ref={ref} className="relative hidden lg:block lg:h-[320vh]">
         <div className="sticky top-16 flex h-[calc(100vh-4rem)] items-center">
-          <div className="grid w-full grid-cols-2 items-center gap-12">
+          <div className="w-full">
+          <SectionTitle Icon={ListOrdered}>How it works</SectionTitle>
+          <div className="mt-8 grid w-full grid-cols-2 items-center gap-12">
             <ol className="relative pl-8">
               <span className="absolute bottom-4 left-2 top-4 w-px bg-white/[0.08]" aria-hidden />
               <motion.span className="absolute bottom-4 left-2 top-4 w-px origin-top bg-primary" style={{ scaleY: progress }} aria-hidden />
               {STEPS.map((s, i) => (
-                <motion.li key={s.title} animate={{ opacity: step === i ? 1 : 0.4, x: step === i ? 0 : -4 }} transition={{ duration: 0.3, ease: EASE }} className="relative py-4">
+                <motion.li key={s.title} animate={{ opacity: step === i ? 1 : 0.4 }} transition={{ duration: 0.3, ease: EASE }} className="relative py-4">
+                  {/* The badge stays on the rail; only the text block slides. */}
                   <span
                     className={cn(
                       "absolute -left-6 top-[1.35rem] flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full border text-[9px] font-semibold transition-colors duration-300",
@@ -107,14 +110,16 @@ export function HowItWorks({ example = null }: { example?: PotExample | null }) 
                   >
                     {i + 1}
                   </span>
-                  <div className="flex items-center gap-3">
-                    <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", s.bg)}>
-                      <s.Icon className={cn("h-[18px] w-[18px]", s.color)} aria-hidden />
-                    </span>
-                    <span className="text-[20px] font-semibold tracking-tight">{s.title}</span>
-                    <span className="tnum ml-auto font-mono text-[12px] text-muted-foreground">0{i + 1}</span>
-                  </div>
-                  <p className="mt-2 max-w-md text-[14px] leading-relaxed text-muted-foreground">{s.text}</p>
+                  <motion.div animate={{ x: step === i ? 0 : -4 }} transition={{ duration: 0.3, ease: EASE }}>
+                    <div className="flex items-center gap-3">
+                      <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", s.bg)}>
+                        <s.Icon className={cn("h-[18px] w-[18px]", s.color)} aria-hidden />
+                      </span>
+                      <span className="text-[20px] font-semibold tracking-tight">{s.title}</span>
+                      <span className="tnum ml-auto font-mono text-[12px] text-muted-foreground">0{i + 1}</span>
+                    </div>
+                    <p className="mt-2 max-w-md text-[14px] leading-relaxed text-muted-foreground">{s.text}</p>
+                  </motion.div>
                 </motion.li>
               ))}
             </ol>
@@ -129,6 +134,7 @@ export function HowItWorks({ example = null }: { example?: PotExample | null }) 
               </div>
               <p className="text-[12px] text-muted-foreground/70">{example ? `Numbers from ${example.name} on MST testnet` : "Scroll to walk through one round"}</p>
             </div>
+          </div>
           </div>
         </div>
       </div>

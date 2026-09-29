@@ -43,7 +43,7 @@ export function StatCard({ label, Icon, tone = "text-muted-foreground", value, u
       {loading ? (
         <Skeleton className="mt-3 h-9 w-28" />
       ) : (
-        <div className="tnum mt-3 flex min-w-0 items-baseline gap-1.5 text-[32px] font-semibold leading-none tracking-tight text-foreground md:text-[36px]">
+        <div className={cn("tnum mt-3 flex min-w-0 items-baseline gap-1.5 text-[32px] font-semibold leading-none tracking-tight text-foreground md:text-[36px]", !numeric && "text-[28px] md:text-[32px]")}>
           <span className="min-w-0 truncate">{numeric ? <CountUp value={value} decimals={decimals ?? (unit ? 2 : 0)} fromZero /> : value}</span>
           {unit && numeric && <span className="text-[14px] font-medium text-muted-foreground">{unit}</span>}
         </div>
