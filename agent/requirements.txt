@@ -1,4 +1,4 @@
-crewai[litellm]>=0.80
+crewai[litellm]>=1.15.22
 litellm>=1.60
 fastapi>=0.115
 uvicorn[standard]>=0.30
