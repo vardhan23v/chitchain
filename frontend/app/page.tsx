@@ -3,13 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, CircleDot, Coins, Plus, Sparkles, WifiOff } from "lucide-react";
+import { Activity, CircleDot, Coins, Gavel, Plus, Radio, Sparkles, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CircleCard } from "@/components/CircleCard";
 import { EmptyState } from "@/components/EmptyState";
 import { HowItWorks } from "@/components/HowItWorks";
+import { MoneyFlow, type MoneyFlowLive } from "@/components/landing/MoneyFlow";
+import { Transparency } from "@/components/landing/Transparency";
+import { WhyBlockchain } from "@/components/landing/WhyBlockchain";
 import { CountUp, CountUpMst } from "@/components/motion/CountUp";
 import { EASE, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { FeaturedCircle, pickFeatured } from "@/components/FeaturedCircle";
@@ -17,6 +21,7 @@ import { SectionTitle } from "@/components/PageHeader";
 import { RolesStrip } from "@/components/RolesStrip";
 import { StatTile } from "@/components/StatTile";
 import { TestnetBadge } from "@/components/TestnetBadge";
+import { useAuth } from "@/hooks/useAuth";
 import { useCircles } from "@/hooks/useCircles";
 import type { Status } from "@/lib/types";
 
@@ -30,59 +35,87 @@ const FILTERS: Record<Filter, (s: Status) => boolean> = {
 
 export default function HomePage() {
   const { data, loading, slow, error } = useCircles();
+  const auth = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
   const all = data?.circles ?? [];
   const circles = all.filter((c) => FILTERS[filter](c.status));
   const stats = data?.stats ?? null;
   const count = (f: Filter) => all.filter((c) => FILTERS[f](c.status)).length;
   const featured = pickFeatured(all);
+  const enterHref = auth.status === "authenticated" ? auth.home : "/login";
+
+  // Live values for the hero flow come from the first active circle (newest id); otherwise the flow shows neutral copy.
+  const liveCircle = [...all].sort((a, b) => b.id - a.id).find((c) => c.status === 1) ?? null;
+  const live: MoneyFlowLive | undefined = liveCircle
+    ? { potMst: BigInt(liveCircle.contribution) * BigInt(liveCircle.maxMembers), members: liveCircle.memberCount, maxMembers: liveCircle.maxMembers }
+    : undefined;
+  const liveMembers = all.filter((c) => c.status <= 1).reduce((n, c) => n + c.memberCount, 0);
 
   return (
     <div className="space-y-10 md:space-y-12">
-      {/* One load sequence: eyebrow, headline, copy, CTAs, then the featured circle. */}
-      <RevealGroup as="section" mode="load" className="grid items-center gap-8 pt-2 md:grid-cols-[3fr_2fr] md:pt-6">
-        <div className="max-w-xl">
+      {/* Hero: copy, CTAs, then the signature money flow. */}
+      <RevealGroup as="section" mode="load" className="space-y-8 pt-2 md:pt-6">
+        <div className="max-w-2xl">
           <RevealItem className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
             <span>Chit funds on MST Blockchain</span>
             <TestnetBadge size="xs" />
           </RevealItem>
           <RevealItem>
-            <h1 className="mt-3 text-[34px] font-extrabold leading-[1.08] tracking-tight md:text-5xl">
-              The pot sits in a contract,<br className="hidden sm:block" /> not in anyone&apos;s account.
-            </h1>
+            <h1 className="mt-3 text-[36px] font-semibold leading-[1.08] tracking-tight md:text-[44px] md:leading-[48px]">Chit funds, rebuilt on-chain.</h1>
           </RevealItem>
           <RevealItem>
-            <p className="mt-4 text-[15px] text-muted-foreground md:text-lg">Contributions, auctions, payouts and penalties are enforced by code. Every step is verifiable on MSTScan.</p>
+            <p className="mt-4 text-[15px] text-muted-foreground md:text-lg">Save together. Bid when you need it. Let smart contracts handle the pot.</p>
           </RevealItem>
           <RevealItem className="mt-6 flex flex-wrap gap-3">
-            <Button size="lg" asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>
-            <Button size="lg" variant="outline" asChild><a href="#circles">Browse circles</a></Button>
+            <Button size="lg" asChild><Link href={enterHref}>Enter ChitChain</Link></Button>
+            <Button size="lg" variant="secondary" asChild><a href="#how">How it works</a></Button>
           </RevealItem>
         </div>
-        <RevealItem className="hidden justify-center md:flex">
-          {featured ? <FeaturedCircle c={featured} /> : <Skeleton className="h-64 w-64 rounded-full" />}
+        <RevealItem>
+          <Card className="grid-texture p-4 md:p-6">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted-foreground">
+              <span>How money moves through a chit</span>
+              {liveCircle && <span className="tnum">Live values from {liveCircle.name ?? `Circle #${liveCircle.id}`}</span>}
+            </div>
+            <MoneyFlow live={live} />
+          </Card>
         </RevealItem>
       </RevealGroup>
 
-      <RevealGroup as="section" className="grid grid-cols-2 gap-4 md:grid-cols-3" aria-label="Network stats">
+      <RevealGroup as="section" className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Network stats">
         <StatTile label="Circles live" Icon={CircleDot} iconClassName="text-primary" value={stats?.circlesLive ?? (data ? all.filter((c) => c.status <= 1).length : "—")} loading={loading && !data} hint={stats ? `${stats.circlesTotal} total` : data?.source === "chain" ? "read from contract" : undefined} />
         <StatTile label="MST in contracts" Icon={Coins} iconClassName="text-pot" testnet value={stats ? <CountUpMst wei={stats.mstcInContract} fromZero /> : "—"} valueClassName="text-pot" loading={loading && !data} hint={stats ? "held by the contract, not by anyone" : "temporarily unavailable"} />
-        <StatTile label="On-chain transactions" Icon={Activity} iconClassName="text-chain" value={stats ? <CountUp value={stats.txCount} fromZero /> : "—"} loading={loading && !data} hint={stats ? "every one verifiable on MSTScan" : "temporarily unavailable"} className="col-span-2 md:col-span-1" />
+        <StatTile label="On-chain transactions" Icon={Activity} iconClassName="text-chain" value={stats ? <CountUp value={stats.txCount} fromZero /> : "—"} loading={loading && !data} hint={stats ? "every one verifiable on MSTScan" : "temporarily unavailable"} />
+        <StatTile label="Members in live circles" Icon={Users} iconClassName="text-agent" value={data ? <CountUp value={liveMembers} fromZero /> : "—"} loading={loading && !data} hint={data ? "seats taken in open and active circles" : "temporarily unavailable"} />
       </RevealGroup>
+
+      {featured && (
+        <section aria-label="Live now" className="space-y-4">
+          <SectionTitle Icon={Radio} tone="text-primary">Live now</SectionTitle>
+          <Card className="p-5 md:p-6">
+            <FeaturedCircle c={featured} />
+          </Card>
+        </section>
+      )}
 
       <HowItWorks />
 
+      <WhyBlockchain />
+
+      <Transparency />
+
       <RolesStrip />
 
-      <section id="circles" className="scroll-mt-20 space-y-4">
+      <section id="auctions" className="scroll-mt-20 space-y-4">
+        <span id="circles" className="block scroll-mt-20" aria-hidden />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <SectionTitle Icon={CircleDot} tone="text-primary">Circles</SectionTitle>
+          <SectionTitle Icon={Gavel} tone="text-primary">Circles</SectionTitle>
           <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
             <TabsList aria-label="Filter circles">
               {(["all", "open", "active", "done"] as Filter[]).map((f) => (
                 <TabsTrigger key={f} value={f} className="capitalize">
                   {f}
-                  {data && <span className="tnum rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">{count(f)}</span>}
+                  {data && <span className="tnum rounded-full bg-white/[0.08] px-1.5 text-[10px]">{count(f)}</span>}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -93,11 +126,11 @@ export default function HomePage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-64 rounded-2xl" />)}</div>
         ) : circles.length === 0 ? (
           error && !data ? (
-            <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="Circle data is temporarily unavailable." text="Check your connection and try again in a moment." />
+            <EmptyState Icon={WifiOff} tone="bg-white/[0.06] text-muted-foreground" title="Circle data is temporarily unavailable." text="Check your connection and try again in a moment." />
           ) : (
           <EmptyState
             Icon={Sparkles}
-            tone="bg-pot/10 text-pot"
+            tone="bg-pot/15 text-pot"
             title={all.length ? `No ${filter} circles yet` : "No circles here yet"}
             text="Set the rules once. The contract enforces them for everyone."
             action={<Button asChild><Link href="/create"><Plus aria-hidden /> Create a circle</Link></Button>}

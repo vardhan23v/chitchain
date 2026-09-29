@@ -69,7 +69,7 @@ export function ActivityLog({ events, transport, loading, className }: Props) {
           ) : null}
         </span>
       </div>
-      <ScrollArea className="mt-2 h-[300px] rounded-xl border border-white/60 bg-white/35 md:h-[360px]">
+      <ScrollArea className="mt-2 h-[300px] rounded-xl border border-white/[0.08] bg-white/[0.03] md:h-[360px]">
         {rows.length === 0 ? (
           <p className="px-4 py-10 text-center text-[13px] text-muted-foreground">{loading ? "Loading activity" : "Waiting for the first evaluation."}</p>
         ) : (

@@ -37,7 +37,7 @@ export function StrategyReview({ values, member, circleId, circleName, pot, busy
         <p className="mt-1 text-[13px] text-muted-foreground">Read it once more. The agent follows exactly this, and the risk guard enforces the limits on every bid.</p>
       </div>
 
-      <blockquote className="rounded-2xl border border-white/60 bg-white/45 px-4 py-3 text-[14px] leading-snug backdrop-blur-sm">
+      <blockquote className="rounded-2xl border border-white/[0.08] bg-surface2 px-4 py-3 text-[14px] leading-snug">
         <span className="text-muted-foreground">Goal: </span>&ldquo;{values.goal}&rdquo;
       </blockquote>
 

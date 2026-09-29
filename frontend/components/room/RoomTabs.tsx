@@ -26,7 +26,7 @@ interface Props {
 
 function Count({ n }: { n: number }) {
   if (!n) return null;
-  return <span className="tnum rounded-full bg-white/50 px-1.5 text-[10px] font-semibold text-current">{n}</span>;
+  return <span className="tnum rounded-full bg-white/[0.06] px-1.5 text-[10px] font-semibold text-current">{n}</span>;
 }
 
 type Tab = "live" | "history" | "defaults";

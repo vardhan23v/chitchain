@@ -61,7 +61,6 @@ export default function CircleRoomPage() {
   const actions = useRoomActions(id, room.refetch);
   const bidRef = useRef<HTMLDivElement>(null);
   const [bidHighlight, setBidHighlight] = useState(0);
-  const [bidFocused, setBidFocused] = useState(false);
   const data = room.data;
   const isMember = !!room.me?.joined;
   const joinInfo = useViewerJoinInfo(id, wallet.account, !!data && data.circle.status === 0 && !isMember);
@@ -137,16 +136,17 @@ export default function CircleRoomPage() {
             <RevealItem className="min-w-0">
               <div ref={bidRef} className="h-full">
                 <AuctionPanel
+                  circle={circle}
                   round={round}
                   phase={clock.roundPhase}
                   active={circle.status === 1}
                   me={room.me}
                   activeMembers={activeMembers}
                   labelFor={labelFor}
+                  account={wallet.account}
                   onBid={actions.bid}
                   pending={actions.pending}
                   highlight={bidHighlight}
-                  onFocusChange={setBidFocused}
                 />
               </div>
             </RevealItem>
@@ -160,12 +160,12 @@ export default function CircleRoomPage() {
         </RevealItem>
       </div>
 
-      {/* Mobile sticky primary action: slides up on mount, hides while the bid input has the keyboard. */}
+      {/* Mobile sticky primary action: slides up on mount (the bid input lives in BidDialog, so it never fights the keyboard). */}
       <AnimatePresence>
-        {!bidFocused && (
+        {data && (
           <motion.div
             key="mobile-primary"
-            className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] glass-strong z-30 rounded-t-3xl border-b-0 p-3 md:hidden"
+            className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 rounded-t-3xl border-t border-white/[0.08] bg-surface2/95 p-3 shadow-card backdrop-blur-md md:hidden"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}

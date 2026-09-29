@@ -23,12 +23,12 @@ export function BidCard({ event, agent, pot }: Props) {
   const confirmed = event.kind === "TX_CONFIRMED";
   const reason = event.reason ?? agent.lastReason ?? null;
   return (
-    <div className="rounded-2xl border border-success/25 bg-success/[0.05] p-4">
+    <div className="rounded-2xl border border-success/30 bg-success/[0.07] p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-success/10 text-success" aria-hidden><Gavel className="h-4 w-4" /></span>
         <p className="text-[15px] font-semibold leading-tight">{confirmed ? "AI bid confirmed" : "AI bid submitted"}</p>
         <RiskPassedChip />
-        <span className="ml-auto text-[12px] text-muted-foreground">{confirmed ? "Confirmed on-chain" : "Waiting for confirmation"}</span>
+        <span className="ml-auto text-[12px] font-semibold text-chain">On-chain transaction</span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-4">
         <Item k="Bid (discount)" v={discount ? `${formatMst(discount)} MST` : "unknown"} />

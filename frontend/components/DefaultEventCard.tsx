@@ -56,7 +56,7 @@ export function DefaultEventCard({ d, compact, className }: Props) {
       {!compact && (
         <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3 lg:grid-cols-6">
           {rows.map(([k, v, cls]) => (
-            <div key={k} className="bg-white/40 px-3 py-2">
+            <div key={k} className="bg-white/[0.04] px-3 py-2">
               <dt className="text-[11px] font-medium text-muted-foreground">{k}</dt>
               <dd className={cn("tnum text-sm font-semibold", cls)}>{v}</dd>
             </div>

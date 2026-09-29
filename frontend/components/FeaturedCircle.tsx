@@ -75,7 +75,7 @@ export function FeaturedCircle({ c }: { c: CircleSummary }) {
               cx={s.x}
               cy={s.y}
               r={s.filled ? 6 : 5}
-              fill={s.filled ? "hsl(var(--primary))" : "rgba(255,255,255,0.8)"}
+              fill={s.filled ? "hsl(var(--primary))" : "hsl(var(--surface-3))"}
               stroke={s.filled ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
               strokeOpacity={s.filled ? 1 : 0.5}
               strokeWidth="1.5"
@@ -101,7 +101,7 @@ export function FeaturedCircle({ c }: { c: CircleSummary }) {
                 />
               ))}
         </motion.g>
-        <circle cx="100" cy="100" r="60" fill="rgba(255,255,255,0.7)" stroke="rgba(255,255,255,0.9)" />
+        <circle cx="100" cy="100" r="60" fill="hsl(var(--surface-2))" stroke="rgba(255,255,255,0.1)" />
       </svg>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
         <span className="text-xs text-muted-foreground">{active ? "In the contract" : "Pot per round"}</span>

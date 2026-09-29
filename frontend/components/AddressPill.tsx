@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export function AddressPill({ address, className, copy = true }: { address: string; className?: string; copy?: boolean }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full border bg-white/50 px-2 py-0.5 font-mono text-[13px]", className)}>
+    <span className={cn("inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 font-mono text-[13px]", className)}>
       <a href={addrUrl(address)} target="_blank" rel="noopener noreferrer" className="hover:underline" aria-label={`Address ${address} on MSTScan`}>
         {shortAddr(address)}
       </a>

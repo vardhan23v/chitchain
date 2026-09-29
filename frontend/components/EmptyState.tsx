@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 /** Dashed empty state with a soft icon disc, one line of copy and an optional CTA. */
 export function EmptyState({ Icon, title, text, action, className, tone = "text-primary bg-primary/10" }: { Icon: LucideIcon; title: ReactNode; text?: ReactNode; action?: ReactNode; className?: string; tone?: string }) {
   return (
-    <div className={cn("flex flex-col items-center gap-3 glass rounded-[22px] border-dashed border-primary/25 px-6 py-10 text-center", className)}>
+    <div className={cn("flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-surface px-6 py-10 text-center", className)}>
       <span className={cn("flex h-12 w-12 items-center justify-center rounded-full", tone)} aria-hidden>
         <Icon className="h-6 w-6" />
       </span>

@@ -84,7 +84,7 @@ export function AgentDashboard({ agent, auction, latest, labelFor, busy, onPause
         />
       </RevealGroup>
 
-      <div className="flex items-start gap-2.5 rounded-xl border border-agent/20 bg-agent/[0.04] px-3.5 py-2.5 text-[13px] leading-snug" aria-live="polite">
+      <div className="flex items-start gap-2.5 rounded-xl border border-agent/25 bg-agent/[0.08] px-3.5 py-2.5 text-[13px] leading-snug" aria-live="polite">
         {status ? (
           <span className={cn("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full", status.color)} style={{ background: "color-mix(in srgb, currentColor 12%, transparent)" }} aria-hidden>
             <status.Icon className="h-3 w-3" />

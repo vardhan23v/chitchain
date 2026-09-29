@@ -95,7 +95,7 @@ function Login() {
           </Button>
         ) : (
           <div className="mt-6 space-y-4">
-            <dl className="divide-y overflow-hidden rounded-xl border bg-white/40 text-sm">
+            <dl className="divide-y overflow-hidden rounded-xl border bg-white/[0.04] text-sm">
               <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
                 <dt className="text-xs font-medium text-muted-foreground">Wallet</dt>
                 <dd className="flex items-center gap-1.5">

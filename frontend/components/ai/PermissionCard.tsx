@@ -71,5 +71,5 @@ function Row({ k, v }: { k: string; v: string }) {
 }
 
 function Chip({ children }: { children: React.ReactNode }) {
-  return <span className="inline-flex items-center rounded-full border border-white/70 bg-white/45 px-2 py-0.5 text-[11px] font-medium text-muted-foreground backdrop-blur-sm">{children}</span>;
+  return <span className="inline-flex items-center rounded-full border border-white/[0.1] bg-white/[0.05] px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{children}</span>;
 }

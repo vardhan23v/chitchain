@@ -74,7 +74,7 @@ export function TicketForm() {
                 <span className="ml-auto text-[13px] text-muted-foreground">{timeAgo(t.createdAt)}</span>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-[15px] text-muted-foreground">{t.message}</p>
-              {t.adminNote && <p className="mt-2 rounded-xl bg-white/40 p-2 text-sm"><span className="font-medium">Reply:</span> {t.adminNote}</p>}
+              {t.adminNote && <p className="mt-2 rounded-xl bg-white/[0.04] p-2 text-sm"><span className="font-medium">Reply:</span> {t.adminNote}</p>}
             </Card>
           ))
         )}

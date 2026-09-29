@@ -298,3 +298,32 @@ Never show a success state before the tx is mined.
 - Small persistent badge bottom-left: **"All money held by contract 0xAB…12 · MST Testnet"**.
 - Tx counter on the room page: "22 on-chain transactions in this circle".
 - Footer: "Prototype on MST Testnet · Not a registered chit company · Chit Funds Act, 1982".
+
+---
+
+## 14. v2 dark theme (2026-09-29)
+
+The light liquid-glass theme was replaced by a dark midnight base with an MST red accent. `:root` in `frontend/app/globals.css` is the only token set; there is no `.dark` block and no glass utilities.
+
+| Token | Value | Tailwind | Use |
+|---|---|---|---|
+| background | `#0D0F13` | `bg-background` | Page base, flat; `body::before` adds a 1 px grid at 4 % and one radial red glow at 6 % top-left |
+| surface | `#151820` | `bg-surface` | Cards (`rounded-2xl border border-white/[0.08] shadow-card`), sidebar, mobile tabs |
+| surface-2 | `#191C24` | `bg-surface2` | Popovers, dialogs, table headers, tab lists |
+| surface-3 | `#20242D` | `bg-surface3` | Tooltips, hover fills, icon wells |
+| border | `rgba(255,255,255,.08)` | `border-border`, `border-white/[0.08]` | All dividers; hover raises to `white/14` via `.card-hover` |
+| foreground | `#F3F4F6` | `text-foreground` | Body text |
+| muted-foreground | `#8B93A7` | `text-muted-foreground` | Meta text (4.5:1 on surface) |
+| primary (MST red) | `#D7263D`, hover `#B81E32` | `bg-primary`, `bg-primary-hover` | Primary buttons, active nav bar, chain references, focus ring at 60 % |
+| success | `#22C55E` | `text-success` | Paid, confirmed, connected |
+| warning | `#F59E0B` | `text-warning` | Pending, slow network, testnet caveats |
+| danger | `#EF4444` | `text-danger` | Failed, removed, wrong network |
+| pot | `#38BDF8` | `text-pot` | Money held by the contract |
+| agent | `#8B7CF6` | `text-agent` | AI bidding agent |
+| chain | `= primary` | `text-chain` | On-chain events and the contract |
+
+Utilities: `.card-hover` (translateY(-2px) + border white/14, 150 ms), `.grid-texture` (24 px grid at 4 %), `.status-dot` (2 s pulse, colour from the element's `bg-*`), `.tnum`, `.surface`, `.surface-2`. Keyframes `shimmer` (skeletons) and `pulseDot` live in `tailwind.config.ts` with `boxShadow.card` (`inset 0 1px 0 rgba(255,255,255,.04)`).
+
+Buttons: `default` red pill, `secondary` and `outline` (`bg-white/[0.06] border-white/10`), `ghost`, `destructive`, `link`; hover `scale-[1.02]`, active `scale-[0.98]`. Dialogs fade and scale in 150 ms over `bg-black/60`; dropdowns fade and translate; tooltips fade and rise; skeletons shimmer. All motion is transform and opacity only and stops under reduced motion.
+
+Shell: 240 px sidebar at xl (72 px icon rail with tooltips between md and xl, hidden below md), 64 px top header with the page title from `lib/routes.ts`, five-tab mobile bar. The signature animation is `components/landing/MoneyFlow.tsx`: Members → Collateral → Smart contract → Pot → Auction → Winner → Dividends → Reputation with two particles on a 6 s loop, paused under reduced motion and while the tab is hidden.

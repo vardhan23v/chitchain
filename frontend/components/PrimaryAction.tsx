@@ -3,7 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BalanceShortfall } from "@/components/BalanceShortfall";
-import { JoinDialog } from "@/components/JoinDialog";
+import { JoinFlow } from "@/components/JoinFlow";
 import { WithdrawDialog } from "@/components/WithdrawDialog";
 import { useBalanceCheck } from "@/hooks/useBalance";
 import type { WalletState } from "@/hooks/useWallet";
@@ -61,7 +61,7 @@ export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, 
     if (now > circle.joinDeadline && circle.memberCount < circle.maxMembers) {
       return <Button size="lg" variant="outline" className={cls} onClick={on.cancel} disabled={pending}>{spin}Cancel the circle and refund collateral</Button>;
     }
-    return <JoinDialog required={viewerRequired} tier={viewerTier} contribution={circle.contribution} disabled={pending} onConfirm={on.join} className={cls} circleId={circle.id} account={wallet.account} />;
+    return <JoinFlow circle={circle} required={viewerRequired} tier={viewerTier} account={wallet.account} disabled={pending} onConfirm={on.join} className={cls} />;
   }
   if (circle.status === 1) {
     if (!me?.joined) return <Button size="lg" className={cls} disabled>Circle is full</Button>;

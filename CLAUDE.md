@@ -11,8 +11,8 @@ Follow the `focused-code-edit` skill for every change. Start from the folder map
 | Area | Path | Touch it when |
 |---|---|---|
 | Frontend (Next.js 14 app router, Tailwind, shadcn, framer-motion, ethers v6) | `frontend/app`, `frontend/components`, `frontend/hooks`, `frontend/lib` | UI, copy, client behaviour |
-| Frontend theme | `frontend/app/globals.css` (tokens, `.glass`, `.liquid*`), `frontend/tailwind.config.ts` | Only for theme-level changes |
-| Frontend shell | `frontend/components/shell/{SideRail,TopStrip,MobileTabs}.tsx`, `frontend/app/layout.tsx` | Navigation changes |
+| Frontend theme | `frontend/app/globals.css` (tokens, `.card-hover`, `.grid-texture`, `.status-dot`), `frontend/tailwind.config.ts` | Only for theme-level changes |
+| Frontend shell | `frontend/components/shell/{Sidebar,TopHeader,MobileTabs}.tsx`, `frontend/lib/routes.ts`, `frontend/app/layout.tsx` | Navigation changes |
 | Motion primitives | `frontend/components/motion/{Reveal,CountUp,Flash}.tsx` | Reuse, do not duplicate |
 | Backend API | `backend/src/routes/*`, `backend/src/index.ts` | Only when the user asks for API or backend changes |
 | Backend loops | `backend/src/{keeper,autopilot,indexer}.ts`, `backend/src/ai/loop.ts` | Chain automation, AI agent |
@@ -27,11 +27,12 @@ For frontend-only tasks, `backend/`, `contracts/`, `agent/`, `deployments/`, `te
 
 ## House style (frontend)
 
-- Light liquid-glass theme is the design: navy primary, ice-blue tints, `Card` + `.glass` surfaces, liquid pill buttons. Do not switch to dark, do not add hover lifts, gradients or new decoration.
-- Sentence case everywhere, no all-caps labels, no em dashes in copy, no arrows appended to button text, Inter for text and JetBrains Mono only for addresses, hashes and block numbers.
+- Dark midnight theme with an MST red accent is the design (v2, 2026-09-29): background `#0D0F13`, `Card` = `bg-surface border border-white/[0.08] rounded-2xl shadow-card`, red pill primary buttons, `secondary` = `bg-white/[0.06] border-white/10`. No light mode, no glass or blur surfaces, no gradients other than the single body glow; the only lift allowed is `.card-hover` (2 px up, brighter border, 150 ms).
+- Red is for the primary action, the active nav indicator and chain/contract references. Money in the contract is `pot` (sky), the AI agent is `agent` (violet); success, warning and danger keep their semantic colours.
+- Sentence case everywhere, no all-caps labels, no em dashes in copy, no arrows appended to button text, Inter for text and JetBrains Mono only for addresses, hashes and block numbers. Numbers use `.tnum`.
 - Real data only. When something is unavailable show a polished state ("Circle data is temporarily unavailable."), never placeholders like "needs backend" and never invented numbers.
 - Every amount is MST and testnet is labelled. Buttons say what happens ("Place a bid") and keep the same name through the flow and toast.
-- Respect reduced motion: use `components/motion/*` and the single `MotionConfig` in `components/Providers.tsx`.
+- Respect reduced motion: use `components/motion/*` and the single `MotionConfig` in `components/Providers.tsx`. Transforms and opacity only, 400 ms or less; keyboard focus ring is red at 60 %.
 
 ## Commands
 

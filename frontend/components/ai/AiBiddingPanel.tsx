@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, Loader2, WifiOff } from "lucide-react";
+import { Bot, CheckCircle2, Loader2, Sparkles, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,7 +24,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { isServiceDown, UNAVAILABLE, useBidAgent } from "@/hooks/useBidAgent";
 import { ApiError } from "@/lib/api";
 import { formatMst, shortAddr } from "@/lib/format";
-import type { MemberInfo } from "@/lib/types";
+import type { AgentEvent, MemberInfo } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface Props {
   circleId: number;
@@ -69,6 +70,9 @@ export function AiBiddingPanel({ circleId, circleName, member, isDemoWallet, mem
   const latest = events.length ? events[events.length - 1] : null;
   const lastConfirmed = useMemo(() => [...events].reverse().find((e) => e.kind === "TX_CONFIRMED" || e.kind === "TX_SUBMITTED") ?? null, [events]);
   const lastFailed = useMemo(() => [...events].reverse().find((e) => e.kind === "TX_FAILED") ?? null, [events]);
+  const lastDecision = useMemo(() => [...events].reverse().find((e) => e.kind === "DECISION") ?? null, [events]);
+  const executed = useMemo(() => events.some((e) => e.kind === "TX_CONFIRMED"), [events]);
+  const analysing = !!agent && agent.status === "ACTIVE" && auction?.status === "BIDDING";
   const potWei = auction?.expectedPot ?? pot;
 
   const act = async (label: string, fn: () => Promise<unknown>) => {
@@ -116,7 +120,13 @@ export function AiBiddingPanel({ circleId, circleName, member, isDemoWallet, mem
     <div className="flex flex-wrap items-center gap-2">
       <span className="inline-flex items-center gap-1.5 text-[17px] font-semibold tracking-tight text-agent"><Bot className="h-4 w-4" aria-hidden /> AI bidding agent</span>
       <Badge variant="outline" className="text-muted-foreground">Experimental AI, testnet only</Badge>
-      {agent && <AiStatusPill status={agent.status} className="ml-auto" />}
+      {analysing ? (
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-agent/30 bg-agent/[0.12] px-2.5 py-0.5 text-xs font-semibold text-agent" aria-live="polite">
+          <span className="status-dot h-2 w-2 rounded-full bg-agent" aria-hidden /> Analysing live auction
+        </span>
+      ) : agent ? (
+        <AiStatusPill status={agent.status} className="ml-auto" />
+      ) : null}
     </div>
   );
 
@@ -124,7 +134,7 @@ export function AiBiddingPanel({ circleId, circleName, member, isDemoWallet, mem
   let key = "gate";
   if (!signedIn) {
     body = (
-      <div className="rounded-xl border border-dashed border-white/70 bg-white/40 p-4 text-center text-sm text-muted-foreground">
+      <div className="rounded-xl border border-dashed border-white/[0.12] bg-white/[0.03] p-4 text-center text-sm text-muted-foreground">
         Sign in as the circle organizer or admin to run the agent.
         <div className="mt-2"><Button asChild size="sm" variant="outline"><Link href={`/login?next=/circle/${circleId}`}>Sign in</Link></Button></div>
       </div>
@@ -155,7 +165,7 @@ export function AiBiddingPanel({ circleId, circleName, member, isDemoWallet, mem
     key = "summary";
     body = (
       <div className="space-y-4">
-        <div className="rounded-2xl border border-white/60 bg-white/45 p-4 backdrop-blur-sm">
+        <div className="rounded-2xl border border-white/[0.08] bg-surface2 p-4">
           <div className="flex flex-wrap items-center gap-2">
             <AiStatusPill status={agent.status} />
             <p className="text-[15px] font-semibold leading-tight">{agent.status === "DONE" ? "This strategy has finished" : agent.status === "ERROR" ? "This strategy hit an error" : "This strategy was stopped"}</p>
@@ -193,6 +203,7 @@ export function AiBiddingPanel({ circleId, circleName, member, isDemoWallet, mem
           onEvaluate={() => void act("Evaluation requested.", actions.evaluate)}
           onApprove={() => void act("Approved. The agent will bid within your limits.", () => actions.resume(true))}
         />
+        <Recommendation decision={lastDecision} executed={executed} confirmed={lastConfirmed} />
         {(lastFailed || failing) && (
           <FailureCard agent={agent} event={lastFailed} busy={busy} onReview={() => document.getElementById(`ai-activity-${agent.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" })} onResume={agent.status === "PAUSED" ? () => void act("Agent resumed.", () => actions.resume()) : undefined} />
         )}
@@ -203,7 +214,7 @@ export function AiBiddingPanel({ circleId, circleName, member, isDemoWallet, mem
   }
 
   return (
-    <Card className="border-agent/30 bg-agent/[0.03] p-4 md:p-5">
+    <Card className="border-agent/30 bg-agent/[0.04] p-4 md:p-5">
       {header}
       <p className="mt-2 text-[13px] text-muted-foreground">
         Describe a goal and hard limits. The AI proposes, a deterministic risk guard checks every bid, and only then is it sent on-chain from {member && isDemoWallet ? `Member ${labelFor(member.address)}'s` : "the member's"} custodial demo wallet.
@@ -217,6 +228,38 @@ export function AiBiddingPanel({ circleId, circleName, member, isDemoWallet, mem
       </div>
       {busy && !agent && step === "form" && <span className="sr-only" aria-live="polite"><Loader2 className="animate-spin" aria-hidden /> Working</span>}
     </Card>
+  );
+}
+
+/** The last DECISION event (what the crew proposed) above an explicit line between recommendation and on-chain execution. */
+function Recommendation({ decision, executed, confirmed }: { decision: AgentEvent | null; executed: boolean; confirmed: AgentEvent | null }) {
+  const d = decision?.data ?? null;
+  const confidence = typeof d?.confidence === "number" ? d.confidence : null;
+  return (
+    <div className="rounded-2xl border border-white/[0.08] bg-surface2 p-4">
+      <div className="flex items-center gap-2 text-[12px] font-semibold text-agent"><Sparkles className="h-3.5 w-3.5" aria-hidden /> AI recommendation</div>
+      {decision ? (
+        <div className="mt-2 space-y-1">
+          <p className="text-[15px] font-semibold leading-tight">{decision.text}</p>
+          <dl className="tnum flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+            {d?.discount && <div><dt className="inline text-muted-foreground">Discount </dt><dd className="inline font-semibold">{formatMst(d.discount)} MST</dd></div>}
+            {d?.payout && <div><dt className="inline text-muted-foreground">Payout </dt><dd className="inline font-semibold">{formatMst(d.payout)} MST</dd></div>}
+            {confidence !== null && <div><dt className="inline text-muted-foreground">Confidence </dt><dd className="inline font-semibold">{Math.round(confidence <= 1 ? confidence * 100 : confidence)}%</dd></div>}
+          </dl>
+          {decision.reason && <p className="text-[13px] text-muted-foreground">{decision.reason}</p>}
+        </div>
+      ) : (
+        <p className="mt-2 text-[13px] text-muted-foreground">No decision yet. The first evaluation runs within a few seconds.</p>
+      )}
+      <div className="my-3 flex items-center gap-3 text-[11px] font-semibold text-muted-foreground" aria-hidden><span className="h-px flex-1 bg-white/[0.08]" />Risk guard, then the chain<span className="h-px flex-1 bg-white/[0.08]" /></div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[12px] font-semibold text-chain">On-chain transaction</span>
+        <span className={cn("ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold", executed ? "border-success/30 bg-success/[0.12] text-success" : "border-white/[0.1] bg-white/[0.04] text-muted-foreground")}>
+          {executed ? <CheckCircle2 className="h-3 w-3" aria-hidden /> : null}{executed ? "Executed" : "Not executed"}
+        </span>
+      </div>
+      <p className="mt-1 text-[12px] text-muted-foreground">{executed && confirmed?.data?.txHash ? "A bid from this strategy was confirmed on MST testnet. Details below." : "Nothing has been sent on-chain by this strategy yet. Only a bid that passes the deterministic risk guard is signed."}</p>
+    </div>
   );
 }
 

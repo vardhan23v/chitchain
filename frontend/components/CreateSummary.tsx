@@ -62,7 +62,7 @@ export function CreateSummary({ v }: { v: CreateInput }) {
               </tbody>
             </table>
           </div>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-white/40 p-3 text-sm">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-white/[0.04] p-3 text-sm">
             {facts.map(([k, val]) => (
               <div key={k}>
                 <dt className="text-[11px] font-medium text-muted-foreground">{k}</dt>

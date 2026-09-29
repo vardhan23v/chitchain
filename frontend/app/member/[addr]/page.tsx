@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { ExternalLink, History, Info, RefreshCw, ShieldCheck, Wallet, WifiOff } from "lucide-react";
+import { ExternalLink, History, Info, RefreshCw, ShieldCheck, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { InfoBanner } from "@/components/InfoBanner";
 import { PageHeader, SectionTitle } from "@/components/PageHeader";
 import { FeedItem } from "@/components/FeedItem";
-import { RiskFactors } from "@/components/RiskFactors";
-import { ScoreGauge, scoreBand } from "@/components/ScoreGauge";
+import { RiskCard } from "@/components/RiskCard";
+import { scoreBand } from "@/components/ScoreGauge";
 import { TierChip } from "@/components/TierChip";
 import { TxLink } from "@/components/TxLink";
 import { useRisk } from "@/hooks/useRisk";
@@ -74,43 +74,39 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
         }
       />
 
-      <Card className="p-4 md:p-5">
-        {loading ? (
-          <div className="flex gap-6"><Skeleton className="h-20 w-32" /><div className="flex-1 space-y-2"><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div></div>
-        ) : !data ? (
-          <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" className="border-0 py-6" title="Risk assessment is temporarily unavailable." text={<span className="inline-flex flex-wrap items-center justify-center gap-1">Until assessed, this wallet is <TierChip tier={0} /> and pays the High-tier collateral to join.</span>} />
-        ) : (
-          <div className="grid gap-6 md:grid-cols-[auto_1fr]">
-            <div className="flex justify-center pb-4 md:justify-start"><ScoreGauge score={data.score} /></div>
-            <div className="space-y-3">
-              <SectionTitle Icon={ShieldCheck} trailing={<Badge variant="outline" className="text-muted-foreground">0 = safest · 100 = riskiest</Badge>}>Demo heuristic risk model</SectionTitle>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <RiskCard data={data} loading={loading} error={error} className="min-w-0" />
+        <Card className="min-w-0 p-4 md:p-5">
+          <SectionTitle Icon={ShieldCheck} trailing={<Badge variant="outline" className="text-muted-foreground">0 = safest · 100 = riskiest</Badge>}>Risk tier on-chain</SectionTitle>
+          {data ? (
+            <div className="mt-3 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <TierChip tier={data.tier} />
                 <span className={cn("text-sm font-semibold", BAND_CLS[scoreBand(data.score)])}>{scoreBand(data.score)} risk band</span>
                 {data.onChainTier !== data.tier && <Badge variant="outline" className="text-xs">on-chain: {TIER_NAME[data.onChainTier]}, re-assess to update</Badge>}
               </div>
-              <p className="text-[15px]">
-                &ldquo;{data.explanation}&rdquo; <span className="text-xs text-muted-foreground">({data.explanationSource === "llm" ? "AI" : "template"})</span>
-              </p>
-              <RiskFactors factors={data.factors} reputation={data.reputation} />
+              <p className="text-[13px] text-muted-foreground">The tier prices the collateral you lock when joining a circle. Re-assessing writes the current heuristic tier to the contract.</p>
               <InfoBanner Icon={Info}>Demo heuristic risk model on {data.dataSource === "SYNTHETIC" ? "synthetic demo history" : data.dataSource === "ONCHAIN" ? "on-chain history" : "mixed synthetic and on-chain history"}, not a credit score.</InfoBanner>
               <div className="flex flex-wrap items-center gap-3">
                 <Button onClick={onAssess} disabled={assessing}>
                   <RefreshCw className={assessing ? "animate-spin" : ""} aria-hidden /> Re-assess risk tier
                 </Button>
                 {lastTx && <TxLink hash={lastTx} label="View on MSTScan" />}
-                <span className="text-[13px] text-muted-foreground">Writes the tier to the contract.</span>
               </div>
             </div>
-          </div>
-        )}
-      </Card>
+          ) : loading ? (
+            <div className="mt-3 space-y-2" aria-busy="true"><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-full" /><Skeleton className="h-9 w-40" /></div>
+          ) : (
+            <p className="mt-3 text-[13px] text-muted-foreground">Until assessed, this wallet is <TierChip tier={0} /> and pays the High-tier collateral to join.</p>
+          )}
+        </Card>
+      </div>
 
       <section className="space-y-3">
         <SectionTitle Icon={History} tone="text-chain" trailing={data?.history?.length ? <span className="tnum">{data.history.length} events</span> : undefined}>On-chain history</SectionTitle>
         {data?.history?.length ? (
           <Card className="p-2 md:p-3">
-            <ol className="relative ml-3 space-y-0.5 border-l border-dashed pl-1">{data.history.slice().reverse().map((e) => <FeedItem key={`${e.txHash}-${e.logIndex}`} e={e} labels={labelMap} now={Date.now()} />)}</ol>
+            <ol className="relative ml-3 space-y-0.5 border-l border-dashed border-white/[0.12] pl-1">{data.history.slice().reverse().map((e) => <FeedItem key={`${e.txHash}-${e.logIndex}`} e={e} labels={labelMap} now={Date.now()} />)}</ol>
           </Card>
         ) : (
           <EmptyState Icon={History} tone="bg-chain/10 text-chain" title={data ? "No on-chain events for this wallet yet." : "History is temporarily unavailable."} text={data ? "Join a circle and every contribution, bid and payout will appear here." : "Try again in a moment."} />

@@ -5,15 +5,15 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-[transform,background-color,border-color,color] duration-150 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "liquid liquid-navy",
-        destructive: "liquid liquid-danger",
-        outline: "liquid liquid-clear border border-white/70",
-        secondary: "liquid liquid-clear border border-white/50 text-secondary-foreground",
-        ghost: "liquid liquid-clear bg-transparent shadow-none text-foreground hover:bg-white/60",
+        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
+        destructive: "bg-danger text-danger-foreground hover:bg-danger/90",
+        outline: "border border-white/10 bg-white/[0.06] text-foreground hover:bg-white/[0.1]",
+        secondary: "border border-white/10 bg-white/[0.06] text-foreground hover:bg-white/[0.1]",
+        ghost: "text-foreground hover:bg-white/[0.06]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

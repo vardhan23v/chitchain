@@ -44,7 +44,7 @@ export function MembersGrid({ circle, members, viewer, events, rounds }: Props) 
         ))}
         {circle.status === 0 &&
           Array.from({ length: seats }, (_, i) => (
-            <RevealItem key={`seat-${i}`} className="flex min-w-[168px] items-center justify-center rounded-[22px] border border-dashed border-primary/20 bg-white/30 p-4 text-xs font-medium text-muted-foreground">
+            <RevealItem key={`seat-${i}`} className="flex min-w-[168px] items-center justify-center rounded-[22px] border border-dashed border-primary/20 bg-white/[0.03] p-4 text-xs font-medium text-muted-foreground">
               Open seat
             </RevealItem>
           ))}
