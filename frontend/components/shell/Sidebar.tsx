@@ -72,7 +72,7 @@ export function Sidebar() {
     if (isActive("/support")) return "Support";
     if (isActive("/member")) return "AI risk";
     if (isActive("/dashboard") || isActive("/organizer") || isActive("/admin")) return "Overview";
-    if (isActive("/")) return "Auctions";
+    if (isActive("/circle")) return "Auctions";
     return null;
   })();
 

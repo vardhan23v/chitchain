@@ -16,7 +16,6 @@ import { RevealGroup } from "@/components/motion/Reveal";
 import { SectionTitle } from "@/components/PageHeader";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RiskCard } from "@/components/RiskCard";
-import { RoleBadge } from "@/components/RoleBadge";
 import { StatCard } from "@/components/StatCard";
 import { TierChip } from "@/components/TierChip";
 import { TransactionRow } from "@/components/TransactionRow";
@@ -61,17 +60,16 @@ function Dashboard() {
   const active = activeList[0] ?? null;
   const down = !!me.error && !me.data;
   const activity = useActivity(hasAddr ? account : null, 5);
-  const who = auth.user?.username || auth.user?.displayName || (hasAddr ? shortAddr(account) : "there");
+  const who = auth.user?.username || auth.user?.displayName || (hasAddr ? shortAddr(account) : auth.isPasswordAdmin ? account.replace(/^admin:/, "") : "there");
 
   return (
     <div className="space-y-6 md:space-y-8">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="min-w-0 truncate text-[28px] font-semibold leading-tight tracking-tight">{greeting()}, {who}</h1>
+          <h1 className="min-w-0 break-words text-[28px] font-semibold leading-tight tracking-tight">{greeting()}, {who}</h1>
           <p className="mt-1 text-[15px] text-muted-foreground">Your ChitChain overview. Every number is read from the contract on MST testnet.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {auth.user && <RoleBadge role={auth.user.role} passwordAdmin={auth.isPasswordAdmin} />}
           {down && <Badge variant="outline" className="gap-1 font-medium text-muted-foreground"><WifiOff className="h-3 w-3" aria-hidden /> {isUnreachable(me.error) ? "Overview temporarily unavailable" : "Overview could not be loaded"}</Badge>}
         </div>
       </header>

@@ -388,6 +388,8 @@ export interface AdminOverview {
   mst: { locked: string; pots: string; collateral: string; reserve: string };
   defaults: number;
   tx: { total: number; sent: number; mined: number; failed: number; lastFailure: string | null };
+  /** distinct on-chain transactions in the index */
+  indexedTx?: number;
   tickets: { open: number };
   audit: { last24h: number };
   chain: { chainId: number; latestBlock: number; lastIndexedBlock: number | null; lag: number; connected: boolean };

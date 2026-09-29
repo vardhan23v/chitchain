@@ -37,14 +37,14 @@ export function StatCard({ label, Icon, tone = "text-muted-foreground", value, u
     <motion.div variants={revealItem} className={cn("card-hover flex min-w-0 flex-col rounded-2xl border border-white/[0.08] bg-surface p-4 shadow-card md:p-5", className)}>
       <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
         <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.05]", tone)} aria-hidden><Icon className="h-4 w-4" /></span>
-        <span className="truncate">{label}</span>
+        <span className="min-w-0 leading-tight">{label}</span>
         {chip && <span className="ml-auto shrink-0">{chip}</span>}
       </div>
       {loading ? (
         <Skeleton className="mt-3 h-9 w-28" />
       ) : (
-        <div className={cn("tnum mt-3 flex min-w-0 items-baseline gap-1.5 text-[32px] font-semibold leading-none tracking-tight text-foreground md:text-[36px]", !numeric && "text-[28px] md:text-[32px]")}>
-          <span className="min-w-0 truncate">{numeric ? <CountUp value={value} decimals={decimals ?? (unit ? 2 : 0)} fromZero /> : value}</span>
+        <div className={cn("tnum mt-3 flex min-w-0 items-baseline gap-1.5 text-[32px] font-semibold leading-none tracking-tight text-foreground md:text-[36px]", !numeric && "text-[22px] sm:text-[28px] md:text-[32px]")}>
+          <span className={cn("min-w-0", numeric ? "truncate" : "break-words")}>{numeric ? <CountUp value={value} decimals={decimals ?? (unit ? 2 : 0)} fromZero /> : value}</span>
           {unit && numeric && <span className="text-[14px] font-medium text-muted-foreground">{unit}</span>}
         </div>
       )}

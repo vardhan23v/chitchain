@@ -4,7 +4,7 @@ const TITLES: [string, string][] = [
   ["/organizer", "Organizer"],
   ["/admin", "Admin"],
   ["/activity", "On-chain activity"],
-  ["/circle", "Chit"],
+  ["/circle", "Circle room"],
   ["/create", "Create a chit"],
   ["/member", "Profile"],
   ["/collateral", "Collateral"],

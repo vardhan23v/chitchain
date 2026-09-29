@@ -5,7 +5,7 @@ import { cachedRead, contractAddress, contractAs, deployer, demoWallets, getMemb
 import { loopStatus } from "../bus";
 import {
   countAdmins, countAuditSince, countDemoMeta, countOpenTickets, countUsers, demoCircleIds, getLastBlock, getTicket, getUser, listAudit, listTickets, listUsers,
-  revokeSessionsFor, updateTicket, updateUser, prisma,
+  revokeSessionsFor, updateTicket, updateUser, prisma, countDistinctTx,
 } from "../db";
 import { audit } from "../auth/audit";
 import { requireAuth, requireRole } from "../auth/middleware";
@@ -48,7 +48,11 @@ admin.get("/admin/overview", wrap(async (_req, res) => {
   res.json({
     users, circles,
     mst: { locked: mst.locked.toString(), pots: mst.pots.toString(), collateral: mst.collateral.toString(), reserve: mst.reserve.toString() },
-    defaults, tx: txStats(), tickets: { open }, audit: { last24h },
+    // defaults and indexedTx come from indexed contract events, so they cover every circle and survive restarts;
+    // `tx` is this backend process's own send counters (reset on deploy).
+    defaults: Math.max(defaults, await prisma.event.count({ where: { name: "DefaultDetected" } })),
+    indexedTx: await countDistinctTx(),
+    tx: txStats(), tickets: { open }, audit: { last24h },
     chain: { chainId: config.MST_CHAIN_ID, latestBlock, lastIndexedBlock, lag: lastIndexedBlock === null ? latestBlock : Math.max(0, latestBlock - lastIndexedBlock), connected },
     contract: { address: contractAddress, status: isConfigured() ? "ACTIVE" : "NOT_CONFIGURED", explorer: config.EXPLORER },
     loops, keeper: { address: keeper?.address ?? null, balance: keeper ? await bal(keeper.address) : "0", status: keeperStatus },

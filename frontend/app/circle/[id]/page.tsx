@@ -151,11 +151,11 @@ export default function CircleRoomPage() {
         <div className="min-w-0 space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
             <RevealItem className="min-w-0 space-y-3">
-              <PotMeter circle={circle} round={round} />
+              {circle.status <= 1 && <PotMeter circle={circle} round={round} />}
               <div className="hidden md:block">{primary}</div>
             </RevealItem>
-            <RevealItem className="min-w-0">
-              {circle.status === 1 && round.phaseCode === 1 && (
+            {circle.status === 1 && <RevealItem className="min-w-0">
+              {round.phaseCode === 1 && (
                 <div ref={decisionRef} className="mb-4">
                   <RecipientDecision
                     circle={circle}
@@ -171,7 +171,7 @@ export default function CircleRoomPage() {
                   />
                 </div>
               )}
-              <div ref={bidRef} className={round.phaseCode === 2 || circle.status !== 1 ? "h-full" : undefined}>
+              <div ref={bidRef} className={round.phaseCode === 2 ? "h-full" : undefined}>
                 <AuctionPanel
                   circle={circle}
                   round={round}
@@ -186,7 +186,7 @@ export default function CircleRoomPage() {
                   highlight={bidHighlight}
                 />
               </div>
-            </RevealItem>
+            </RevealItem>}
           </div>
           <RevealItem>
             <RoomTabs data={data} me={room.me} viewer={wallet.account} events={feed.events} labelFor={labelFor} onChanged={refetchAll} />
