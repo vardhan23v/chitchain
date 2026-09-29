@@ -41,15 +41,19 @@ interface Mandate { circleId: number; member: string; goal: string; desiredPayou
 | POST | `/agent/mandate` body `{ circleId, member, goal, desiredPayout? (MST decimal string), maxDiscountPct?, urgency?, riskTolerance? }` | `{ mandate: Mandate, decision: AgentLog|null }` — stores mandate and runs one decision immediately if the circle is Active |
 | DELETE | `/agent/mandate?circleId=&member=` | `{ ok }` |
 | GET | `/agent/logs?circleId=&limit=` | `{ logs: AgentLog[] }` newest first |
-| GET | `/demo/state` | `{ wallets: DemoWallet[], txCount, contract, circleId (latest demo circle or null) }` where `DemoWallet = { label: "A".."E", address, balance (wei string), tier, skip: boolean, custodial: true }` |
+| GET | `/demo/state` | `{ wallets: DemoWallet[], txCount, contract, circleId (latest demo circle or null), joinQueue: JoinQueue[], underfunded: WalletShortfall[] }` where `DemoWallet = { label: "A".."E", address, balance (wei string), tier, skip: boolean, custodial: true }`, `JoinQueue = { circleId, joined, total, failures: {label,address,attempts,error}[], lastError, done }` (background joins started by `/demo/new-circle`, kept 10 min after finishing), `underfunded` = wallets from the last failed funding pre-check (`[]` when the last check passed) |
 | POST | `/demo/fund` | funds demo wallets from deployer → `{ txHashes }` |
 | POST | `/demo/assess-all` | `{ results: (RiskResult & {txHash})[] }` |
 | POST | `/demo/skip` body `{ address, skip }` | `{ ok }` — when skip=true the demo autopilot does not contribute for that wallet |
-| POST | `/demo/new-circle` body `{ contributionDuration?=30, biddingDuration?=30, contribution?="0.1" (MST), holdbackBps?=1000, maxDiscountBps?=4000 }` | `{ circleId, txHash }` — creates a circle **and joins all 5 demo wallets** |
+| POST | `/demo/new-circle` body `{ contributionDuration?=30, biddingDuration?=30, contribution?="0.1" (MST), holdbackBps?=1000, maxDiscountBps?=4000, lowBps?=5000, mediumBps?=10000, highBps?=20000 }` | `{ circleId, txHash, joining: true }` — **pre-checks funding first**: every demo wallet needs `contribution × highBps / 10000` (unassessed wallets pay the High multiplier) + 0.02 MST gas reserve; short wallets are topped up from the deployer, and if the deployer cannot cover the whole shortfall (keeping 0.02 MST itself) the call returns **409 `DEMO_UNDERFUNDED`** `{ error, code, required (wei), wallets: { label, address, balance, required, shortfall }[], deployer: { address, balance, shortfall }, faucet: "https://faucet.masterstroke.academy" }` and **no circle is created**. Only when everything is funded is the circle created; the response returns immediately and the 5 joins run in the background (autopilot join queue, 3 attempts per wallet with 5 s / 15 s backoff, each attempt audited as `autopilot.join`); watch `GET /demo/state.joinQueue`. Tier bps: **400 `BAD_TIER_BPS`** when any of `lowBps/mediumBps/highBps` is 0 or the ordering `low <= medium <= high` is broken — the contract only enforces ordering and `highBps > 0`, a 0 multiplier would allow a zero-collateral join |
+| POST | `/demo/cancel` body `{ circleId }` | `{ txHash }` — contract `cancel(circleId)` from the keeper wallet for a circle stuck **Open past its join deadline** (members' collateral becomes claimable). 409 `NOT_OPEN` / `JOIN_WINDOW_STILL_OPEN`; preflighted; audited as `demo.cancel` |
+| GET | `/circles/:id/invites/check?address=` | public → `{ invited: boolean, hasInvites: boolean, enforced: false }` so the UI can show "invited" vs "open". **Invites are informational only**: joins happen on-chain from the user's own wallet, so the backend cannot enforce them |
 | POST | `/demo/withdraw` body `{ address, circleId }` | `{ txHash }` |
 | POST | `/circles/:id/settle` | `{ txHash }` — keeper settles now if the deadline passed (UI "Settle round" button fallback) |
 
 Errors: `{ error: string, code?: string }` with 4xx/5xx.
+
+Security headers: `helmet` (CSP `default-src 'none'; frame-ancestors 'none'`, `Cross-Origin-Resource-Policy: cross-origin` so the frontend origin can read responses; CORS unchanged; SSE `text/event-stream` unaffected).
 
 ## Demo wallets (custodial, disclosed in UI)
 `AGENT_WALLET_KEYS` = five comma-separated private keys for demo members **A–E**. The backend holds them and, for circles it created via `/demo/new-circle` ("demo circles"), it auto-contributes each round (unless `skip` is set) and places the AI agent's bids from the member's own wallet. The UI must label these wallets "custodial demo wallet". Real users join with BridgeKey; the agent can only bid for demo wallets.
@@ -108,7 +112,7 @@ Roles: everyone is `MEMBER` on first login; addresses listed in `PLATFORM_ADMIN_
 | Self or ADMIN | `POST /members/:addr/assess` |
 | Organizer of the circle or ADMIN | `POST/DELETE /agent/mandate`, `POST /organizer/circles/:id/meta`, `GET/POST/DELETE /organizer/circles/:id/invites[/:addr]`, `GET /organizer/circles/:id/analytics` |
 | ORGANIZER or ADMIN | `GET /organizer/circles` |
-| ADMIN | `POST /demo/{fund,assess-all,skip,new-circle,withdraw}`, everything under `/admin` |
+| ADMIN | `POST /demo/{fund,assess-all,skip,new-circle,withdraw,cancel}`, everything under `/admin` (incl. `GET /admin/treasury`, `POST /admin/treasury/withdraw`) |
 
 ## New shapes
 ```ts
@@ -156,7 +160,9 @@ interface AdminOverview {
 | GET | `/admin/support?status` | `{ tickets }` |
 | PATCH | `/admin/support/:id` `{ status?, adminNote? }` | `{ ticket }` |
 | GET | `/admin/config` | safe config subset (never keys, never DATABASE_URL) |
-| GET | `/health` | adds `loops: LoopStatus[]`, `tx`, `indexerHealthy` |
+| GET | `/admin/treasury` | `{ treasury (address, immutable at deploy), claimable (wei string, contract `treasuryClaimable()`), balance (wei), signer (deployer address), canWithdraw (deployer === treasury), lastWithdrawTx: { txHash, ts, amount } \| null (from the audit log) }` |
+| POST | `/admin/treasury/withdraw` | `{ txHash, amount }` — contract `withdrawTreasury()`; only the treasury address may call it (`OnlyTreasury`), and on MST testnet the deployer wallet **is** the treasury (`deployments/mstTestnet.json`), so it is sent from the deployer. 409 `NOTHING_TO_WITHDRAW`, 503 `NOT_TREASURY` when the configured deployer is not the treasury. Audited as `admin.treasury.withdraw` ok/failed/denied |
+| GET | `/health` | adds `loops: LoopStatus[]`, `tx`, `indexerHealthy`, `demo: { wallets: { label, address, balanceMst, ok }[], underfunded: boolean }` (`ok` = can join a default 0.1 MST demo circle: 0.2 MST collateral + 0.02 gas), `llm: { configured, baseUrl (host only), model }`, `crew: { configured, url, reachable: boolean\|null, model\|null }` (CrewAI service `GET /health`, 3 s timeout, memoised 30 s, never blocks health) |
 
 Notes: `PATCH /admin/users/:addr` with `status: "SUSPENDED"` revokes the user's sessions; a role change does not (the role is re-read from the database per request, so existing tokens pick it up immediately). All `/auth/*` requests share a 60/min per-IP limiter on top of the 10/min nonce limits.
 

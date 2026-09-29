@@ -339,6 +339,35 @@ The agent was activated for demo wallet A with the goal "I need liquidity before
 
 The agent then reported "You hold the winning bid", waited through the rest of the window, and finished with "Auction ended".
 
+### Cancel and refund (v2.1, 2026-09-29)
+
+Three circles whose join window closed with only one member were cancelled by the keeper with the permissionless `cancel(circleId)`; the joined member's collateral was refunded to `claimable` (pull withdrawal).
+
+| Circle | Transaction |
+|---|---|
+| #1 | [`0xb457…6905`](https://testnet.mstscan.com/tx/0xb45778783bffde7829b4a518d4d577d83056d764e86818640d840f04bc656905) |
+| #2 | [`0xce8c…4a30`](https://testnet.mstscan.com/tx/0xce8c46f3f0f09158fda0ea4207d92e8026cad957441824dd0aba0fced4d24a30) |
+| #3 | [`0xf2fe…3cb0`](https://testnet.mstscan.com/tx/0xf2fe5991e905bd8835a5fefdd94eca7f551e3b5391018dcd2d0312974f5a3cb0) |
+
+### Risk tiers written on v2.1 (2026-09-29)
+
+`POST /demo/assess-all` scored the five custodial demo wallets with the heuristic and the oracle wrote each tier on-chain with `setRiskTier`.
+
+| Wallet | Tier | Transaction |
+|---|---|---|
+| A | Low | [`0xa488…761a`](https://testnet.mstscan.com/tx/0xa488bfc2470d949189da55ad14985ab98a151e734389494d7d5e40652833761a) |
+| B | Medium | [`0x5e42…0b22`](https://testnet.mstscan.com/tx/0x5e42325ef1da668a34c757ac01bfb6658058d9adffa446cd7c3b4f1ea9320b22) |
+| C | Low | [`0x455d…71ef`](https://testnet.mstscan.com/tx/0x455d1690d52c1cdd4c87dc116eafdee6ad69a6e3f614dc94d1ee885e65d671ef) |
+| D | High | [`0xf878…095a`](https://testnet.mstscan.com/tx/0xf878278512d4c0acd82e1d89a0a81031fae8399cd42fe4b46b68ae0d50fd095a) |
+| E | Medium | [`0x46ac…1df0`](https://testnet.mstscan.com/tx/0x46acbed4e3d679a00d780e8199ad579de33508ac64a52917cf3d25932f371df0) |
+
+### Treasury withdrawal and background demo joins (v2.1, 2026-09-29)
+
+| Step | What happened | Transaction |
+|---|---|---|
+| Treasury | `POST /admin/treasury/withdraw` sent `withdrawTreasury()` from the treasury wallet and moved 0.04 MST of accrued fees out of the contract | [`0xf3dc…76b2`](https://testnet.mstscan.com/tx/0xf3dcfbb969bfcab5193c9aa4408fd2c05f06d298a19cdb38a67d43f322bd76b2) |
+| Demo circle #5 | `POST /demo/new-circle` now pre-checks funding, creates the circle, responds at once, and the autopilot join queue joined all five demo wallets in the background (5 of 5, no failures) | [`0xe969…8588`](https://testnet.mstscan.com/tx/0xe969cc1b0d370442e0564a5368e5c4ed67f9dbc51cf84a46fe15eadefdf8c588) |
+
 ## MSTScan verification
 Every action in the UI links to `https://testnet.mstscan.com/tx/<hash>`. Open the contract page, tab **Logs**, to see `DefaultDetected`, `HoldbackApplied`, `RoundSettled` and `DividendCredited` with their decoded arguments. Only hashes returned by the MST network are ever displayed.
 

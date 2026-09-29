@@ -1,7 +1,7 @@
 import { parseEther } from "ethers";
 import {
   contractAs, deployer, demoWallets, errorMessage, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, isConfigured, preflight, provider, sendTx,
-  type ManagedWallet,
+  type DemoWallet, type ManagedWallet,
 } from "./chain";
 import { addDemoCircle, demoCircleIds, getSkip } from "./db";
 import { loop } from "./bus";
@@ -44,21 +44,73 @@ async function withWallet<T>(wallet: ManagedWallet, fn: () => Promise<T>): Promi
   try { return await fn(); } finally { busy.delete(key); }
 }
 
-/** Joins every demo wallet (A–E) sequentially with its exact required collateral. Returns join tx hashes. */
-export async function joinAll(circleId: number): Promise<string[]> {
-  const hashes: string[] = [];
-  for (const w of demoWallets) {
+// ───────────── background join queue (POST /demo/new-circle) ─────────────
+/** Per-wallet join attempts: 3 tries with 5 s / 15 s backoff, then the wallet is reported in `failures`. */
+const JOIN_MAX_ATTEMPTS = 3;
+const JOIN_BACKOFF_MS = [0, 5000, 15_000];
+interface JoinWalletState { label: string; address: string; attempts: number; nextAt: number; joined: boolean; lastError: string | null; txHash: string | null }
+interface JoinQueueEntry { circleId: number; queuedAt: number; wallets: JoinWalletState[] }
+export interface JoinQueueStatus { circleId: number; joined: number; total: number; failures: { label: string; address: string; attempts: number; error: string | null }[]; lastError: string | null; done: boolean }
+const joinQueue = new Map<number, JoinQueueEntry>();
+const JOIN_QUEUE_KEEP_MS = 10 * 60 * 1000; // finished entries stay visible in /demo/state for 10 min
+
+/** Queues every demo wallet to join `circleId`; the autopilot loop drains it (retries, audit entries). */
+export function enqueueJoin(circleId: number): void {
+  if (joinQueue.has(circleId)) return;
+  joinQueue.set(circleId, {
+    circleId, queuedAt: Date.now(),
+    wallets: demoWallets.map((w) => ({ label: w.label, address: w.address, attempts: 0, nextAt: 0, joined: false, lastError: null, txHash: null })),
+  });
+  void drainJoinQueue().catch((e) => console.error(`[autopilot] join queue: ${errorMessage(e)}`));
+}
+const entryDone = (e: JoinQueueEntry): boolean => e.wallets.every((w) => w.joined || w.attempts >= JOIN_MAX_ATTEMPTS);
+/** Snapshot for GET /demo/state. */
+export function joinQueueStatus(): JoinQueueStatus[] {
+  return [...joinQueue.values()].map((e) => {
+    const failures = e.wallets.filter((w) => !w.joined && w.attempts >= JOIN_MAX_ATTEMPTS).map((w) => ({ label: w.label, address: w.address, attempts: w.attempts, error: w.lastError }));
+    const lastError = e.wallets.map((w) => w.lastError).filter((x): x is string => !!x).pop() ?? null;
+    return { circleId: e.circleId, joined: e.wallets.filter((w) => w.joined).length, total: e.wallets.length, failures, lastError, done: entryDone(e) };
+  });
+}
+
+let draining = false;
+async function drainJoinQueue(): Promise<void> {
+  if (draining) return;
+  draining = true;
+  try {
+    const now = Date.now();
+    for (const entry of joinQueue.values()) {
+      if (entryDone(entry)) { if (now - entry.queuedAt > JOIN_QUEUE_KEEP_MS) joinQueue.delete(entry.circleId); continue; }
+      for (const st of entry.wallets) {
+        if (st.joined || st.attempts >= JOIN_MAX_ATTEMPTS || Date.now() < st.nextAt) continue;
+        const w = demoWallets.find((d) => d.address.toLowerCase() === st.address.toLowerCase());
+        if (!w) { st.attempts = JOIN_MAX_ATTEMPTS; st.lastError = "wallet no longer configured"; continue; }
+        await joinOne(entry.circleId, w, st);
+      }
+    }
+  } finally { draining = false; }
+}
+async function joinOne(circleId: number, w: DemoWallet, st: JoinWalletState): Promise<void> {
+  st.attempts += 1;
+  st.nextAt = Date.now() + (JOIN_BACKOFF_MS[st.attempts] ?? JOIN_BACKOFF_MS[JOIN_BACKOFF_MS.length - 1]);
+  try {
     const m = await getMember(circleId, w.address);
-    if (m.joined) continue;
-    await ensureFunded(w.address);
+    if (m.joined) { st.joined = true; return; }
     const need = await getRequiredCollateral(w.address, circleId);
-    // custodial demo wallet — join from the member's own key
-    const rc = await withWallet(w.wallet, () =>
-      sendTx(`demo join ${w.label} circle ${circleId}`, w.wallet, () => contractAs(w.wallet).join(circleId, { value: need })),
-    );
-    if (rc) hashes.push(rc.hash);
+    const contract = contractAs(w.wallet); // custodial demo wallet — join from the member's own key
+    await preflight(contract, "join", [circleId], { value: need });
+    const rc = await withWallet(w.wallet, () => sendTx(`demo join ${w.label} circle ${circleId}`, w.wallet, () => contract.join(circleId, { value: need })));
+    if (!rc) { st.attempts -= 1; return; } // wallet busy with another tx: not an attempt, retry next tick
+    st.joined = true; st.txHash = rc.hash; st.lastError = null;
+    auditSystem("AUTOPILOT", "autopilot.join", `circle:${circleId}`, "ok", rc.hash, { member: w.address, label: w.label, collateral: need.toString(), attempt: st.attempts });
+  } catch (e) {
+    const msg = errorMessage(e);
+    st.lastError = msg;
+    if (/AlreadyJoined|AlreadyMember/.test(msg)) { st.joined = true; st.lastError = null; return; }
+    if (/CircleFull|NotOpen|JoinWindowClosed|JoinClosed/.test(msg)) st.attempts = JOIN_MAX_ATTEMPTS; // no point retrying
+    console.error(`[autopilot] join ${w.label} circle ${circleId} attempt ${st.attempts}/${JOIN_MAX_ATTEMPTS}: ${msg}`);
+    auditSystem("AUTOPILOT", "autopilot.join", `circle:${circleId}`, "failed", null, { member: w.address, label: w.label, attempt: st.attempts, error: msg });
   }
-  return hashes;
 }
 
 async function contributeFor(circleId: number, round: number, label: string, wallet: ManagedWallet, contribution: bigint): Promise<void> {
@@ -103,6 +155,7 @@ async function discoverDemoCircles(): Promise<number[]> {
 
 async function autopilotTick(): Promise<void> {
   if (!isConfigured() || demoWallets.length === 0) return;
+  await drainJoinQueue();
   const nowSec = Math.floor(Date.now() / 1000);
   for (const circleId of await discoverDemoCircles()) {
     let circle;

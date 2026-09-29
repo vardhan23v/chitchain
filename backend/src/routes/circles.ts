@@ -6,7 +6,7 @@ import {
 } from "../chain";
 import { z } from "zod";
 import {
-  activeMandates, circleNames, countDistinctTx, countEventsForCircle, eventsForCircleByName, getCircleMeta, getUser, isDemoCircle, updateUser, upsertCircleMeta,
+  activeMandates, circleNames, countDistinctTx, countEventsForCircle, eventsForCircleByName, getCircleMeta, getUser, invitesForCircle, isDemoCircle, updateUser, upsertCircleMeta,
   type CircleMetaRow, type EventRow,
 } from "../db";
 import { settleNow } from "../keeper";
@@ -14,7 +14,7 @@ import { audit } from "../auth/audit";
 import { ipOf, rateLimit } from "../auth/ratelimit";
 import { optionalAuth, requireAuth } from "../auth/middleware";
 import { defaultInfoFrom, mandateToApi, type ContributionStatus, type DefaultInfo } from "./feedShape";
-import { ApiError, parseId, wrap } from "./util";
+import { ApiError, parseAddress, parseId, wrap } from "./util";
 
 export const circles = Router();
 
@@ -160,6 +160,18 @@ circles.get("/circles/:id/rounds", wrap(async (req, res) => {
   const id = parseId(req.params.id);
   await requireCircle(id);
   res.json({ rounds: await roundsOf(id) });
+}));
+
+/**
+ * GET /circles/:id/invites/check?address= — public. { invited, hasInvites } so the UI can show "invited" vs "open".
+ * Invites are informational only: joins happen on-chain from the user's own wallet, so nothing can enforce them.
+ */
+circles.get("/circles/:id/invites/check", wrap(async (req, res) => {
+  const id = parseId(req.params.id);
+  const raw = typeof req.query.address === "string" ? req.query.address.trim() : "";
+  const address = raw ? parseAddress(raw) : null;
+  const invites = await invitesForCircle(id);
+  res.json({ invited: address !== null && invites.some((i) => i.walletAddress === address.toLowerCase()), hasInvites: invites.length > 0, enforced: false });
 }));
 
 /** GET /circles/:id/defaults — every indexed DefaultDetected for the circle, newest first. */

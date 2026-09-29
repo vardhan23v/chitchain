@@ -2,8 +2,10 @@
 
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BalanceShortfall } from "@/components/BalanceShortfall";
 import { JoinDialog } from "@/components/JoinDialog";
 import { WithdrawDialog } from "@/components/WithdrawDialog";
+import { useBalanceCheck } from "@/hooks/useBalance";
 import type { WalletState } from "@/hooks/useWallet";
 import { BRIDGEKEY_URL } from "@/lib/chain";
 import { formatMst } from "@/lib/format";
@@ -32,6 +34,9 @@ export interface PrimaryActionProps {
 /** DESIGN §6.3 primary-action state table: one clear CTA at a time. */
 export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, pending, hasContract, phase = "contribution", on }: PrimaryActionProps) {
   const cls = "w-full md:w-auto md:min-w-[220px]";
+  // Pre-send balance check for the contribution (audit 1.8); only runs while a contribution is actually due.
+  const contributeDue = circle.status === 1 && !!me?.joined && !me.paidThisRound && phase === "contribution" && BigInt(me?.claimable ?? "0") === 0n && !me?.removed;
+  const contributeCheck = useBalanceCheck(contributeDue ? BigInt(circle.contribution) : null, wallet.account, wallet.correctChain);
   if (!hasContract) return <Button size="lg" className={cls} disabled>Contract not deployed</Button>;
   if (!wallet.hasWallet) return <Button size="lg" className={cls} asChild><a href={BRIDGEKEY_URL} target="_blank" rel="noopener noreferrer">Install BridgeKey</a></Button>;
   if (!wallet.account) return <Button size="lg" className={cls} onClick={() => void wallet.connect()} disabled={wallet.connecting}>{wallet.connecting && <Loader2 className="animate-spin" aria-hidden />}Connect BridgeKey</Button>;
@@ -56,11 +61,19 @@ export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, 
     if (now > circle.joinDeadline && circle.memberCount < circle.maxMembers) {
       return <Button size="lg" variant="outline" className={cls} onClick={on.cancel} disabled={pending}>{spin}Cancel the circle and refund collateral</Button>;
     }
-    return <JoinDialog required={viewerRequired} tier={viewerTier} contribution={circle.contribution} disabled={pending} onConfirm={on.join} className={cls} />;
+    return <JoinDialog required={viewerRequired} tier={viewerTier} contribution={circle.contribution} disabled={pending} onConfirm={on.join} className={cls} circleId={circle.id} account={wallet.account} />;
   }
   if (circle.status === 1) {
     if (!me?.joined) return <Button size="lg" className={cls} disabled>Circle is full</Button>;
-    if (!me.paidThisRound && phase === "contribution") return <Button size="lg" className={cls} onClick={on.contribute} disabled={pending}>{spin}Contribute {formatMst(circle.contribution)} MST</Button>;
+    if (!me.paidThisRound && phase === "contribution") {
+      const short = !!contributeCheck && !contributeCheck.ok;
+      return (
+        <div className="space-y-2">
+          <Button size="lg" className={cls} onClick={on.contribute} disabled={pending || short}>{spin}Contribute {formatMst(circle.contribution)} MST</Button>
+          <BalanceShortfall check={contributeCheck} />
+        </div>
+      );
+    }
     if (phase === "settling") return <Button size="lg" className={cls} disabled>Round closed, waiting for settlement</Button>;
     if (!me.hasWon && BigInt(me.bidThisRound || "0") === 0n) {
       return (

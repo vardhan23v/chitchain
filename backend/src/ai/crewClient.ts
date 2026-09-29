@@ -50,3 +50,26 @@ export async function evaluateWithCrew(payload: CrewPayload, timeoutMs = 20_000)
   }
   return { decision: d.decision, discount, reasonCode: d.reason_code, reason: d.reason, confidence: d.confidence, source: "crew", analyst: d.analyst ?? null };
 }
+
+export interface CrewHealth { configured: boolean; url: string | null; reachable: boolean | null; model: string | null }
+let crewHealthMemo: { at: number; value: Promise<CrewHealth> } | null = null;
+/** GET ${AI_AGENT_URL}/health with a 3 s timeout, memoised 30 s. Never throws (reachable=false on any failure, null when not configured). */
+export function crewHealth(timeoutMs = 3000, ttlMs = 30_000): Promise<CrewHealth> {
+  if (!crewConfigured()) return Promise.resolve({ configured: false, url: null, reachable: null, model: null });
+  const now = Date.now();
+  if (crewHealthMemo && now - crewHealthMemo.at < ttlMs) return crewHealthMemo.value;
+  const value = (async (): Promise<CrewHealth> => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${config.AI_AGENT_URL}/health`, { signal: ctrl.signal });
+      if (!res.ok) return { configured: true, url: config.AI_AGENT_URL, reachable: false, model: null };
+      const json = (await res.json().catch(() => null)) as { model?: unknown } | null;
+      return { configured: true, url: config.AI_AGENT_URL, reachable: true, model: typeof json?.model === "string" ? json.model : null };
+    } catch {
+      return { configured: true, url: config.AI_AGENT_URL, reachable: false, model: null };
+    } finally { clearTimeout(timer); }
+  })();
+  crewHealthMemo = { at: now, value };
+  return value;
+}

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { config } from "../config";
-import { contractAddress, deployer, demoWallets, getMember, getMembers, isConfigured, keeper, oracle, provider, txStats } from "../chain";
+import { cachedRead, contractAddress, contractAs, deployer, demoWallets, getMember, getMembers, isConfigured, keeper, oracle, preflight, provider, readContract, sendTx, txStats } from "../chain";
 import { loopStatus } from "../bus";
 import {
   countAdmins, countAuditSince, countDemoMeta, countOpenTickets, countUsers, demoCircleIds, getLastBlock, getTicket, getUser, listAudit, listTickets, listUsers,
@@ -124,4 +124,54 @@ admin.get("/admin/config", wrap(async (_req, res) => {
     llm: { configured: config.LLM_API_KEY !== "", baseUrl: config.LLM_BASE_URL, model: config.LLM_MODEL },
     server: { port: config.PORT, frontendOrigin: config.FRONTEND_ORIGIN, nodeEnv: config.NODE_ENV || null, railway: config.RAILWAY_ENVIRONMENT || null, database: "configured" },
   });
+}));
+
+// ───────────── treasury ─────────────
+/** On-chain treasury address (immutable, set at deploy) and claimable wei (`treasuryClaimable()` public getter). */
+async function treasuryView(): Promise<{ treasury: string; claimable: bigint }> {
+  const c = readContract();
+  const [treasury, claimable] = await Promise.all([
+    cachedRead("treasury", async () => String(await c.treasury()), 60 * 60 * 1000),
+    cachedRead("treasuryClaimable", async () => BigInt(await c.treasuryClaimable())),
+  ]);
+  return { treasury, claimable };
+}
+/** GET /admin/treasury → { treasury, claimable (wei string), signer, canWithdraw, lastWithdrawTx } */
+admin.get("/admin/treasury", wrap(async (_req, res) => {
+  if (!isConfigured()) throw new ApiError(503, "CHITCHAIN_ADDRESS not configured", "NO_CONTRACT");
+  const { treasury, claimable } = await treasuryView();
+  const last = (await listAudit({ action: "admin.treasury.withdraw", limit: 20 })).find((r) => r.result === "ok" && r.txHash);
+  const canWithdraw = !!deployer && deployer.address.toLowerCase() === treasury.toLowerCase();
+  res.json({
+    treasury, claimable: claimable.toString(), balance: await bal(treasury),
+    signer: deployer?.address ?? null, canWithdraw,
+    lastWithdrawTx: last ? { txHash: last.txHash, ts: last.ts, amount: (last.meta?.amount as string | undefined) ?? null } : null,
+  });
+}));
+/**
+ * POST /admin/treasury/withdraw → { txHash, amount }. The contract's withdrawTreasury() may only be called by the
+ * treasury address itself (OnlyTreasury); on MST testnet the deployer wallet IS the treasury (deployments/mstTestnet.json),
+ * so the tx is sent from the deployer ManagedWallet. 409 NOTHING_TO_WITHDRAW when claimable is 0, 503 when the
+ * configured deployer is not the treasury.
+ */
+admin.post("/admin/treasury/withdraw", wrap(async (req, res) => {
+  if (!isConfigured()) throw new ApiError(503, "CHITCHAIN_ADDRESS not configured", "NO_CONTRACT");
+  if (!deployer) throw new ApiError(503, "DEPLOYER_PRIVATE_KEY not configured", "NO_DEPLOYER");
+  const { treasury, claimable } = await treasuryView();
+  if (deployer.address.toLowerCase() !== treasury.toLowerCase()) {
+    audit(req, "admin.treasury.withdraw", treasury, "denied", { meta: { reason: "deployer is not the treasury", signer: deployer.address } });
+    throw new ApiError(503, `only the treasury (${treasury}) may withdraw; the configured deployer is ${deployer.address}`, "NOT_TREASURY");
+  }
+  if (claimable === 0n) throw new ApiError(409, "nothing to withdraw", "NOTHING_TO_WITHDRAW");
+  const contract = contractAs(deployer);
+  await preflight(contract, "withdrawTreasury", []);
+  let rc;
+  try {
+    rc = await sendTx("admin withdrawTreasury", deployer, () => contract.withdrawTreasury());
+  } catch (e) {
+    audit(req, "admin.treasury.withdraw", treasury, "failed", { meta: { amount: claimable.toString(), error: e instanceof Error ? e.message.slice(0, 300) : String(e) } });
+    throw e;
+  }
+  audit(req, "admin.treasury.withdraw", treasury, "ok", { txHash: rc.hash, meta: { amount: claimable.toString(), signer: deployer.address } });
+  res.json({ txHash: rc.hash, amount: claimable.toString() });
 }));

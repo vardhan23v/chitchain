@@ -5,7 +5,8 @@ import { TableScroll, TH } from "@/components/TableScroll";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminConfig } from "@/hooks/useAdmin";
 import { timeAgo } from "@/lib/format";
-import type { LoopStatus } from "@/lib/types";
+import { ServiceChips } from "@/components/admin/ServiceChips";
+import type { Health, LoopStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 
@@ -38,9 +39,10 @@ export function ConfigTab() {
 const ms = (v: number | null) => (v ? timeAgo(v < 1e12 ? v : Math.floor(v / 1000)) : "Never");
 
 /** Backend loops (indexer, keeper, autopilot, agent, oracle…) with last tick and last error. */
-export function SystemTab({ loops, loading }: { loops: LoopStatus[] | null; loading: boolean }) {
+export function SystemTab({ loops, loading, health = null }: { loops: LoopStatus[] | null; loading: boolean; health?: Health | null }) {
   return (
     <Card className="overflow-hidden">
+      <ServiceChips health={health} />
       {loading && !loops ? (
         <div className="space-y-2 p-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
       ) : (

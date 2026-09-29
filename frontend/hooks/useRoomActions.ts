@@ -9,7 +9,7 @@ import { parseTxError } from "@/lib/errors";
 
 /** All write actions for a circle room, each following the DESIGN §8 tx flow. */
 export function useRoomActions(id: number, refetch: () => Promise<void>) {
-  const { run, pending, state: tx } = useTx();
+  const { run, pending, state: tx, keepWaiting, dismiss } = useTx();
   const after = useCallback(async () => {
     await refetch();
   }, [refetch]);
@@ -55,5 +55,5 @@ export function useRoomActions(id: number, refetch: () => Promise<void>) {
     [id, run, after]
   );
 
-  return { pending, tx, join, contribute, bid, withdraw, leave, cancel, settle };
+  return { pending, tx, keepWaiting, dismiss, join, contribute, bid, withdraw, leave, cancel, settle };
 }

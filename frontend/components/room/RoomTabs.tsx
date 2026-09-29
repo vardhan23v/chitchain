@@ -52,7 +52,7 @@ export function RoomTabs({ data, me, viewer, events, labelFor, onChanged }: Prop
     ) : (
       <div className="space-y-3">
         {backendDown ? (
-          <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="Default details are temporarily unavailable." text="Try again in a moment." />
+          <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="Default details are temporarily unavailable." text="Member statuses above are read from the contract. Transaction links need the ChitChain backend." />
         ) : defaults.loading && !defaults.data ? (
           <Skeleton className="h-28 rounded-[22px]" aria-busy="true" />
         ) : !defaults.data?.length ? (

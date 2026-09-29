@@ -115,7 +115,7 @@ export default function CircleRoomPage() {
           },
         }}
       />
-      <TxStepper state={actions.tx} />
+      <TxStepper state={actions.tx} onKeepWaiting={actions.keepWaiting} onDismiss={actions.dismiss} />
     </div>
   );
 

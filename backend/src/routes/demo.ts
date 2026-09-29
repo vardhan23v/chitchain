@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { parseEther } from "ethers";
 import { z } from "zod";
-import { contractAddress, contractAs, createCircleCall, DEFAULT_BPS, demoWallet, demoWallets, deployer, getRiskTier, isConfigured, preflight, provider, readContract, sendTx } from "../chain";
+import { contractAddress, contractAs, createCircleCall, DEFAULT_BPS, demoWallet, demoWallets, deployer, getCircle, getRiskTier, isConfigured, keeper, preflight, provider, readContract, sendTx } from "../chain";
 import { addDemoCircle, countDistinctTx, findEvent, getSkip, latestDemoCircle, setSkip, upsertCircleMeta } from "../db";
 import { audit } from "../auth/audit";
 import { requireAuth, requireRole } from "../auth/middleware";
-import { ensureFunded, joinAll } from "../autopilot";
+import { enqueueJoin, ensureFunded, joinQueueStatus } from "../autopilot";
+import { ensureDemoFunding, underfundedReport } from "../demo/funding";
+import { unassessedJoinCollateral, validateTierBps } from "../demo/params";
 import { assessAndSetTier } from "./members";
 import { ApiError, parseAddress, wrap } from "./util";
 import { planRound } from "../agent/bidder";
@@ -30,7 +32,7 @@ demo.get("/demo/state", wrap(async (_req, res) => {
     custodial: true as const, // custodial demo wallet — backend holds the key
   })));
   const [txCount, circleId] = await Promise.all([countDistinctTx(), latestDemoCircle()]);
-  res.json({ wallets, txCount, contract: contractAddress, circleId });
+  res.json({ wallets, txCount, contract: contractAddress, circleId, joinQueue: joinQueueStatus(), underfunded: underfundedReport()?.wallets ?? [] });
 }));
 
 /** POST /demo/fund — top up every demo wallet below 0.3 MST to 0.6 MST from the deployer (skips when the deployer cannot afford it). */
@@ -73,24 +75,43 @@ const newCircleBody = z.object({
   contribution: z.string().default("0.1"),
   holdbackBps: z.coerce.number().int().min(0).max(10_000).default(DEFAULT_BPS.holdbackBps),
   maxDiscountBps: z.coerce.number().int().min(0).max(5000).default(DEFAULT_BPS.maxDiscountBps),
+  // tier collateral multipliers; the contract only enforces ordering, the backend additionally rejects 0 (see demo/params.ts)
+  lowBps: z.coerce.number().int().default(DEFAULT_BPS.lowBps),
+  mediumBps: z.coerce.number().int().default(DEFAULT_BPS.mediumBps),
+  highBps: z.coerce.number().int().default(DEFAULT_BPS.highBps),
 });
-/** POST /demo/new-circle — createCircle(CircleParams) from the deployer, then join all 5 demo wallets. */
+/**
+ * POST /demo/new-circle — validate, pre-check funding for ALL demo wallets (deployer top-up first; 409 DEMO_UNDERFUNDED
+ * and no circle when it cannot cover), then createCircle(CircleParams) from the deployer and respond at once with
+ * { circleId, txHash, joining: true }. The joins run in the background (autopilot join queue, 3 tries per wallet).
+ */
 demo.post("/demo/new-circle", ...adminOnly, wrap(async (req, res) => {
   requireDemo(); requireDeployer();
   const parsed = newCircleBody.safeParse(req.body ?? {});
   if (!parsed.success) {
-    throw new ApiError(400, "body: { contributionDuration?: number (>=10), biddingDuration?: number (>=10), contribution?: string (MST), holdbackBps?: number, maxDiscountBps?: number }", "BAD_BODY");
+    throw new ApiError(400, "body: { contributionDuration?: number (>=10), biddingDuration?: number (>=10), contribution?: string (MST), holdbackBps?: number, maxDiscountBps?: number, lowBps?, mediumBps?, highBps? (all > 0) }", "BAD_BODY");
   }
   let contribution: bigint;
   try { contribution = parseEther(parsed.data.contribution); } catch { throw new ApiError(400, "invalid contribution", "BAD_BODY"); }
   if (contribution <= 0n) throw new ApiError(400, "contribution must be > 0", "BAD_BODY");
+  const tierError = validateTierBps(parsed.data);
+  if (tierError) throw new ApiError(400, tierError, "BAD_TIER_BPS");
   const members = Math.max(demoWallets.length, 2);
+
+  // Every demo wallet joins unassessed → pays the High multiplier. Check (and top up) before touching the chain.
+  const collateral = unassessedJoinCollateral(contribution, parsed.data.highBps);
+  const underfunded = await ensureDemoFunding(collateral);
+  if (underfunded) {
+    audit(req, "demo.new-circle", null, "denied", { meta: { reason: "DEMO_UNDERFUNDED", wallets: underfunded.wallets, deployer: underfunded.deployer } });
+    res.status(409).json({ error: "demo wallets are underfunded and the deployer cannot cover the shortfall — claim testnet MST from the faucet", ...underfunded });
+    return;
+  }
 
   const rc = await sendTx("demo createCircle", deployer!, () => createCircleCall(deployer!, {
     contribution, baseCollateral: contribution, maxMembers: members,
     contributionDuration: parsed.data.contributionDuration, biddingDuration: parsed.data.biddingDuration, joinWindow: 1800,
     feeBps: DEFAULT_BPS.feeBps, holdbackBps: parsed.data.holdbackBps, maxDiscountBps: parsed.data.maxDiscountBps,
-    lowBps: DEFAULT_BPS.lowBps, mediumBps: DEFAULT_BPS.mediumBps, highBps: DEFAULT_BPS.highBps,
+    lowBps: parsed.data.lowBps, mediumBps: parsed.data.mediumBps, highBps: parsed.data.highBps,
   }));
   const iface = readContract().interface;
   let circleId: number | null = null;
@@ -107,11 +128,35 @@ demo.post("/demo/new-circle", ...adminOnly, wrap(async (req, res) => {
   if (circleId === null) throw new ApiError(500, "CircleCreated event not found", "NO_EVENT");
   await addDemoCircle(circleId);
   await upsertCircleMeta(circleId, { name: `Demo circle #${circleId}`, organizerWallet: deployer!.address, demo: true });
-  audit(req, "demo.new-circle", `circle:${circleId}`, "ok", { txHash: rc.hash, meta: { contribution: contribution.toString(), members } });
-  console.log(`[demo] circle ${circleId} created txHash ${rc.hash}; joining ${demoWallets.length} demo wallets`);
-  await joinAll(circleId);
+  audit(req, "demo.new-circle", `circle:${circleId}`, "ok", { txHash: rc.hash, meta: { contribution: contribution.toString(), members, collateral: collateral.toString() } });
+  console.log(`[demo] circle ${circleId} created txHash ${rc.hash}; queueing joins for ${demoWallets.length} demo wallets`);
+  enqueueJoin(circleId); // background: per-wallet retries + audit rows; progress in GET /demo/state.joinQueue
   void planRound(circleId).catch((e) => console.error(`[agent] plan after new circle: ${e instanceof Error ? e.message : String(e)}`));
-  res.json({ circleId, txHash: rc.hash });
+  res.json({ circleId, txHash: rc.hash, joining: true });
+}));
+
+const cancelBody = z.object({ circleId: z.coerce.number().int().positive() });
+/** POST /demo/cancel { circleId } — contract cancel(circleId) from the keeper for a circle stuck Open past its join deadline. */
+demo.post("/demo/cancel", ...adminOnly, wrap(async (req, res) => {
+  requireDemo();
+  if (!keeper) throw new ApiError(503, "KEEPER_PRIVATE_KEY not configured", "NO_KEEPER");
+  const parsed = cancelBody.safeParse(req.body);
+  if (!parsed.success) throw new ApiError(400, "body must be { circleId }", "BAD_BODY");
+  const { circleId } = parsed.data;
+  const c = await getCircle(circleId);
+  if (c.status !== 0) throw new ApiError(409, "circle is not Open", "NOT_OPEN");
+  if (Math.floor(Date.now() / 1000) <= c.joinDeadline) throw new ApiError(409, `join window still open until ${c.joinDeadline}`, "JOIN_WINDOW_STILL_OPEN");
+  const contract = contractAs(keeper);
+  await preflight(contract, "cancel", [circleId]);
+  let rc;
+  try {
+    rc = await sendTx(`demo cancel circle ${circleId}`, keeper, () => contract.cancel(circleId));
+  } catch (e) {
+    audit(req, "demo.cancel", `circle:${circleId}`, "failed", { meta: { error: e instanceof Error ? e.message.slice(0, 300) : String(e) } });
+    throw e;
+  }
+  audit(req, "demo.cancel", `circle:${circleId}`, "ok", { txHash: rc.hash, meta: { joinDeadline: c.joinDeadline, memberCount: c.memberCount } });
+  res.json({ txHash: rc.hash });
 }));
 
 const withdrawBody = z.object({ address: z.string(), circleId: z.coerce.number().int().positive() });

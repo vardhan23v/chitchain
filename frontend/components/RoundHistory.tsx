@@ -29,7 +29,7 @@ function when(ts: number): string {
 export function RoundHistory({ rounds, loading, labelFor, source, className }: Props) {
   return (
     <Card className={cn("overflow-hidden", className)}>
-      <SectionTitle Icon={History} className="px-4 pt-4 md:px-5" trailing={source === "chain" ? <span>Read from the contract, no transaction links</span> : undefined}>Round history</SectionTitle>
+      <SectionTitle Icon={History} className="px-4 pt-4 md:px-5" trailing={source === "chain" ? <span className="text-muted-foreground">Transaction links need the ChitChain backend</span> : undefined}>Round history</SectionTitle>
       {loading && !rounds ? (
         <div className="space-y-2 p-4" aria-busy="true">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-9 w-full" />)}</div>
       ) : !rounds || rounds.length === 0 ? (

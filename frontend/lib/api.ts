@@ -4,9 +4,10 @@ import type {
   AdminOverview, AdminUser, AgentEvent, AgentLog, AuctionBid, AuctionSnapshot, AuditRow, BidAgent, CircleAnalytics, CircleRoom, CircleSummary, DefaultRecord, DemoState, FeedEvent, Invite, Level, LoopStatus,
   Mandate, MeOverview, MyCircle, OrganizerCircle, RiskResult, Role, RoundHistoryRow, Stats, SupportTicket, User, UserStatus,
 } from "@/lib/types";
+import type { AdminTreasury, Health } from "@/lib/types";
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public code?: string) {
+  constructor(message: string, public status: number, public code?: string, public body?: unknown) {
     super(message);
   }
 }
@@ -37,7 +38,7 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = 8000): P
         clearSession();
         emitSessionExpired();
       }
-      throw new ApiError(body?.error ?? body?.message ?? `HTTP ${res.status}`, res.status, body?.code);
+      throw new ApiError(body?.error ?? body?.message ?? `HTTP ${res.status}`, res.status, body?.code, body);
     }
     return body as T;
   } finally {
@@ -96,7 +97,7 @@ export interface DemoNewCircleBody {
 }
 
 export const api = {
-  health: () => request<{ ok: boolean; chainId: number; latestBlock: number; lastIndexedBlock: number; contract: string; keeper: string; explorer: string; adminPasswordLogin?: boolean }>("/health", undefined, 4000),
+  health: () => request<Health>("/health", undefined, 4000),
   stats: () => request<Stats>("/stats"),
   circles: () => request<{ circles: CircleSummary[] }>("/circles"),
   circle: (id: number) => request<CircleRoom>(`/circles/${id}`),
@@ -118,6 +119,8 @@ export const api = {
     request<{ ok: boolean }>(`/agent/mandate?circleId=${circleId}&member=${member}`, { method: "DELETE" }),
   agentLogs: (circleId: number, limit = 20) => request<{ logs: AgentLog[] }>(`/agent/logs?circleId=${circleId}&limit=${limit}`),
   demoState: () => request<DemoState>("/demo/state"),
+  /** Public: is this wallet on the circle's invite list? Informational only; 404 on older backends. */
+  inviteCheck: (circleId: number, address: string) => request<{ invited: boolean }>(`/circles/${circleId}/invites/check?address=${encodeURIComponent(address)}`, undefined, 5000),
   demoFund: () => post<{ txHashes: string[] }>("/demo/fund", undefined, 120_000),
   demoAssessAll: () => post<{ results: (RiskResult & { txHash: string })[] }>("/demo/assess-all", undefined, 120_000),
   demoSkip: (address: string, skip: boolean) => post<{ ok: boolean }>("/demo/skip", { address, skip }),
@@ -162,6 +165,9 @@ export const api = {
   adminSupport: (status?: string) => request<{ tickets: SupportTicket[] }>(`/admin/support${qs({ status })}`),
   adminUpdateTicket: (id: number, body: { status?: "OPEN" | "CLOSED"; adminNote?: string }) => patch<{ ticket: SupportTicket }>(`/admin/support/${id}`, body),
   adminConfig: () => request<Record<string, unknown>>("/admin/config"),
+  /** Contract fees claimable by the treasury (404 on older backends). */
+  adminTreasury: () => request<AdminTreasury>("/admin/treasury"),
+  adminTreasuryWithdraw: () => post<{ txHash: string }>("/admin/treasury/withdraw", undefined, 60_000),
   /* ── v4 autonomous AI bidding ── */
   aiStart: (body: AiStartBody) => post<{ agent: BidAgent }>("/ai/bidding/start", body, 20_000),
   aiPause: (agentId: string) => post<{ agent: BidAgent }>("/ai/bidding/pause", { agentId }),

@@ -32,7 +32,7 @@ function Collateral() {
   const auth = useAuth();
   const wallet = useWallet();
   const mine = useMyCircles(isEvmAddress(auth.user?.walletAddress) ? auth.user!.walletAddress : wallet.account);
-  const { run, pending, state } = useTx();
+  const { run, pending, state, keepWaiting, dismiss } = useTx();
   const circles = mine.data?.circles ?? [];
   const sum = (pick: (c: (typeof circles)[number]) => string) => circles.reduce((s, c) => s + big(pick(c)), 0n);
 
@@ -48,7 +48,7 @@ function Collateral() {
         <StatTile label="Claimable now" testnet value={<MstcAmount wei={sum((c) => c.me.claimable)} size="lg" className={sum((c) => c.me.claimable) > 0n ? "text-success" : undefined} />} loading={mine.loading && !mine.data} className="col-span-2 md:col-span-1" />
       </section>
       <InfoBanner Icon={Info}>Locked collateral and holdback cannot be withdrawn while the circle is active; they are released at completion. Payouts, dividends and refunds are claimable immediately.</InfoBanner>
-      <TxStepper state={state} />
+      <TxStepper state={state} onKeepWaiting={keepWaiting} onDismiss={dismiss} />
       {mine.loading && !mine.data ? (
         <div className="space-y-4" aria-busy="true">{Array.from({ length: 2 }, (_, i) => <Skeleton key={i} className="h-36 rounded-2xl" />)}</div>
       ) : mine.error && !mine.data ? (

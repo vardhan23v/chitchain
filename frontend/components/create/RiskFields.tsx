@@ -39,7 +39,7 @@ export function RiskFields({ v, set, errors }: FieldsProps) {
               </Field>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">Low ≤ Medium ≤ High. Unassessed wallets pay the High multiplier.</p>
+          <p className="text-xs text-muted-foreground">Low is less than Medium, Medium is less than High, and every tier is at least 0.1× so it locks some collateral. Unassessed wallets pay the High multiplier.</p>
         </fieldset>
       </FormSection>
 

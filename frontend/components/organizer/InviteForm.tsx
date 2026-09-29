@@ -54,7 +54,8 @@ export function InviteForm({ circleId }: { circleId: number }) {
   return (
     <Card className="p-4 md:p-5">
       <SectionTitle Icon={UserPlus} tone="text-primary">Invite members</SectionTitle>
-      <p className="mt-1 text-[13px] text-muted-foreground">One wallet address per line. Invites are a website nudge. Joining still locks collateral on-chain.</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">One wallet address per line. Joining still locks collateral on-chain.</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">Invites are a nudge only; anyone can join an open circle from their wallet.</p>
       <Textarea className="mt-3 font-mono text-xs" rows={3} placeholder="0x…" value={text} onChange={(e) => setText(e.target.value)} aria-label="Wallet addresses to invite" />
       {bad.length > 0 && <p className="mt-1 text-xs text-danger" role="alert">{bad.length} entr{bad.length === 1 ? "y isn't" : "ies aren't"} a valid address.</p>}
       <div className="mt-2 flex justify-end">

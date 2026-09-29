@@ -86,9 +86,43 @@ export function toRoundInfo(r: Record<string, unknown>): RoundInfo {
   };
 }
 
-export function toMemberInfo(address: string, m: Record<string, unknown>, requiredCollateral: bigint, _circleActive = false): MemberInfo {
+/** Extra context for the chain-only status derivation (audit 7). */
+export interface MemberStatusContext {
+  /** circle.status === 1 */
+  active?: boolean;
+  /** Current round phase; PENDING only makes sense inside the contribution window. */
+  phase?: RoundPhase;
+  /** Per-round contribution (wei), used to tell fully from partially covered. */
+  contribution?: bigint;
+}
+
+/**
+ * Derives `contributionStatus` from on-chain fields alone so DEFAULTED / COVERED_BY_COLLATERAL are not lost when the
+ * backend is down. The backend's event-based status is still authoritative when it is reachable.
+ */
+export function deriveContributionStatus(m: { paidThisRound: boolean; removed: boolean; defaults: number; collateral: bigint; collateralUsed: bigint }, ctx: MemberStatusContext = {}): ContributionStatus {
+  if (m.paidThisRound) return "PAID";
+  if (m.removed) return "DEFAULTED";
+  const remaining = m.collateral > m.collateralUsed ? m.collateral - m.collateralUsed : 0n;
+  if (!ctx.active || ctx.phase === "contribution" || ctx.phase === undefined) {
+    // Inside the contribution window nothing has been missed yet. A member with exhausted collateral who still is not
+    // removed has defaulted before and cannot be covered again.
+    return ctx.active && m.defaults > 0 && remaining === 0n ? "DEFAULTED" : "PENDING";
+  }
+  // Past the contribution window and unpaid: settlement covers the miss from collateral.
+  if (remaining === 0n) return "DEFAULTED";
+  if (ctx.contribution !== undefined && remaining < ctx.contribution) return "PARTIALLY_COVERED";
+  return "COVERED_BY_COLLATERAL";
+}
+
+export function toMemberInfo(address: string, m: Record<string, unknown>, requiredCollateral: bigint, ctx: MemberStatusContext | boolean = {}): MemberInfo {
+  const c: MemberStatusContext = typeof ctx === "boolean" ? { active: ctx } : ctx;
   const paid = Boolean(m.paidThisRound);
-  const contributionStatus: ContributionStatus = paid ? "PAID" : "PENDING";
+  const removed = Boolean(m.removed);
+  const collateral = BigInt(s(m.collateral));
+  const collateralUsed = BigInt(s(m.collateralUsed));
+  const defaults = n(m.defaults);
+  const contributionStatus = deriveContributionStatus({ paidThisRound: paid, removed, defaults, collateral, collateralUsed }, c);
   return {
     address,
     label: null,
@@ -96,15 +130,16 @@ export function toMemberInfo(address: string, m: Record<string, unknown>, requir
     joined: Boolean(m.joined),
     tier: n(m.tier) as Tier,
     hasWon: Boolean(m.hasWon),
-    removed: Boolean(m.removed),
-    collateral: s(m.collateral),
-    collateralUsed: s(m.collateralUsed),
-    defaults: n(m.defaults),
+    removed,
+    collateral: collateral.toString(),
+    collateralUsed: collateralUsed.toString(),
+    defaults,
     claimable: s(m.claimable),
     paidThisRound: paid,
     bidThisRound: s(m.bidThisRound),
     requiredCollateral: requiredCollateral.toString(),
     contributionStatus,
+    // Transaction links need the ChitChain backend; chain-only mode has no event index.
     lastDefault: null,
   };
 }
@@ -144,17 +179,19 @@ export async function readCircleRoom(id: number, viewer?: string | null) {
   if (!c) return null;
   const [cv, rv, addrs] = await Promise.all([c.getCircle(id), c.getRound(id), c.getMembers(id) as Promise<string[]>]);
   const circle = toCircleSummary(id, cv);
+  const round = toRoundInfo(rv);
+  const ctx: MemberStatusContext = { active: circle.status === 1, phase: round.phase, contribution: BigInt(circle.contribution) };
   const members = await Promise.all(
     addrs.map(async (a) => {
       const [m, req] = await Promise.all([c.getMember(id, a), c.requiredCollateral(a, id) as Promise<bigint>]);
-      return toMemberInfo(a, m, req, circle.status === 1);
+      return toMemberInfo(a, m, req, ctx);
     })
   );
   let viewerRequired: string | null = null;
   if (viewer && /^0x[0-9a-fA-F]{40}$/.test(viewer)) {
     viewerRequired = ((await c.requiredCollateral(viewer, id)) as bigint).toString();
   }
-  return { circle, round: toRoundInfo(rv), members, viewerRequired };
+  return { circle, round, members, viewerRequired };
 }
 
 /** Settled rounds 1..(round-1) straight from the contract (no tx hashes). */
@@ -179,7 +216,8 @@ export async function readMyCircles(addr: string): Promise<MyCircle[]> {
       const m = await c.getMember(circle.id, addr);
       if (!m.joined) return;
       const req = (await c.requiredCollateral(addr, circle.id)) as bigint;
-      out.push({ ...circle, me: toMemberInfo(addr, m, req, circle.status === 1) });
+      const phase = circle.status === 1 ? phaseFor(circle.contributionDeadline, circle.roundDeadline) : undefined;
+      out.push({ ...circle, me: toMemberInfo(addr, m, req, { active: circle.status === 1, phase, contribution: BigInt(circle.contribution) }) });
     })
   );
   return out.sort((a, b) => b.id - a.id);

@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import { config } from "./config";
 import { cachedRead, contractAddress, keeper, provider, txStats } from "./chain";
 import { getLastBlock, initDb } from "./db";
@@ -23,9 +24,18 @@ import { aiBidding } from "./routes/aiBidding";
 import { startAiBidding } from "./ai/loop";
 import { ipOf, rateLimit } from "./auth/ratelimit";
 import { errorMiddleware, wrap } from "./routes/util";
+import { demoWalletHealth } from "./demo/funding";
+import { crewHealth } from "./ai/crewClient";
 
 const app = express();
 app.set("trust proxy", 1); // Railway / reverse proxy: req.ip = X-Forwarded-For (rate limits are per client IP)
+// JSON API: no documents are served, so the CSP denies everything; CORP cross-origin lets the frontend origin read
+// responses (CORS below still decides who may call). Nothing here touches text/event-stream (SSE keeps working).
+app.use(helmet({
+  contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
 const origins = new Set([config.FRONTEND_ORIGIN, "http://localhost:3000", "http://127.0.0.1:3000"]);
 app.use(cors({
   origin: (origin, cb) => cb(null, !origin || origins.has(origin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)),
@@ -39,12 +49,18 @@ app.get("/health", wrap(async (_req, res) => {
   const loops = loopStatus();
   const indexer = loops.find((l) => l.name === "indexer");
   const nowSec = Math.floor(Date.now() / 1000);
+  const [demoHealth, crew] = await Promise.all([demoWalletHealth(), crewHealth()]);
+  let llmHost: string | null = null;
+  try { llmHost = new URL(config.LLM_BASE_URL).host; } catch { llmHost = null; }
   res.json({
     ok: latestBlock !== null, chainId: config.MST_CHAIN_ID, latestBlock, lastIndexedBlock: await getLastBlock(),
     contract: contractAddress, keeper: keeper?.address ?? null, explorer: config.EXPLORER,
     adminPasswordLogin: config.adminPasswordLogin,
     loops, tx: txStats(),
     indexerHealthy: !!indexer && indexer.lastOkAt !== null && nowSec - indexer.lastOkAt <= 30,
+    demo: demoHealth,
+    llm: { configured: config.LLM_API_KEY !== "", baseUrl: llmHost, model: config.LLM_MODEL },
+    crew,
   });
 }));
 app.use("/auth", rateLimit({ perMinute: 60, keys: (req) => [`auth:${ipOf(req)}`] }));

@@ -5,7 +5,9 @@ import { toWei } from "@/lib/format";
 const decimal = (label: string) =>
   z.string().trim().refine((v) => /^\d*\.?\d+$/.test(v) && Number(v) > 0, `${label} must be a positive number`);
 
-const multiplier = (label: string) => z.number().min(0.01, `${label} multiplier must be > 0`).max(10, `${label} multiplier must be ≤ 10×`);
+/** Every tier must lock some collateral: 0× would let a tier join with nothing at stake (audit lowBps). */
+const multiplier = (label: string) =>
+  z.number().min(0.1, `Every tier must lock some collateral: ${label} must be at least 0.1×`).max(10, `${label} multiplier must be at most 10×`);
 
 export const createSchema = z
   .object({
@@ -29,8 +31,9 @@ export const createSchema = z
     message: "Base collateral must be at least the contribution",
     path: ["baseCollateral"],
   })
-  .refine((v) => v.lowMult <= v.mediumMult, { message: "Low multiplier must be ≤ Medium", path: ["lowMult"] })
-  .refine((v) => v.mediumMult <= v.highMult, { message: "Medium multiplier must be ≤ High", path: ["highMult"] });
+  .refine((v) => v.lowMult > 0 && v.mediumMult > 0 && v.highMult > 0, { message: "Every tier must lock some collateral. Set each multiplier above 0×.", path: ["lowMult"] })
+  .refine((v) => v.lowMult < v.mediumMult, { message: "Low must be less than Medium, so lower-risk members lock less than medium-risk ones.", path: ["lowMult"] })
+  .refine((v) => v.mediumMult < v.highMult, { message: "Medium must be less than High, so higher-risk members lock more.", path: ["highMult"] });
 
 export type CreateInput = z.infer<typeof createSchema>;
 

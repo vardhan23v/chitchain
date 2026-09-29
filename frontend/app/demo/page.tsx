@@ -20,6 +20,7 @@ import { MstcAmount } from "@/components/MstcAmount";
 import { DemoBadge, TestnetBadge } from "@/components/TestnetBadge";
 import { TierChip } from "@/components/TierChip";
 import { TxLink } from "@/components/TxLink";
+import { UnderfundedBanner } from "@/components/UnderfundedBanner";
 import { useDemo } from "@/hooks/useDemo";
 import { addrUrl, shortAddr } from "@/lib/format";
 
@@ -59,6 +60,12 @@ function Demo() {
           <span className="font-semibold text-foreground">Demo controls are temporarily unavailable.</span>
           <span className="mt-1 block font-mono text-[11px] text-muted-foreground/80">{d.error}</span>
         </InfoBanner>
+      )}
+
+      {d.underfunded ? (
+        <UnderfundedBanner wallets={d.underfunded} title="The demo circle was not created: these wallets cannot cover the join." />
+      ) : (
+        <UnderfundedBanner wallets={d.healthUnderfunded} />
       )}
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Demo overview">

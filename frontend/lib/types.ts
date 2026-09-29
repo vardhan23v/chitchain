@@ -182,6 +182,51 @@ export interface DemoWallet {
 
 export interface DemoState { wallets: DemoWallet[]; txCount: number; contract: string; circleId: number | null }
 
+/** A demo wallet that cannot cover its next join/contribution (from /health `demo.underfunded` or a 409 DEMO_UNDERFUNDED body). */
+export interface UnderfundedWallet {
+  label?: string;
+  address: string;
+  /** wei */
+  balance?: string;
+  /** wei */
+  required?: string;
+  /** wei */
+  shortfall?: string;
+}
+
+/** A service status chip: `ok` or a string status (e.g. "online", "degraded"). Shape is tolerant because backends differ. */
+export interface ServiceHealth {
+  ok?: boolean;
+  status?: string;
+  model?: string;
+  provider?: string;
+  error?: string | null;
+  lastOkAt?: number | null;
+}
+
+/** GET /health. `demo`, `crew` and `llm` are absent on older backends. */
+export interface Health {
+  ok: boolean;
+  chainId: number;
+  latestBlock: number;
+  lastIndexedBlock: number;
+  contract: string;
+  keeper: string;
+  explorer: string;
+  adminPasswordLogin?: boolean;
+  loops?: LoopStatus[];
+  demo?: { underfunded?: (UnderfundedWallet | string)[]; wallets?: (DemoWallet & Partial<UnderfundedWallet> & { underfunded?: boolean })[] };
+  crew?: ServiceHealth | string | boolean;
+  llm?: ServiceHealth | string | boolean;
+}
+
+/** GET /admin/treasury. Amounts in wei. */
+export interface AdminTreasury {
+  treasury: string;
+  claimable: string;
+  lastWithdrawTx: string | null;
+}
+
 export type DataSource = "api" | "chain";
 
 /* ───────── v3, wallet login, roles, audit, support ───────── */

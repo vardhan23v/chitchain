@@ -12,6 +12,8 @@ import { Flash } from "@/components/motion/Flash";
 import { EASE } from "@/components/motion/Reveal";
 import { MstcAmount } from "@/components/MstcAmount";
 import { SectionTitle } from "@/components/PageHeader";
+import { BalanceShortfall } from "@/components/BalanceShortfall";
+import { useBalanceCheck } from "@/hooks/useBalance";
 import { ZERO_ADDRESS } from "@/lib/contract";
 import { TOOLTIPS } from "@/lib/labels";
 import { big, formatMst, sameAddr, toWei } from "@/lib/format";
@@ -49,6 +51,9 @@ export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor
   const floor = pot > maxDiscount ? pot - maxDiscount : 0n;
   const biddingOpen = active && phase !== "settling";
   const eligible = !!me && me.joined && !me.removed && !me.hasWon && biddingOpen;
+  // placeBid sends no value, so the check is gas only (0.01 MST reserve).
+  const gasCheck = useBalanceCheck(eligible ? 0n : null, me?.address ?? null);
+  const short = !!gasCheck && !gasCheck.ok;
 
   let parsed: bigint | null = null;
   try {
@@ -59,7 +64,7 @@ export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor
   const tooLow = parsed !== null && parsed < floor;
   const notLower = parsed !== null && parsed >= lowestAccepted;
   const discount = parsed !== null && parsed <= pot ? pot - parsed : null;
-  const disabled = !eligible || pending || parsed === null || discount === null || discount <= 0n || tooLow || notLower;
+  const disabled = !eligible || pending || short || parsed === null || discount === null || discount <= 0n || tooLow || notLower;
   const others = Math.max(1, activeMembers - 1);
   const invalid = tooLow || (notLower && !!parsed);
 
@@ -138,6 +143,7 @@ export function AuctionPanel({ round, phase, active, me, activeMembers, labelFor
           {discount !== null && discount > 0n && <> · ≈ {formatMst(discount / BigInt(others))} MST dividend each</>}
         </p>
         <p id="accepted-hint" className={cn("text-xs", invalid ? "text-danger" : "text-muted-foreground")}>{hint}</p>
+        <BalanceShortfall check={gasCheck} />
         <Button className="w-full" disabled={disabled} onClick={() => discount !== null && onBid(discount).then(() => setAccepted(""))}>
           {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Gavel aria-hidden />} Place a bid
         </Button>

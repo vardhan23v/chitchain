@@ -99,3 +99,31 @@ export async function signMessage(message: string): Promise<string> {
   const signer = await provider.getSigner();
   return signer.signMessage(message);
 }
+
+/** Gas reserve kept back on every pre-send check (audit 1.8). */
+export const GAS_RESERVE_WEI = 10n ** 16n; // 0.01 MST
+
+export interface BalanceCheck {
+  ok: boolean;
+  /** Native MST balance of the connected account (wei). */
+  balance: bigint;
+  /** value + GAS_RESERVE_WEI (wei). */
+  required: bigint;
+  /** required - balance when short, else 0n. */
+  shortfall: bigint;
+}
+
+/**
+ * Pre-send balance check: reads the connected account's balance via the injected provider and compares it with
+ * `value` plus a 0.01 MST gas reserve. Throws only when no wallet/account is available.
+ */
+export async function hasEnough(value: bigint, account?: string | null): Promise<BalanceCheck> {
+  const provider = getBrowserProvider();
+  if (!provider) throw new Error("No wallet found");
+  const addr = account ?? (await readAccounts())[0];
+  if (!addr) throw new Error("No account connected");
+  const balance = await provider.getBalance(addr);
+  const required = value + GAS_RESERVE_WEI;
+  const shortfall = balance >= required ? 0n : required - balance;
+  return { ok: shortfall === 0n, balance, required, shortfall };
+}

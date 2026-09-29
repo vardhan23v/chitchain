@@ -9,23 +9,30 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CoreFields } from "@/components/create/CoreFields";
 import { RiskFields } from "@/components/create/RiskFields";
+import { BalanceShortfall } from "@/components/BalanceShortfall";
 import { CreateSummary } from "@/components/CreateSummary";
 import { PageHeader } from "@/components/PageHeader";
 import { TxStepper } from "@/components/TxStepper";
 import { useAuth } from "@/hooks/useAuth";
+import { useBalanceCheck } from "@/hooks/useBalance";
 import { useTx } from "@/hooks/useTx";
 import { useWallet } from "@/hooks/useWallet";
 import { api } from "@/lib/api";
 import { getSignerContract } from "@/lib/contract";
+import { hasEnough } from "@/lib/wallet";
 import { HAS_CONTRACT } from "@/lib/chain";
 import { createSchema, DEFAULTS, toCircleParams, type CreateInput } from "@/lib/createSchema";
+import { formatMst } from "@/lib/format";
 
 export default function CreatePage() {
   const router = useRouter();
   const wallet = useWallet();
   const auth = useAuth();
   const signedIn = auth.status === "authenticated";
-  const { run, pending, state } = useTx();
+  const { run, pending, state, keepWaiting, dismiss } = useTx();
+  // createCircle sends no value; the check is the 0.01 MST gas reserve (audit 1.8).
+  const gasCheck = useBalanceCheck(wallet.account && wallet.correctChain ? 0n : null, wallet.account);
+  const short = !!gasCheck && !gasCheck.ok;
   const [v, setV] = useState<CreateInput>(DEFAULTS);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const set = <K extends keyof CreateInput>(k: K, val: CreateInput[K]) => setV((s) => ({ ...s, [k]: val }));
@@ -42,6 +49,16 @@ export default function CreatePage() {
     setErrors({});
     if (!wallet.account) return void wallet.connect();
     if (!wallet.correctChain) return void wallet.switchNetwork();
+    // Fresh balance read right before sending, in case the 10 s poll is stale.
+    try {
+      const fresh = await hasEnough(0n, wallet.account);
+      if (!fresh.ok) {
+        setErrors({ form: `You need about ${formatMst(fresh.shortfall, 4)} MST more (${formatMst(fresh.required, 4)} required, ${formatMst(fresh.balance, 4)} available). Get testnet MST from the faucet.` });
+        return;
+      }
+    } catch {
+      /* balance unknown, let the wallet decide */
+    }
     // Naming a circle needs a session (POST /circles/:id/claim). Prompt once; if declined, the wallet-only path still creates the circle.
     let canClaim = signedIn;
     if (!canClaim) {
@@ -97,8 +114,9 @@ export default function CreatePage() {
           <form className="space-y-6" onSubmit={submit} noValidate>
             <CoreFields v={v} set={set} errors={errors} />
             <RiskFields v={v} set={set} errors={errors} />
-            <Button type="submit" size="lg" className="w-full" disabled={busy || !HAS_CONTRACT || !wallet.hasWallet}>{busy && <Loader2 className="animate-spin" aria-hidden />}{cta}</Button>
-            <TxStepper state={state} />
+            <Button type="submit" size="lg" className="w-full" disabled={busy || !HAS_CONTRACT || !wallet.hasWallet || short}>{busy && <Loader2 className="animate-spin" aria-hidden />}{cta}</Button>
+            <BalanceShortfall check={gasCheck} />
+            <TxStepper state={state} onKeepWaiting={keepWaiting} onDismiss={dismiss} />
             {errors.form && <p className="text-xs text-danger" role="alert">{errors.form}</p>}
             {busy && <p className="text-center text-[13px] text-muted-foreground" role="status">Confirm in BridgeKey to continue.</p>}
             {!wallet.hasWallet && <p className="text-center text-[13px] text-muted-foreground">Install BridgeKey to create a circle.</p>}
