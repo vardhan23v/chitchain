@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { contractAs, demoWallet, errorMessage, getCircle, getMember, getMembers, getRound, isConfigured, preflight, roundPhase, sendTx, type Tier } from "../chain";
+import { contractAs, demoWallet, errorMessage, getCircle, getMember, getMembers, getRound, isConfigured, potOf, preflight, roundPhase, sendTx, type RoundPhaseName, type Tier } from "../chain";
 import { activeMandates, agentLogForRound, insertAgentLog, type AgentLogRow, type MandateRow } from "../db";
 import { auditSystem } from "../auth/audit";
 import { chatJSON } from "../llm";
@@ -15,12 +15,13 @@ const planSchema = z.object({
 
 const inFlight = new Set<string>(); // `${circleId}:${member}` while a decision/tx is running
 
-interface PromptCtx { round: number; roundsLeft: number; tier: Tier; secondsLeft: number; phase: "contribution" | "bidding" | "settling"; collected: bigint }
+interface PromptCtx { round: number; roundsLeft: number; tier: Tier; secondsLeft: number; phase: RoundPhaseName; collected: bigint }
 function prompt(m: MandateRow, facts: RoundFacts, ctx: PromptCtx): string {
   const capPct = asPct(effectiveCap(facts), facts.expectedPot);
   return [
     "You are a bidding agent in an on-chain chit fund (rotating savings circle) on the MST testnet (currency: MST).",
-    "Each round every member pays a contribution into the pot. Members bid a DISCOUNT: the share of the pot they give up to the others as dividends.",
+    "Each round every member pays a contribution into the pot. The round's recipient may take the full pot; they declined, so an auction is open.",
+    "Members bid a DISCOUNT: the share of the pot they give up to the others as dividends (their payout offer = pot − discount).",
     "The largest discount wins the pot now (payout = pot − discount, minus a small fee and a holdback released at the end).",
     "Bidding higher wins sooner but costs more; not bidding earns dividends and waits. Members who already won cannot bid again.",
     "",
@@ -29,7 +30,7 @@ function prompt(m: MandateRow, facts: RoundFacts, ctx: PromptCtx): string {
     `Member's own max discount: ${m.max_discount_pct ?? "none"}%.${facts.riskTolerance === "low" ? " Low risk tolerance caps the discount at 10% of the pot." : ""}`,
     "",
     `Round ${ctx.round}; rounds left including this one: ${ctx.roundsLeft}.`,
-    `Phase: ${ctx.phase}${ctx.phase === "contribution" ? " (contributions still open, pot may grow)" : " (contributions closed, pot is final)"}; seconds until bidding closes: ${ctx.secondsLeft}.`,
+    `Phase: auction (contributions closed, pot is final); seconds until bidding closes: ${ctx.secondsLeft}.`,
     `Expected pot: ${asMst(facts.expectedPot)} (collected so far ${asMst(ctx.collected)}).`,
     `Current best discount: ${asMst(facts.bestDiscount)} (${asPct(facts.bestDiscount, facts.expectedPot)} of pot) → current lowest accepted payout: ${asMst(lowestAcceptedPayout(facts))}.`,
     `Max discount allowed for this member: ${asMst(effectiveCap(facts))} (${capPct} of pot; contract max ${asPct(facts.maxDiscount, facts.expectedPot)}).`,
@@ -60,8 +61,10 @@ export async function decideForMandate(m: MandateRow, force = false): Promise<Ag
     const roundsLeft = states.filter((s) => !s.removed && !s.hasWon).length;
     const nowSec = Math.floor(Date.now() / 1000);
     const phase = roundPhase(round, nowSec);
+    // v2.2: bids exist only after the recipient declined the full pot. Nothing to plan (or log) before that.
+    if (phase !== "bidding") return null;
     const facts: RoundFacts = {
-      expectedPot: round.expectedPot, maxDiscount: round.maxDiscount, bestDiscount: round.bestDiscount,
+      expectedPot: potOf(round), maxDiscount: round.maxDiscount, bestDiscount: round.bestDiscount,
       eligible: member.joined && !member.removed && !member.hasWon,
       isBestBidder: round.bestBidder.toLowerCase() === m.member.toLowerCase(),
       roundOpen: nowSec < round.deadline, mandateMaxPct: m.max_discount_pct,

@@ -8,6 +8,7 @@ import { TableScroll, TD, TH } from "@/components/TableScroll";
 import { TxLink } from "@/components/TxLink";
 import { formatMst } from "@/lib/format";
 import type { RoundHistoryRow } from "@/lib/types";
+import { OUTCOME_LABEL } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -41,6 +42,7 @@ export function RoundHistory({ rounds, loading, labelFor, source, className }: P
               <tr>
                 <th className={TH}>Round</th>
                 <th className={TH}>Winner</th>
+                <th className={TH}>Outcome</th>
                 <th className={cn(TH, "text-right")}>Pot</th>
                 <th className={cn(TH, "text-right")}>Payout</th>
                 <th className={cn(TH, "text-right")}>Discount</th>
@@ -54,7 +56,8 @@ export function RoundHistory({ rounds, loading, labelFor, source, className }: P
               {rounds.map((r) => (
                 <tr key={r.round}>
                   <td className={cn(TD, "tnum font-semibold")}>R{r.round}</td>
-                  <td className={cn(TD, "font-medium")}>{r.winner ? r.winnerLabel ?? labelFor(r.winner) : <span className="text-muted-foreground">No bids, shared</span>}</td>
+                  <td className={cn(TD, "font-medium")}>{r.winner ? r.winnerName ?? labelFor(r.winner) : <span className="text-muted-foreground">No one, shared</span>}</td>
+                  <td className={cn(TD, "whitespace-nowrap text-muted-foreground")}>{OUTCOME_LABEL[r.outcome ?? "NONE"]}</td>
                   <td className={NUM}>{formatMst(r.pot)} MST</td>
                   <td className={cn(NUM, "font-semibold text-success")}>{formatMst(r.payout)} MST</td>
                   <td className={NUM}>{formatMst(r.discount)} MST</td>
@@ -77,6 +80,6 @@ export function RoundHistory({ rounds, loading, labelFor, source, className }: P
 }
 
 function footnote(rounds: RoundHistoryRow[] | null): string {
-  if (!rounds?.length) return "Payout = pot − discount − fee − holdback. Dividends = discount shared by the other active members.";
-  return `${rounds.length} ${rounds.length === 1 ? "round" : "rounds"} settled · Payout = pot − discount − fee − holdback · Dividends = discount ÷ (active members − 1).`;
+  if (!rounds?.length) return "Accepted rounds pay the full pot. After an auction: payout = pot − discount − fee − holdback, and the discount is shared by the other active members.";
+  return `${rounds.length} ${rounds.length === 1 ? "round" : "rounds"} settled · Payout = pot − discount − fee − holdback · Dividends = discount ÷ (active members − 1), only after an auction.`;
 }

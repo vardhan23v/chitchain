@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { ZeroAddress } from "ethers";
 import {
-  cachedRead, contractAddress, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, getRound, getRoundHistory, isConfigured, labelOf, provider,
+  cachedRead, contractAddress, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, getRound, getRoundHistory, isConfigured, labelOf, potOf, provider,
   roundPhase, toJson, type CircleView, type MemberView, type RoundView,
 } from "../chain";
 import { z } from "zod";
@@ -9,7 +9,8 @@ import {
   activeMandates, circleNames, countDistinctTx, countEventsForCircle, eventsForCircleByName, getCircleMeta, getUser, invitesForCircle, isDemoCircle, updateUser, upsertCircleMeta,
   type CircleMetaRow, type EventRow,
 } from "../db";
-import { settleNow } from "../keeper";
+import { dueStep, settleNow } from "../keeper";
+import { namesFor } from "../db/usernames";
 import { audit } from "../auth/audit";
 import { ipOf, rateLimit } from "../auth/ratelimit";
 import { optionalAuth, requireAuth } from "../auth/middleware";
@@ -30,10 +31,22 @@ export async function circleSummaryOf(id: number, c: CircleView): Promise<Record
   return circleSummary(id, c, isDemo, meta);
 }
 
-/** RoundInfo = contract RoundView + phase + lowestAcceptedPayout (expectedPot − bestDiscount). */
-export function roundInfo(r: RoundView, nowSec = Math.floor(Date.now() / 1000)): unknown {
-  const lowest = r.bestDiscount >= r.expectedPot ? 0n : r.expectedPot - r.bestDiscount;
-  return toJson({ ...r, lowestAcceptedPayout: lowest, phase: roundPhase(r, nowSec) });
+/**
+ * RoundInfo = contract RoundView + `phase` (v2.2 stage name, see roundPhase) + `phaseCode` (on-chain 0 Contributing,
+ * 1 Deciding, 2 Auction) + potForOffers + lowestAcceptedPayout (pot − bestDiscount, null until someone bid) + names.
+ */
+export async function roundInfo(r: RoundView, nowSec = Math.floor(Date.now() / 1000)): Promise<unknown> {
+  const pot = potOf(r);
+  const hasBid = r.bestBidder !== ZeroAddress;
+  const lowest = !hasBid ? null : r.bestDiscount >= pot ? 0n : pot - r.bestDiscount;
+  const hasRecipient = r.recipient !== ZeroAddress;
+  const names = await namesFor([r.recipient, r.bestBidder].filter((a) => a !== ZeroAddress));
+  return toJson({
+    ...r, phaseCode: r.phase, phase: roundPhase(r, nowSec), potForOffers: pot, lowestAcceptedPayout: lowest,
+    recipient: hasRecipient ? r.recipient : null, recipientLabel: hasRecipient ? labelOf(r.recipient) : null,
+    recipientName: hasRecipient ? names.get(r.recipient.toLowerCase()) ?? null : null,
+    bestBidderName: hasBid ? names.get(r.bestBidder.toLowerCase()) ?? null : null,
+  });
 }
 
 const ALL_CACHE_MS = 5000;
@@ -82,7 +95,7 @@ export async function memberInfo(circleId: number, address: string, circleRound:
   let lastDefaultOut: DefaultInfo | null = null;
   if (lastDefault) { const { member: _member, ...rest } = lastDefault; lastDefaultOut = rest; }
   return {
-    ...(toJson({ address, label: labelOf(address), custodial: labelOf(address) !== null, ...m, requiredCollateral: required }) as Record<string, unknown>),
+    ...(toJson({ address, label: labelOf(address), custodial: labelOf(address) !== null, username: (await namesFor([address])).get(address.toLowerCase()) ?? null, ...m, requiredCollateral: required }) as Record<string, unknown>),
     contributionStatus: contributionStatusOf(m, circleRound, lastDefault),
     lastDefault: lastDefaultOut,
   };
@@ -114,20 +127,23 @@ circles.get("/circles/:id", wrap(async (req, res) => {
     latestDefault = { ...info, remainingCollateral: state ? String(state.collateral) : "0", label: labelOf(info.member) };
   }
   res.json({
-    circle: circleSummary(id, c, isDemo, meta), round: roundInfo(round), members, txCount, mandates: mandates.map(mandateToApi), latestDefault,
+    circle: circleSummary(id, c, isDemo, meta), round: await roundInfo(round), members, txCount, mandates: mandates.map(mandateToApi), latestDefault,
   });
 }));
 
 /** Settled rounds ascending (RoundHistoryRow[]) from getRoundHistory + indexed RoundSettled / DividendCredited. */
 export async function roundsOf(id: number, c?: CircleView): Promise<unknown[]> {
-  const [circle, addrs, events] = await Promise.all([c ?? getCircle(id), getMembers(id), eventsForCircleByName(id, ["RoundSettled", "DividendCredited"])]);
+  const [circle, addrs, events] = await Promise.all([c ?? getCircle(id), getMembers(id), eventsForCircleByName(id, ["RoundSettled", "DividendCredited", "FullPotAccepted", "FullPotDeclined"])]);
+  const names = await namesFor(addrs);
+  const decisionTx = new Map<number, string>();
   const settledUpTo = circle.status === 2 ? circle.round : circle.status === 1 ? circle.round - 1 : 0;
   const settledTx = new Map<number, string>();
   const dividendCount = new Map<number, number>();
   for (const e of events) {
     if (e.round === null) continue;
     if (e.name === "RoundSettled") settledTx.set(e.round, e.tx_hash);
-    else dividendCount.set(e.round, (dividendCount.get(e.round) ?? 0) + 1);
+    else if (e.name === "DividendCredited") dividendCount.set(e.round, (dividendCount.get(e.round) ?? 0) + 1);
+    else decisionTx.set(e.round, e.tx_hash);
   }
   let activeCount: number | null = null; // fallback when the index has no DividendCredited rows for a round
   const rounds = [];
@@ -144,8 +160,12 @@ export async function roundsOf(id: number, c?: CircleView): Promise<unknown[]> {
       }
       n = Math.max(activeCount - (hasWinner ? 1 : 0), 1);
     }
+    const hasRecipient = h.recipient !== ZeroAddress;
     rounds.push(toJson({
       round: r, winner: hasWinner ? h.winner : null, winnerLabel: hasWinner ? labelOf(h.winner) : null,
+      winnerName: hasWinner ? names.get(h.winner.toLowerCase()) ?? null : null,
+      outcome: h.outcome, recipient: hasRecipient ? h.recipient : null, recipientLabel: hasRecipient ? labelOf(h.recipient) : null,
+      recipientName: hasRecipient ? names.get(h.recipient.toLowerCase()) ?? null : null, decisionTxHash: decisionTx.get(r) ?? null,
       pot: h.pot, payout: h.payout, discount: h.discount, fee: h.fee, holdback: h.holdback,
       dividendsTotal, dividendPerMember: n > 0 ? dividendsTotal / BigInt(n) : 0n,
       settledAt: h.settledAt, txHash: settledTx.get(r) ?? null,
@@ -192,21 +212,24 @@ circles.get("/circles/:id/defaults", wrap(async (req, res) => {
   res.json({ defaults: out });
 }));
 
-/** POST /circles/:id/settle — public (settlement is permissionless on-chain); 5/min per IP; audited with the caller if signed in. */
+/**
+ * POST /circles/:id/settle — public; runs whichever permissionless step is due (close contributions after their
+ * deadline, or settle after the decision / auction window). 5/min per IP; audited with the caller if signed in.
+ */
 const settleLimiter = rateLimit({ perMinute: 5, keys: (req) => [`settle:${ipOf(req)}`] });
 circles.post("/circles/:id/settle", settleLimiter, optionalAuth(), wrap(async (req, res) => {
   requireContract();
   const id = parseId(req.params.id);
   const c = await getCircle(id);
   if (c.status !== 1) throw new ApiError(409, "circle is not active", "NotActive");
-  if (Math.floor(Date.now() / 1000) <= c.roundDeadline) throw new ApiError(409, "bidding deadline has not passed", "BiddingNotOver");
-  let txHash: string;
-  try { txHash = await settleNow(id, "api settle"); } catch (e) {
+  if (!dueStep(c, Math.floor(Date.now() / 1000))) throw new ApiError(409, "nothing is due yet: the current window is still open", "NothingDue");
+  let out: { txHash: string; step: string };
+  try { out = await settleNow(id, "api settle"); } catch (e) {
     audit(req, "circle.settle", `circle:${id}`, "failed", { meta: { round: c.round, error: e instanceof Error ? e.message : String(e) } });
     throw e;
   }
-  audit(req, "circle.settle", `circle:${id}`, "ok", { txHash, meta: { round: c.round } });
-  res.json({ txHash });
+  audit(req, "circle.settle", `circle:${id}`, "ok", { txHash: out.txHash, meta: { round: c.round, step: out.step } });
+  res.json(out);
 }));
 
 const claimBody = z.object({

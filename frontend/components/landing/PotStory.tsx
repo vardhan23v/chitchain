@@ -136,7 +136,7 @@ export function PotStory({ progress, example, className }: { progress: MotionVal
       viewBox="0 0 320 320"
       className={className}
       role="img"
-      aria-label="How a chit round works: members join and lock collateral, contribute to the pot, bid a discount, and the winner is paid out while the discount is shared as dividends."
+      aria-label="How a chit round works: members join and lock collateral and contribute to the pot. The round's recipient accepts the full pot, or declines and members offer to take less. The winner is paid out and any discount is shared as dividends."
     >
       <Pot p={progress} example={example} sweep={sweep} />
       {Array.from({ length: n }, (_, i) => (

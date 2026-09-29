@@ -14,7 +14,7 @@
     "prisma:validate": "prisma validate",
     "db:smoke": "tsx scripts/db-smoke.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/risk/score.test.ts src/agent/guardrails.test.ts src/auth/jwt.test.ts src/auth/message.test.ts src/auth/ratelimit.test.ts src/auth/middleware.test.ts src/auth/password.test.ts src/ai/riskGuard.test.ts src/ai/fallback.test.ts src/demo/params.test.ts",
+    "test": "node --import tsx --test src/risk/score.test.ts src/agent/guardrails.test.ts src/auth/jwt.test.ts src/auth/message.test.ts src/auth/ratelimit.test.ts src/auth/middleware.test.ts src/auth/password.test.ts src/ai/riskGuard.test.ts src/ai/fallback.test.ts src/demo/params.test.ts src/users/username.test.ts src/demo/script.test.ts",
     "auth:smoke": "tsx scripts/auth-smoke.ts",
     "hash-password": "tsx scripts/hash-password.ts"
   },

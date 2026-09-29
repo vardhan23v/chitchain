@@ -3,7 +3,7 @@
  * happens on-chain. Nothing here is simulated: the tx is sent, mined and indexed like any other bid.
  * Fires once per circle round, 25 s after the agent was activated, only while the agent is ACTIVE in BIDDING.
  */
-import { contractAs, demoWallet, demoWallets, errorMessage, getMember, preflight, provider, sendTx, type RoundView } from "../chain";
+import { contractAs, demoWallet, demoWallets, errorMessage, getMember, potOf, preflight, provider, sendTx, type RoundView } from "../chain";
 import { insertAgentLog, lastAgentEvent, type BidAgentApi } from "../db";
 import { auditSystem } from "../auth/audit";
 import { GAS_RESERVE_WEI, pctOfPot } from "./riskGuard";
@@ -46,7 +46,7 @@ export async function maybeDemoRival(agent: BidAgentApi, snap: AuctionSnapshot, 
       rival = w; break;
     }
     if (!rival) { placed.add(key); return false; }
-    const pot = round.expectedPot;
+    const pot = potOf(round);
     let discount = round.bestDiscount + pctOfPot(pot, RIVAL_STEP_PCT);
     const cap = pctOfPot(pot, RIVAL_CAP_PCT) < round.maxDiscount ? pctOfPot(pot, RIVAL_CAP_PCT) : round.maxDiscount;
     if (discount > cap) discount = cap;

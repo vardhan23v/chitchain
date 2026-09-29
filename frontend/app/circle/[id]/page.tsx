@@ -16,6 +16,9 @@ import { PrimaryAction } from "@/components/PrimaryAction";
 import { RoomBanners } from "@/components/RoomBanners";
 import { RoomHeader } from "@/components/RoomHeader";
 import { RoomTabs } from "@/components/room/RoomTabs";
+import { RecipientDecision } from "@/components/room/RecipientDecision";
+import { RoundTimeline } from "@/components/room/RoundTimeline";
+import { useAuth } from "@/hooks/useAuth";
 import { TxStepper } from "@/components/TxStepper";
 import { useCircle } from "@/hooks/useCircle";
 import { useRoundClock } from "@/hooks/useCountdown";
@@ -24,7 +27,7 @@ import { useRoomActions } from "@/hooks/useRoomActions";
 import { useViewerJoinInfo } from "@/hooks/useViewerJoinInfo";
 import { useWallet } from "@/hooks/useWallet";
 import { HAS_CONTRACT } from "@/lib/chain";
-import { shortAddr } from "@/lib/format";
+import { nameOf } from "@/lib/labels";
 
 /** Loading state that mirrors the real layout: header lines, Pot/Auction 3fr/2fr, 340 px feed rail. */
 function RoomSkeleton() {
@@ -59,7 +62,9 @@ export default function CircleRoomPage() {
   const room = useCircle(id, wallet.account);
   const feed = useFeed(id);
   const actions = useRoomActions(id, room.refetch);
+  const auth = useAuth();
   const bidRef = useRef<HTMLDivElement>(null);
+  const decisionRef = useRef<HTMLDivElement>(null);
   const [bidHighlight, setBidHighlight] = useState(0);
   const data = room.data;
   const isMember = !!room.me?.joined;
@@ -68,10 +73,12 @@ export default function CircleRoomPage() {
 
   const labels = useMemo<LabelMap>(() => {
     const m: LabelMap = {};
-    for (const x of data?.members ?? []) if (x.label) m[x.address.toLowerCase()] = x.label;
+    for (const x of data?.members ?? []) if (x.username || x.label) m[x.address.toLowerCase()] = x.username ?? x.label!;
     return m;
   }, [data?.members]);
-  const labelFor = (a: string) => labels[a.toLowerCase()] ?? shortAddr(a);
+  const byAddr = useMemo(() => new Map((data?.members ?? []).map((x) => [x.address.toLowerCase(), x])), [data?.members]);
+  /** username → "Demo A" → short address */
+  const labelFor = (a: string) => { const m = byAddr.get(a.toLowerCase()); return nameOf(m ?? { address: a }); };
 
   if (!Number.isFinite(id) || id < 1) return <EmptyState Icon={WifiOff} tone="bg-muted text-muted-foreground" title="That circle does not exist." text="Check the link and try again." />;
   if (!data) {
@@ -102,7 +109,9 @@ export default function CircleRoomPage() {
         pending={actions.pending}
         hasContract={HAS_CONTRACT}
         phase={clock.roundPhase}
+        round={round}
         on={{
+          focusDecision: () => decisionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
           join: () => viewerRequired !== null && void actions.join(viewerRequired),
           contribute: () => void actions.contribute(BigInt(circle.contribution)),
           withdraw: () => void actions.withdraw(),
@@ -121,10 +130,22 @@ export default function CircleRoomPage() {
   return (
     <RevealGroup mode="load" className="space-y-6 pb-32 md:space-y-8 md:pb-0">
       <RevealItem>
-        <RoomHeader circle={circle} round={round} txCount={data.txCount} onSettle={() => void actions.settle(!!wallet.account && wallet.correctChain)} settling={actions.pending} source={data.source} />
+        <RoomHeader
+          circle={circle}
+          round={round}
+          txCount={data.txCount}
+          onSettle={() => void actions.settle(!!wallet.account && wallet.correctChain, clock.roundPhase === "closing" ? "closeContributions" : "settleRound")}
+          settling={actions.pending}
+          source={data.source}
+        />
       </RevealItem>
       <RoomBanners circle={circle} me={room.me} members={members} events={feed.events} labels={labels} onWithdraw={() => void actions.withdraw()} pending={actions.pending} />
       {showLatestDefault && data.latestDefault && <DefaultEventCard d={data.latestDefault} compact />}
+      {circle.status >= 1 && (
+        <RevealItem>
+          <RoundTimeline circleId={circle.id} round={round} phase={clock.roundPhase} active={circle.status === 1} />
+        </RevealItem>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">
@@ -134,7 +155,23 @@ export default function CircleRoomPage() {
               <div className="hidden md:block">{primary}</div>
             </RevealItem>
             <RevealItem className="min-w-0">
-              <div ref={bidRef} className="h-full">
+              {circle.status === 1 && round.phaseCode === 1 && (
+                <div ref={decisionRef} className="mb-4">
+                  <RecipientDecision
+                    circle={circle}
+                    round={round}
+                    members={members}
+                    account={wallet.account}
+                    pending={actions.pending}
+                    canSign={!!wallet.account && wallet.correctChain}
+                    onAccept={() => void actions.accept()}
+                    onDecline={() => void actions.decline()}
+                    isAdmin={auth.isAdmin}
+                    onChanged={refetchAll}
+                  />
+                </div>
+              )}
+              <div ref={bidRef} className={round.phaseCode === 2 || circle.status !== 1 ? "h-full" : undefined}>
                 <AuctionPanel
                   circle={circle}
                   round={round}

@@ -9,7 +9,8 @@ import { useBalanceCheck } from "@/hooks/useBalance";
 import type { WalletState } from "@/hooks/useWallet";
 import { BRIDGEKEY_URL } from "@/lib/chain";
 import { formatMst } from "@/lib/format";
-import type { CircleSummary, MemberInfo, RoundPhase, Tier } from "@/lib/types";
+import { sameAddr } from "@/lib/format";
+import type { CircleSummary, MemberInfo, RoundInfo, RoundPhase, Tier } from "@/lib/types";
 
 export interface PrimaryActionProps {
   wallet: WalletState;
@@ -19,9 +20,13 @@ export interface PrimaryActionProps {
   viewerTier: Tier | null;
   pending: boolean;
   hasContract: boolean;
-  /** Client-side round phase (contribution | bidding | settling). */
+  /** Client-side round stage (contribution | closing | decision | bidding | settling). */
   phase?: RoundPhase;
+  /** Current round (recipient, lowest payout). */
+  round?: Pick<RoundInfo, "recipient" | "recipientName" | "recipientLabel" | "bestBidder" | "potForOffers"> | null;
   on: {
+    /** Scroll to the recipient decision card (accept or decline live there, with a confirmation). */
+    focusDecision?: () => void;
     join: () => void;
     contribute: () => void;
     withdraw: () => void;
@@ -32,7 +37,7 @@ export interface PrimaryActionProps {
 }
 
 /** DESIGN §6.3 primary-action state table: one clear CTA at a time. */
-export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, pending, hasContract, phase = "contribution", on }: PrimaryActionProps) {
+export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, pending, hasContract, phase = "contribution", round, on }: PrimaryActionProps) {
   const cls = "w-full md:w-auto md:min-w-[220px]";
   // Pre-send balance check for the contribution (audit 1.8); only runs while a contribution is actually due.
   const contributeDue = circle.status === 1 && !!me?.joined && !me.paidThisRound && phase === "contribution" && BigInt(me?.claimable ?? "0") === 0n && !me?.removed;
@@ -74,16 +79,19 @@ export function PrimaryAction({ wallet, circle, me, viewerRequired, viewerTier, 
         </div>
       );
     }
-    if (phase === "settling") return <Button size="lg" className={cls} disabled>Round closed, waiting for settlement</Button>;
-    if (!me.hasWon && BigInt(me.bidThisRound || "0") === 0n) {
-      return (
-        <div className="flex flex-wrap gap-2">
-          <Button size="lg" className={cls} onClick={on.focusBid}>Place a bid</Button>
-          <Button size="lg" variant="ghost" disabled>{!me.paidThisRound ? "Contributions closed" : "Skip"}</Button>
-        </div>
-      );
+    if (phase === "contribution") return <Button size="lg" className={cls} disabled>Paid, waiting for the other members</Button>;
+    if (phase === "closing") return <Button size="lg" className={cls} disabled>Contributions closed, covering missed payments</Button>;
+    if (phase === "settling") return <Button size="lg" className={cls} disabled>Waiting for round settlement</Button>;
+    const recipientName = round?.recipientName ?? (round?.recipientLabel ? `Demo ${round.recipientLabel}` : "the recipient");
+    if (phase === "decision") {
+      const isRecipient = !!round?.recipient && sameAddr(round.recipient, wallet.account);
+      if (isRecipient) return <Button size="lg" className={cls} onClick={on.focusDecision}>Your turn: accept the pot or open an auction</Button>;
+      return <Button size="lg" className={cls} disabled>Waiting for {recipientName} to decide</Button>;
     }
-    return <Button size="lg" className={cls} disabled>Paid, waiting for settlement</Button>;
+    // bidding: the recipient declined, the auction is open
+    if (me.hasWon) return <Button size="lg" className={cls} disabled>Auction open, you already received a pot</Button>;
+    if (round?.bestBidder && sameAddr(round.bestBidder, wallet.account)) return <Button size="lg" className={cls} disabled>Your offer leads, waiting for the auction to close</Button>;
+    return <Button size="lg" className={cls} onClick={on.focusBid}>Place a bid</Button>;
   }
   if (circle.status === 3) return <Button size="lg" className={cls} disabled>{me?.joined ? "Nothing left to withdraw" : "Circle cancelled"}</Button>;
   return <Button size="lg" className={cls} disabled>{me?.joined ? "All withdrawn" : "Circle completed"}</Button>;

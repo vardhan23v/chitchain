@@ -14,6 +14,7 @@ import { OrganizerNotice } from "@/components/organizer/OrganizerNotice";
 import { ForbiddenCard, RequireAuth } from "@/components/RequireAuth";
 import { RoleBadge } from "@/components/RoleBadge";
 import { RoundHistory } from "@/components/RoundHistory";
+import { RoundTimeline } from "@/components/room/RoundTimeline";
 import { RevealGroup } from "@/components/motion/Reveal";
 import { StatTile } from "@/components/StatTile";
 import { PageHeader, SectionTitle } from "@/components/PageHeader";
@@ -76,6 +77,7 @@ function Analytics({ id }: { id: number }) {
             </StatTile>
             <StatTile label="Agent decisions" value={d.agentDecisions} hint="AI bidding agent, this circle" />
           </RevealGroup>
+          {d.circle.status >= 1 && <RoundTimeline circleId={d.circle.id} round={d.round} phase={d.round.phase} active={d.circle.status === 1} />}
           <MembersTable circle={d.circle} members={d.members} viewer={auth.user?.walletAddress ?? null} extras={{}} />
           <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
             <div className="min-w-0 space-y-6">

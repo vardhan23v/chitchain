@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { NameCircleForm } from "@/components/organizer/NameCircleForm";
 import { DemoBadge } from "@/components/TestnetBadge";
-import { big, formatMst } from "@/lib/format";
+import { big, formatMst, shortAddr } from "@/lib/format";
 import { STATUS_LABEL } from "@/lib/labels";
 import { roundNo, type OrganizerCircle } from "@/lib/types";
 
@@ -25,6 +25,11 @@ function Cell({ label, value, warn }: { label: string; value: React.ReactNode; w
 export function OrganizerCircleCard({ c, onChanged }: { c: OrganizerCircle; onChanged: () => void }) {
   const joined = c.members.filter((m) => m.joined && !m.removed).length;
   const hasBid = big(c.round?.bestDiscount ?? "0") > 0n;
+  const active = c.status === 1 && !!c.round;
+  const code = c.round?.phaseCode ?? 0;
+  const recipient = c.round?.recipient ? (c.round.recipientName ?? (c.round.recipientLabel ? `Demo ${c.round.recipientLabel}` : shortAddr(c.round.recipient))) : null;
+  const decision = !active ? "—" : code === 0 ? "After contributions" : code === 1 ? "Deciding" : "Declined";
+  const auction = !active ? "—" : code === 2 ? (c.round.phase === "bidding" ? "Open" : "Closed, settling") : "Not opened";
   return (
     <Card className="flex flex-col gap-3 p-4 md:p-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -40,9 +45,13 @@ export function OrganizerCircleCard({ c, onChanged }: { c: OrganizerCircle; onCh
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-white/[0.04] p-3 sm:grid-cols-4">
         <Cell label="Members" value={`${joined} / ${c.maxMembers}`} />
         <Cell label="Round" value={c.status === 1 ? `${roundNo(c)} / ${c.maxMembers}` : "—"} />
-        <Cell label="Current pot" value={c.round ? `${formatMst(c.round.collected)} / ${formatMst(c.round.expectedPot)} MST` : "—"} />
+        <Cell label="Pot" value={c.round ? (code === 0 ? `${formatMst(c.round.collected, 3)} / ${formatMst(c.round.expectedPot, 3)} MST` : `${formatMst(c.round.potForOffers, 3)} MST`) : "—"} />
         <Cell label="Contribution" value={`${formatMst(c.contribution)} MST`} />
-        <Cell label="Lowest accepted payout" value={hasBid ? `${formatMst(c.lowestAcceptedPayout)} MST` : "No bids yet"} />
+        <Cell label="Recipient" value={recipient ?? "—"} />
+        <Cell label="Recipient decision" value={decision} />
+        <Cell label="Auction" value={auction} />
+        <Cell label="Current lowest payout" value={code === 2 ? (hasBid && c.lowestAcceptedPayout ? `${formatMst(c.lowestAcceptedPayout, 3)} MST` : "No offers yet") : "—"} />
+        <Cell label="Current discount" value={code === 2 && hasBid ? `${formatMst(c.round.bestDiscount, 3)} MST` : "—"} />
         <Cell label="Pending contributions" value={c.pendingContributions} warn={c.pendingContributions > 0} />
         <Cell label="Defaults" value={c.defaults} warn={c.defaults > 0} />
         <Cell label="Collateral total" value={`${formatMst(c.collateralTotal)} MST`} />

@@ -11,13 +11,21 @@ interface CircleSummary {       // = contract CircleView (v2) + id + isDemo
   id: number; creator: string; contribution: string; baseCollateral: string; maxMembers: number;
   contributionDuration: number; biddingDuration: number; joinDeadline: number; feeBps: number;
   holdbackBps: number; maxDiscountBps: number; lowBps: number; mediumBps: number; highBps: number;
-  status: Status; round: number; contributionDeadline: number; roundDeadline: number /* = bidding deadline */;
+  status: Status; round: number; contributionDeadline: number; roundDeadline: number /* = auction deadline, 0 until a decline */;
   reserve: string; memberCount: number; isDemo: boolean;
+  phase: 0|1|2 /* v2.2 on-chain: Contributing, Deciding, Auction */; decisionDeadline: number; recipient: string /* zero address while contributing */;
 }
-interface RoundInfo { round: number; contributionDeadline: number; deadline: number /* bidding deadline */; expectedPot: string; collected: string; bestBidder: string; bestDiscount: string; maxDiscount: string; lowestAcceptedPayout: string /* expectedPot − bestDiscount */; phase: "contribution"|"bidding"|"settling"; }
-interface MemberInfo { address: string; label: string|null; custodial: boolean; joined: boolean; tier: Tier; hasWon: boolean; removed: boolean; collateral: string; collateralUsed: string; defaults: number; claimable: string; paidThisRound: boolean; bidThisRound: string; requiredCollateral: string; contributionStatus: "PAID"|"PENDING"|"COVERED_BY_COLLATERAL"|"PARTIALLY_COVERED"|"DEFAULTED"; lastDefault: DefaultInfo|null; }
+interface RoundInfo {             // v2.2
+  round: number; contributionDeadline: number; decisionDeadline: number; deadline: number /* auction deadline, 0 until a decline */;
+  expectedPot: string; collected: string /* after close: the assembled pot */; pot: string /* "0" while contributing */; potForOffers: string;
+  bestBidder: string; bestBidderName: string|null; bestDiscount: string; maxDiscount: string;
+  lowestAcceptedPayout: string|null /* potForOffers − bestDiscount; null until someone bid */;
+  phase: "contribution"|"closing"|"decision"|"bidding"|"settling"; phaseCode: 0|1|2;
+  recipient: string|null; recipientLabel: string|null; recipientName: string|null;
+}
+interface MemberInfo { address: string; label: string|null; username: string|null; custodial: boolean; joined: boolean; tier: Tier; hasWon: boolean; removed: boolean; collateral: string; collateralUsed: string; defaults: number; claimable: string; paidThisRound: boolean; bidThisRound: string; requiredCollateral: string; contributionStatus: "PAID"|"PENDING"|"COVERED_BY_COLLATERAL"|"PARTIALLY_COVERED"|"DEFAULTED"; lastDefault: DefaultInfo|null; }
 interface DefaultInfo { round: number; required: string; fromCollateral: string; fromReserve: string; shortfall: string; remainingCollateral: string; status: "COVERED_BY_COLLATERAL"|"PARTIALLY_COVERED"; potFullyFunded: boolean; txHash: string; ts: number; }
-interface RoundHistoryRow { round: number; winner: string|null; winnerLabel: string|null; pot: string; payout: string; discount: string; fee: string; holdback: string; dividendsTotal: string; dividendPerMember: string; settledAt: number; txHash: string|null; }
+interface RoundHistoryRow { round: number; winner: string|null; winnerLabel: string|null; winnerName: string|null; outcome: "ACCEPTED"|"AUCTION"|"DECISION_TIMEOUT"|"NO_BIDS"|"NO_RECIPIENT"; recipient: string|null; recipientLabel: string|null; recipientName: string|null; decisionTxHash: string|null; pot: string; payout: string; discount: string; fee: string; holdback: string; dividendsTotal: string; dividendPerMember: string; settledAt: number; txHash: string|null; }
 interface FeedEvent { id: number; circleId: number|null; round: number|null; name: string; args: Record<string,string|number|boolean>; txHash: string; logIndex: number; block: number; ts: number; agent: { reason: string; member: string } | null; }
 interface RiskResult { address: string; score: number /* 0 = safest, 100 = riskiest; LOW <=39, MEDIUM 40-69, HIGH >=70 */; tier: Tier; onChainTier: Tier; factors: { name: string; value: string; effect: string }[]; explanation: string; explanationSource: "llm"|"template"; dataSource: "SYNTHETIC"|"ONCHAIN"|"MIXED"; reputation: { paidOnTime: number; missed: number; circlesCompleted: number; circlesRemoved: number }; history: FeedEvent[]; }
 interface AgentLog { id: number; circleId: number; round: number; member: string; agentWallet: string; bidThisRound: boolean; discount: string; reason: string; source: "llm"|"fallback"; txHash: string|null; error: string|null; ts: number; }
@@ -49,14 +57,19 @@ interface Mandate { circleId: number; member: string; goal: string; desiredPayou
 | POST | `/demo/cancel` body `{ circleId }` | `{ txHash }` — contract `cancel(circleId)` from the keeper wallet for a circle stuck **Open past its join deadline** (members' collateral becomes claimable). 409 `NOT_OPEN` / `JOIN_WINDOW_STILL_OPEN`; preflighted; audited as `demo.cancel` |
 | GET | `/circles/:id/invites/check?address=` | public → `{ invited: boolean, hasInvites: boolean, enforced: false }` so the UI can show "invited" vs "open". **Invites are informational only**: joins happen on-chain from the user's own wallet, so the backend cannot enforce them |
 | POST | `/demo/withdraw` body `{ address, circleId }` | `{ txHash }` |
-| POST | `/circles/:id/settle` | `{ txHash }` — keeper settles now if the deadline passed (UI "Settle round" button fallback) |
+| POST | `/circles/:id/settle` | `{ txHash, step }` — the keeper runs whichever step is due: `closeContributions` after the contribution deadline, or `settleRound` after the decision / auction window (409 `NothingDue` otherwise) |
+| GET | `/usernames/check?name=&wallet=` | `{ username, available, reason?, message, rule }` — normalised name, rules, reserved names, taken and lookalike names (30/min per IP) |
+| GET | `/usernames?addresses=a,b` | `{ names: { [lowercaseAddress]: username } }` (≤ 100 addresses) |
+| PUT | `/me/username` | `{ username }` → `{ user }` — wallet sessions only; 400 rule errors, 409 `TAKEN` / `TOO_SIMILAR` |
+| GET | `/members/:addr/profile` | `{ address, username, label, custodial, riskTier, onChainTier, score, stats: { circles, completedRounds, contributions, contributedTotal, defaults, circlesCompleted, circlesRemoved, payouts, payoutsTotal, dividendsTotal } }` — counts from on-chain reputation, totals from indexed events |
+| POST | `/demo/decide` | admin; `{ circleId, decision: "accept"\|"decline" }` → `{ txHash }` — the custodial demo recipient decides from its own key |
 
 Errors: `{ error: string, code?: string }` with 4xx/5xx.
 
 Security headers: `helmet` (CSP `default-src 'none'; frame-ancestors 'none'`, `Cross-Origin-Resource-Policy: cross-origin` so the frontend origin can read responses; CORS unchanged; SSE `text/event-stream` unaffected).
 
 ## Demo wallets (custodial, disclosed in UI)
-`AGENT_WALLET_KEYS` = five comma-separated private keys for demo members **A–E**. The backend holds them and, for circles it created via `/demo/new-circle` ("demo circles"), it auto-contributes each round (unless `skip` is set) and places the AI agent's bids from the member's own wallet. The UI must label these wallets "custodial demo wallet". Real users join with BridgeKey; the agent can only bid for demo wallets.
+`AGENT_WALLET_KEYS` = five comma-separated private keys for demo members **A–E**. The backend holds them and, for circles it created via `/demo/new-circle` ("demo circles"), it auto-contributes each round (unless `skip` is set), follows the demo script in `backend/src/demo/script.ts` (round 1 accept; round 2 decline and offers of 96 / 94 / 92 / 90 % of the pot from B, C, E, D; round 3 accept; round 4 D skips its contribution; later rounds accept), and places the AI agent's bids from the member's own wallet. The script decides 10 s into the decision window, so an admin or the recipient can act first. The UI must label these wallets "custodial demo wallet". Real users join with BridgeKey; the agent can only bid for demo wallets.
 
 ## Currency
 All amounts are **MST testnet coins** (18 decimals). The UI labels them `MST` and shows an `MST TESTNET` badge; never ₹ or any fiat.
@@ -190,13 +203,14 @@ interface BidAgent {
 interface AgentEvent { id: number; agentId: string; ts: number; kind: AgentEventKind; text: string; reason: string|null; data: Record<string,unknown>|null; }
 type AgentEventKind = "REFRESH"|"BID_SEEN"|"EVALUATED"|"DECISION"|"RISK_PASSED"|"RISK_BLOCKED"|"TX_SUBMITTED"|"TX_CONFIRMED"|"TX_FAILED"|"PAUSED"|"STOPPED"|"DONE"|"RIVAL_BID"|"INFO";
 interface AuctionSnapshot {
-  circleId: number; round: number; roundsTotal: number; status: "CONTRIBUTION"|"BIDDING"|"SETTLING"|"INACTIVE";
+  circleId: number; round: number; roundsTotal: number; status: "CONTRIBUTION"|"DECISION"|"BIDDING"|"SETTLING"|"INACTIVE" /* BIDDING only after the recipient declined */;
   expectedPot: string; collected: string; maxDiscount: string; bestDiscount: string; bestPayout: string /* wei */;
   bestBidder: string|null /* lowercase; null when nobody has bid */; bestBidderLabel: string|null /* "A".."E" for demo wallets */;
-  biddingDeadline: number; contributionDeadline: number; secondsRemaining: number /* in the current phase */; bidCount: number;
+  biddingDeadline: number; contributionDeadline: number; decisionDeadline: number; secondsRemaining: number /* in the current phase */; bidCount: number;
+  recipient: string|null; recipientLabel: string|null;
   expectedPotMst: number; collectedMst: number; maxDiscountMst: number; bestDiscountMst: number; bestPayoutMst: number; nowSec: number;
 }
-interface AuctionBid { round: number|null; member: string; label: string|null; discount: string; payout: string|null /* wei, null if the round's pot is unknown */; txHash: string; block: number; ts: number; }
+interface AuctionBid { round: number|null; member: string; label: string|null; username: string|null; discount: string; payout: string|null /* wei, null if the round's pot is unknown */; txHash: string; block: number; ts: number; }
 interface Decision { decision: "WAIT"|"BID"|"STOP"; discount: string|null /* wei */; discountMst: number|null; payout: string|null; reasonCode: string; reason: string; confidence: number; source: "crew"|"fallback"; analyst: Record<string,unknown>|null; }
 ```
 
@@ -220,7 +234,7 @@ There is **no** `/ai/bidding/execute` route. Execution is only reachable through
 ## Loop (per ACTIVE agent, every 4 s)
 1. `expiresAt` passed → DONE "Strategy expired"; circle not Active → DONE "Circle is no longer active"; round advanced with `durationSec = null` → DONE "Auction ended" (with a duration, the agent keeps monitoring the next round).
 2. Snapshot; REFRESH only when best discount / bid count / 30 s time bucket changed; BID_SEEN when the best discount changed ("New bid detected: 0.40 MST discount by C").
-3. Not BIDDING → WAIT without an LLM call; agent already `bestBidder` → WAIT "You hold the winning bid".
+3. Not BIDDING → WAIT without an LLM call ("Waiting for contributions; an auction opens only if the recipient declines the full pot" / "Waiting for the recipient to accept or decline the full pot"). The agent never opens an auction and never decides for the recipient; agent already `bestBidder` → WAIT "You hold the winning bid".
 4. Decision: `POST ${AI_AGENT_URL}/evaluate` (timeout 20 s), else `fallbackDecide()`. The crew's number is clamped (never above the caps, never below best + 1 % of pot). Events EVALUATED then DECISION ("Decision: BID 0.45 MST" / "Decision: WAIT"). LLM calls at most once per 20 s per agent unless the best discount changed.
 5. BID with `autonomous = false` → DECISION "Autonomous bidding is off; bid not submitted", status PAUSED "Needs your approval".
 6. Risk Guard → RISK_PASSED / RISK_BLOCKED (blocked → WAIT; `MAX_*` → DONE "Your maximum has been reached").

@@ -47,6 +47,8 @@ def strategise_task(agent: Agent, strategy: Strategy, auction: Auction, analysis
             f"Analyst: {analysis.model_dump_json()}\n"
             f"Recent agent activity: {recent}\n"
             "Rules, applied in order:\n"
+            "Context: each round's designated recipient may accept the full pot; an auction exists only because they declined it. "
+            "A bid is a payout offer: the member accepts pot minus discount, and the discount is shared as dividends by the other members.\n"
             "1. If the auction status is not BIDDING: WAIT (reason_code NOT_BIDDING).\n"
             "2. If min_winning_discount_mst > cap_mst: STOP (MAX_REACHED). The member cannot win within their maximum.\n"
             "3. If a desired payout is stated and desired_reachable is false: STOP (PAYOUT_UNREACHABLE).\n"

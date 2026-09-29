@@ -5,7 +5,7 @@ import { contractAddress, contractAs, createCircleCall, DEFAULT_BPS, demoWallet,
 import { addDemoCircle, countDistinctTx, findEvent, getSkip, latestDemoCircle, setSkip, upsertCircleMeta } from "../db";
 import { audit } from "../auth/audit";
 import { requireAuth, requireRole } from "../auth/middleware";
-import { enqueueJoin, ensureFunded, joinQueueStatus } from "../autopilot";
+import { decideFor, enqueueJoin, ensureFunded, joinQueueStatus } from "../autopilot";
 import { ensureDemoFunding, underfundedReport } from "../demo/funding";
 import { unassessedJoinCollateral, validateTierBps } from "../demo/params";
 import { assessAndSetTier } from "./members";
@@ -100,7 +100,8 @@ demo.post("/demo/new-circle", ...adminOnly, wrap(async (req, res) => {
 
   // Every demo wallet joins unassessed → pays the High multiplier. Check (and top up) before touching the chain.
   const collateral = unassessedJoinCollateral(contribution, parsed.data.highBps);
-  const underfunded = await ensureDemoFunding(collateral);
+  // Each wallet needs its collateral plus every round's contribution (payouts stay claimable in the contract).
+  const underfunded = await ensureDemoFunding(collateral + contribution * BigInt(members));
   if (underfunded) {
     audit(req, "demo.new-circle", null, "denied", { meta: { reason: "DEMO_UNDERFUNDED", wallets: underfunded.wallets, deployer: underfunded.deployer } });
     res.status(409).json({ error: "demo wallets are underfunded and the deployer cannot cover the shortfall — claim testnet MST from the faucet", ...underfunded });
@@ -157,6 +158,26 @@ demo.post("/demo/cancel", ...adminOnly, wrap(async (req, res) => {
   }
   audit(req, "demo.cancel", `circle:${circleId}`, "ok", { txHash: rc.hash, meta: { joinDeadline: c.joinDeadline, memberCount: c.memberCount } });
   res.json({ txHash: rc.hash });
+}));
+
+const decideBody = z.object({ circleId: z.coerce.number().int().positive(), decision: z.enum(["accept", "decline"]) });
+/** POST /demo/decide { circleId, decision } — the custodial recipient accepts or declines the full pot from its own key. */
+demo.post("/demo/decide", ...adminOnly, wrap(async (req, res) => {
+  requireDemo();
+  const parsed = decideBody.safeParse(req.body);
+  if (!parsed.success) throw new ApiError(400, "body must be { circleId, decision: accept|decline }", "BAD_BODY");
+  const { circleId, decision } = parsed.data;
+  const c = await getCircle(circleId);
+  if (c.status !== 1 || c.phase !== 1) throw new ApiError(409, "the pot is not waiting for a decision", "NOT_DECIDING");
+  const w = demoWallet(c.recipient);
+  if (!w) throw new ApiError(409, "the recipient is not a custodial demo wallet; only they can decide", "NOT_DEMO_RECIPIENT");
+  let txHash: string;
+  try { txHash = await decideFor(circleId, w, decision, "admin"); } catch (e) {
+    audit(req, `demo.${decision}`, `circle:${circleId}`, "failed", { meta: { round: c.round, label: w.label, error: e instanceof Error ? e.message.slice(0, 300) : String(e) } });
+    throw e;
+  }
+  audit(req, `demo.${decision}`, `circle:${circleId}`, "ok", { txHash, meta: { round: c.round, label: w.label } });
+  res.json({ txHash });
 }));
 
 const withdrawBody = z.object({ address: z.string(), circleId: z.coerce.number().int().positive() });

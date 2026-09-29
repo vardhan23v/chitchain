@@ -4,7 +4,7 @@
  * `placeBid` from the custodial demo wallet. Every step is written as an AgentEvent (short text + user reason).
  */
 import { formatEther } from "ethers";
-import { contractAs, demoWallet, errorMessage, getMember, isConfigured, preflight, provider, sendTx, type RoundView } from "../chain";
+import { contractAs, demoWallet, errorMessage, getMember, isConfigured, potOf, preflight, provider, sendTx, type CircleView, type RoundView } from "../chain";
 import { loop } from "../bus";
 import { activeBidAgents, getBidAgent, insertAgentLog, lastAgentEvent, listAgentEvents, type BidAgentApi } from "../db";
 import { auditSystem } from "../auth/audit";
@@ -50,16 +50,16 @@ function toBrief(agent: BidAgentApi): StrategyBrief {
     urgency: level(agent.urgency), riskTolerance: level(agent.riskTolerance), expiresAt: agent.expiresAt, autonomous: agent.autonomous,
   };
 }
-function toFallback(agent: BidAgentApi, snap: AuctionSnapshot, round: RoundView): { s: FallbackStrategy; a: FallbackAuction } {
+function toFallback(agent: BidAgentApi, snap: AuctionSnapshot, round: RoundView, circle: CircleView): { s: FallbackStrategy; a: FallbackAuction } {
   return {
     s: { desiredPayout: agent.desiredPayout === null ? null : BigInt(agent.desiredPayout), maxDiscount: BigInt(agent.maxDiscount), maxDiscountPct: agent.maxDiscountPct, urgency: agent.urgency, riskTolerance: agent.riskTolerance },
-    a: { status: snap.status, expectedPot: round.expectedPot, bestDiscount: round.bestDiscount, contractMaxDiscount: round.maxDiscount, secondsRemaining: snap.secondsRemaining, biddingWindowSec: Math.max(1, round.deadline - round.contributionDeadline) },
+    a: { status: snap.status, expectedPot: potOf(round), bestDiscount: round.bestDiscount, contractMaxDiscount: round.maxDiscount, secondsRemaining: snap.secondsRemaining, biddingWindowSec: Math.max(1, circle.biddingDuration) },
   };
 }
 
 /** ANALYZE + DECIDE: crew first (timeout 20 s), deterministic fallback otherwise. The crew's number is always clamped. */
-async function decide(agent: BidAgentApi, snap: AuctionSnapshot, round: RoundView): Promise<{ d: Decision; crewError: string | null }> {
-  const { s, a } = toFallback(agent, snap, round);
+async function decide(agent: BidAgentApi, snap: AuctionSnapshot, round: RoundView, circle: CircleView): Promise<{ d: Decision; crewError: string | null }> {
+  const { s, a } = toFallback(agent, snap, round, circle);
   if (crewConfigured()) {
     try {
       const history = (await listAgentEvents(agent.id, { limit: 200 })).slice(-HISTORY_LINES).map((e) => ({ ts: e.ts, kind: e.kind, text: e.text, reason: e.reason, data: e.data }));
@@ -79,7 +79,7 @@ async function execute(agent: BidAgentApi, discount: bigint, snap: AuctionSnapsh
   const w = demoWallet(agent.member);
   if (!w) throw new Error("not a custodial demo wallet");
   const m = memOf(agent.id);
-  const pot = round.expectedPot;
+  const pot = potOf(round);
   const payout = discount >= pot ? 0n : pot - discount;
   const contract = contractAs(w.wallet); // custodial demo wallet — bids from the member's own key
   const ctx = `ai ${w.label} circle ${agent.circleId} round ${snap.round}`;
@@ -128,7 +128,7 @@ export async function tickAgent(agent: BidAgentApi, force = false): Promise<{ de
     // 1. expiry / circle state
     if (agent.expiresAt !== null && now > agent.expiresAt) { await finish(agent, "Strategy expired"); return null; }
     const bundle = await buildSnapshot(agent.circleId);
-    const { snapshot: snap, round } = bundle;
+    const { snapshot: snap, round, circle } = bundle;
     if (snap.status === "INACTIVE") { await finish(agent, "Circle is no longer active"); return null; }
     if (m.startRound === null) {
       const info = await lastAgentEvent(agent.id, "INFO");
@@ -164,18 +164,23 @@ export async function tickAgent(agent: BidAgentApi, force = false): Promise<{ de
       }
       return { decision, bundle };
     };
-    if (snap.status !== "BIDDING") return quiet(snap.status === "CONTRIBUTION" ? "Waiting for the bidding phase to open" : "Bidding closed; waiting for settlement");
+    // v2.2: the agent never opens an auction. It only acts after the recipient declined the full pot on-chain.
+    if (snap.status !== "BIDDING") {
+      return quiet(snap.status === "CONTRIBUTION" ? "Waiting for contributions; an auction opens only if the recipient declines the full pot"
+        : snap.status === "DECISION" ? "Waiting for the recipient to accept or decline the full pot"
+        : "Bidding closed; waiting for settlement");
+    }
     if (snap.bestBidder === agent.member) return quiet("You hold the winning bid");
     // 4. ANALYZE + DECIDE (rate-limited)
     if (!force && now < m.nextRetryAt) return null;
     if (!force && now - m.lastLlmAt < LLM_MIN_INTERVAL_SEC && m.lastLlmBest === best) return null;
     m.lastLlmAt = now; m.lastLlmBest = best;
-    const { d, crewError } = await decide(agent, snap, round);
+    const { d, crewError } = await decide(agent, snap, round, circle);
     await recordEvent(agent.id, "EVALUATED", d.source === "crew" ? "Evaluated by the AI crew" : "Evaluated by deterministic rules", null, {
       source: d.source, confidence: d.confidence, reasonCode: d.reasonCode, analyst: d.analyst, crewError, round: snap.round,
     });
     const label = d.decision === "BID" && d.discount !== null ? `Decision: BID ${asMst(d.discount)}` : `Decision: ${d.decision}`;
-    const payout = d.discount === null ? null : (d.discount >= round.expectedPot ? 0n : round.expectedPot - d.discount).toString();
+    const payout = d.discount === null ? null : (d.discount >= potOf(round) ? 0n : potOf(round) - d.discount).toString();
     await recordEvent(agent.id, "DECISION", label, d.reason, { decision: d.decision, discount: d.discount?.toString() ?? null, payout, confidence: d.confidence, reasonCode: d.reasonCode, source: d.source, round: snap.round });
     agent = await setAgentStatus(agent.id, { lastDecision: d.decision, lastReason: d.reason });
     if (d.decision === "STOP") {
@@ -200,7 +205,7 @@ export async function tickAgent(agent: BidAgentApi, force = false): Promise<{ de
     const risk = riskGuard({
       discount: d.discount, maxDiscount: BigInt(agent.maxDiscount), maxDiscountPct: agent.maxDiscountPct, agentCircleId: agent.circleId,
       agentStatus: agent.status, autonomous: agent.autonomous, expiresAt: agent.expiresAt,
-      circleId: snap.circleId, round: snap.round, auctionStatus: snap.status, expectedPot: round.expectedPot, contractMaxDiscount: round.maxDiscount, bestDiscount: round.bestDiscount,
+      circleId: snap.circleId, round: snap.round, auctionStatus: snap.status, expectedPot: potOf(round), contractMaxDiscount: round.maxDiscount, bestDiscount: round.bestDiscount,
       decisionRound: snap.round, isDemoWallet: w !== null, balance,
       member: { joined: member.joined, hasWon: member.hasWon, removed: member.removed, paidThisRound: member.paidThisRound }, nowSec: nowSec(),
     });

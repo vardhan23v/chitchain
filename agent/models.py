@@ -31,7 +31,8 @@ class Auction(BaseModel):
     circleId: int
     round: int = 0
     roundsTotal: int = 0
-    status: Literal["CONTRIBUTION", "BIDDING", "SETTLING", "INACTIVE"] = "INACTIVE"
+    # DECISION: the pot is ready and the round's recipient may accept it in full; BIDDING exists only after they decline.
+    status: Literal["CONTRIBUTION", "DECISION", "BIDDING", "SETTLING", "INACTIVE"] = "INACTIVE"
     expectedPotMst: float = 0
     collectedMst: float = 0
     maxDiscountMst: float = 0

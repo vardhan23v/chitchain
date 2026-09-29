@@ -6,10 +6,11 @@ import {IChitChain} from "./IChitChain.sol";
 import {ChitChainBase} from "./ChitChainBase.sol";
 import {ChitChainSettlement} from "./ChitChainSettlement.sol";
 
-/// @title ChitChain v2 — a trust-minimised chit fund. The pot sits in this contract, not in anyone's account.
+/// @title ChitChain v2.2 — a trust-minimised chit fund. The pot sits in this contract, not in anyone's account.
 /// @notice One contract, many circles. Native MST (testnet). All payouts are pull-based via `withdraw`.
-///         Each round has two phases: contributions (contributionDuration) then bidding (biddingDuration);
-///         bids are accepted from round start until the bidding deadline. Behaviour follows ARCHITECTURE.md §3.
+///         Round flow: contributions (contributionDuration, closes early once everyone paid) → pot ready, the designated
+///         recipient accepts the full pot or declines (biddingDuration) → only after a decline, an auction
+///         (biddingDuration) where the lowest payout offer (= highest discount) wins. Behaviour follows ARCHITECTURE.md §3.
 contract ChitChain is ChitChainSettlement, ReentrancyGuard {
     constructor(address riskOracle_, address treasury_) ChitChainBase(riskOracle_, treasury_) {}
 
@@ -112,25 +113,66 @@ contract ChitChain is ChitChainSettlement, ReentrancyGuard {
 
     // ───────────────────────── Rounds ─────────────────────────
     /// @inheritdoc IChitChain
-    function contribute(uint256 circleId) external payable override {
+    /// @dev The contribution that completes the pot closes the phase immediately (recipient decision opens).
+    function contribute(uint256 circleId) external payable override nonReentrant {
         Circle storage c = _circles[circleId];
         if (c.status != Status.Active) revert NotActive();
         MemberState storage m = _ms[circleId][msg.sender];
         if (!m.joined) revert NotMember();
         if (m.removed) revert MemberRemoved();
-        if (block.timestamp > c.contributionDeadline) revert ContributionClosed();
+        if (c.phase != Phase.Contributing || block.timestamp > c.contributionDeadline) revert ContributionClosed();
         if (_paid[circleId][c.round][msg.sender]) revert AlreadyPaid();
         if (msg.value != c.params.contribution) revert WrongAmount(c.params.contribution, msg.value);
 
         _paid[circleId][c.round][msg.sender] = true;
         c.collected += msg.value;
         emit Contributed(circleId, c.round, msg.sender, msg.value);
+        if (c.collected == c.params.contribution * _activeCount(c, circleId)) _closeContributions(c, circleId);
     }
 
     /// @inheritdoc IChitChain
+    /// @dev Permissionless once the contribution deadline passed; misses are covered from collateral here, on-chain.
+    function closeContributions(uint256 circleId) external override nonReentrant {
+        Circle storage c = _circles[circleId];
+        if (c.status != Status.Active) revert NotActive();
+        if (c.phase != Phase.Contributing) revert WrongPhase(c.phase);
+        if (block.timestamp <= c.contributionDeadline) revert ContributionsOpen();
+        _closeContributions(c, circleId);
+    }
+
+    /// @inheritdoc IChitChain
+    /// @dev Only the designated recipient, only while deciding. Settles at once: full pot (minus fee/holdback), no auction.
+    function acceptFullPot(uint256 circleId) external override nonReentrant {
+        Circle storage c = _circles[circleId];
+        _requireDeciding(c);
+        emit FullPotAccepted(circleId, c.round, msg.sender, c.collected);
+        _settle(c, circleId, msg.sender, 0, Outcome.Accepted);
+    }
+
+    /// @inheritdoc IChitChain
+    /// @dev Only the designated recipient, only while deciding. Opens the auction for biddingDuration.
+    function declineFullPot(uint256 circleId) external override {
+        Circle storage c = _circles[circleId];
+        _requireDeciding(c);
+        c.phase = Phase.Auction;
+        c.biddingDeadline = uint64(block.timestamp) + c.params.biddingDuration;
+        emit FullPotDeclined(circleId, c.round, msg.sender, c.biddingDeadline);
+    }
+
+    function _requireDeciding(Circle storage c) internal view {
+        if (c.status != Status.Active) revert NotActive();
+        if (c.phase != Phase.Deciding) revert WrongPhase(c.phase);
+        if (msg.sender != c.recipient) revert NotRecipient();
+        if (block.timestamp > c.decisionDeadline) revert DecisionClosed();
+    }
+
+    /// @inheritdoc IChitChain
+    /// @dev `discount` = pot − the payout the bidder is willing to accept. A bid must offer a strictly lower payout
+    ///      (higher discount) than the current best. Only during an auction opened by the recipient's decline.
     function placeBid(uint256 circleId, uint256 discount) external override {
         Circle storage c = _circles[circleId];
         if (c.status != Status.Active) revert NotActive();
+        if (c.phase != Phase.Auction) revert WrongPhase(c.phase);
         MemberState storage m = _ms[circleId][msg.sender];
         if (!m.joined || m.removed || m.hasWon) revert NotEligibleToBid();
         if (block.timestamp > c.biddingDeadline) revert BiddingClosed();
@@ -147,47 +189,24 @@ contract ChitChain is ChitChainSettlement, ReentrancyGuard {
     }
 
     /// @inheritdoc IChitChain
-    /// @dev No external calls; loops bounded by MAX_MEMBERS. Defaults are detected and covered here, on-chain.
+    /// @dev Permissionless. Deciding past its deadline → the recipient receives the full pot (DecisionTimeout).
+    ///      Auction past its deadline → the lowest payout offer wins; with no bids the recipient receives the full pot.
+    ///      No external calls; loops bounded by MAX_MEMBERS.
     function settleRound(uint256 circleId) external override nonReentrant {
         Circle storage c = _circles[circleId];
         if (c.status != Status.Active) revert NotActive();
-        if (block.timestamp <= c.biddingDeadline) revert BiddingNotOver();
-
-        uint8 round = c.round;
-        uint256 pot = _collectMissed(c, circleId, round);
-        c.collected = 0;
-
-        uint256 fee = (pot * c.params.feeBps) / BPS;
-        c.reserve += fee;
-
-        (address winner, uint256 discount) = _pickWinner(c, circleId, round);
-        uint256 payout;
-        uint256 holdback;
-
-        if (winner == address(0)) {
-            // nobody eligible: share the whole pot (minus fee) as dividends
-            _shareDividends(c, circleId, round, pot - fee, address(0));
-            discount = 0;
-        } else {
-            MemberState storage w = _ms[circleId][winner];
-            w.hasWon = true;
-            payout = pot - fee - discount;
-            (payout, holdback) = _applyHoldback(c, circleId, winner, w, payout);
-            if (_activeCount(c, circleId) > 1) {
-                _shareDividends(c, circleId, round, discount, winner);
-            } else {
-                payout += discount; // no one else to share with
-            }
-            w.claimable += payout;
+        if (c.phase == Phase.Contributing) revert WrongPhase(c.phase);
+        if (c.phase == Phase.Deciding) {
+            if (block.timestamp <= c.decisionDeadline) revert DecisionNotOver();
+            _settle(c, circleId, c.recipient, 0, Outcome.DecisionTimeout);
+            return;
         }
-        _history[circleId][round] = RoundRecord(winner, uint64(block.timestamp), pot, payout, discount, fee, holdback);
-        emit RoundSettled(circleId, round, winner, pot, payout, discount, fee);
-
-        if (_eligibleCount(c, circleId) == 0) {
-            _complete(c, circleId);
+        if (block.timestamp <= c.biddingDeadline) revert BiddingNotOver();
+        address best = _bestBidder[circleId][c.round];
+        if (best != address(0)) {
+            _settle(c, circleId, best, _bestDiscount[circleId][c.round], Outcome.Auction);
         } else {
-            c.round = round + 1;
-            _startRound(c);
+            _settle(c, circleId, c.recipient, 0, Outcome.NoBids);
         }
     }
 

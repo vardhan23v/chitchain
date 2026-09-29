@@ -1,13 +1,19 @@
 /** v4 shared shapes: auction snapshot (GET /auction/:id), strategy sent to the crew, and the crew's decision. */
 
-export type AuctionStatus = "CONTRIBUTION" | "BIDDING" | "SETTLING" | "INACTIVE";
+/**
+ * v2.2: CONTRIBUTION (members paying) → DECISION (pot ready; the recipient accepts the full pot or declines) →
+ * BIDDING (only after a decline) → SETTLING (a window passed; the keeper settles). INACTIVE once the circle is not Active.
+ */
+export type AuctionStatus = "CONTRIBUTION" | "DECISION" | "BIDDING" | "SETTLING" | "INACTIVE";
 
 /** Wire shape of GET /auction/:circleId (wei as strings, MST as numbers). */
 export interface AuctionSnapshot {
   circleId: number; round: number; roundsTotal: number; status: AuctionStatus;
   expectedPot: string; collected: string; maxDiscount: string; bestDiscount: string;
   bestBidder: string | null; bestBidderLabel: string | null; bestPayout: string;
-  biddingDeadline: number; contributionDeadline: number; secondsRemaining: number; bidCount: number;
+  biddingDeadline: number; contributionDeadline: number; decisionDeadline: number; secondsRemaining: number; bidCount: number;
+  /** designated recipient of this round (null while contributing) */
+  recipient: string | null; recipientLabel: string | null;
   expectedPotMst: number; collectedMst: number; maxDiscountMst: number; bestDiscountMst: number; bestPayoutMst: number;
   nowSec: number;
 }

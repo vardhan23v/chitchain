@@ -10,7 +10,7 @@ import { EASE } from "@/components/motion/Reveal";
 import { ContributionChip } from "@/components/StatusChip";
 import type { RoomData } from "@/hooks/useCircle";
 import { useRoundClock } from "@/hooks/useCountdown";
-import { big, formatMst } from "@/lib/format";
+import { big, formatMst, shortAddr } from "@/lib/format";
 import { PHASE_LABEL } from "@/lib/labels";
 import type { MyCircle } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,7 @@ export function ActiveChitCard({ summary, room, loading, className }: Props) {
   const me = room?.members.find((m) => m.address.toLowerCase() === summary.me.address.toLowerCase()) ?? summary.me;
   const active = circle.status === 1;
   const clock = useRoundClock(round, active);
-  const deadline = clock.roundPhase === "contribution" ? clock.contributionDeadline : clock.biddingDeadline;
+  const deadline = clock.biddingDeadline; // v2.2: end of the current window (contributions, decision or auction)
   const progress = circle.maxMembers > 0 ? Math.max(0, Math.min(100, ((circle.round - 1) / circle.maxMembers) * 100)) : 0;
   const hasBid = !!round && big(round.bestDiscount) > 0n;
   const potWei = round ? round.collected : (BigInt(circle.contribution) * BigInt(circle.memberCount)).toString();
@@ -72,8 +72,13 @@ export function ActiveChitCard({ summary, room, loading, className }: Props) {
           <dd className="mt-1 font-semibold">{formatMst(me.collateral)} MST{big(me.collateralUsed) > 0n && <span className="ml-1 font-normal text-warning">({formatMst(me.collateralUsed)} used)</span>}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Current best discount</dt>
-          <dd className="mt-1 font-semibold">{round && hasBid ? `${formatMst(round.bestDiscount)} MST` : <span className="font-normal text-muted-foreground">No bids yet</span>}</dd>
+          <dt className="text-muted-foreground">{round?.phaseCode === 2 ? "Current lowest payout" : "Recipient this round"}</dt>
+          <dd className="mt-1 font-semibold">
+            {round?.phaseCode === 2
+              ? hasBid && round.lowestAcceptedPayout ? `${formatMst(round.lowestAcceptedPayout, 3)} MST` : <span className="font-normal text-muted-foreground">No offers yet</span>
+              : round?.recipient ? (round.recipientName ?? (round.recipientLabel ? `Demo ${round.recipientLabel}` : shortAddr(round.recipient)))
+              : <span className="font-normal text-muted-foreground">Named when the pot is ready</span>}
+          </dd>
         </div>
       </dl>
 

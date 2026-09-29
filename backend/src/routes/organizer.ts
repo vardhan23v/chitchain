@@ -20,13 +20,13 @@ async function circleDetail(id: number, c: CircleView) {
   const active = members.filter((m) => m.removed !== true);
   const paid = active.filter((m) => m.paidThisRound === true).length;
   const collateralTotal = members.reduce((sum, m) => sum + BigInt(String(m.collateral ?? "0")), 0n);
-  const r = roundInfo(round) as Record<string, unknown>;
+  const r = (await roundInfo(round)) as Record<string, unknown>;
   return {
     summary: circleSummary(id, c, isDemo, meta), members, round: r, defaults,
     pendingContributions: c.status === 1 ? active.length - paid : 0,
     contributionRate: active.length > 0 ? paid / active.length : 0,
     collateralTotal: collateralTotal.toString(),
-    lowestAcceptedPayout: String(r.lowestAcceptedPayout ?? "0"),
+    lowestAcceptedPayout: r.lowestAcceptedPayout == null ? null : String(r.lowestAcceptedPayout),
   };
 }
 

@@ -43,6 +43,11 @@ export function contractAs(wallet: ManagedWallet): Contract { return readContrac
 // ───────────── typed views ─────────────
 export type Tier = 0 | 1 | 2 | 3;
 export type Status = 0 | 1 | 2 | 3;
+/** v2.2 on-chain round phase: 0 Contributing, 1 Deciding (pot ready, recipient chooses), 2 Auction (only after a decline). */
+export type Phase = 0 | 1 | 2;
+/** v2.2 settled-round outcome. */
+export const OUTCOME_NAME = ["NONE", "ACCEPTED", "AUCTION", "DECISION_TIMEOUT", "NO_BIDS", "NO_RECIPIENT"] as const;
+export type OutcomeName = (typeof OUTCOME_NAME)[number];
 export const TIER_NAME = ["Unassessed", "Low", "Medium", "High"] as const;
 
 export interface CircleParams {
@@ -55,17 +60,23 @@ export const DEFAULT_BPS = { feeBps: 100, holdbackBps: 1000, maxDiscountBps: 400
 export interface CircleView {
   creator: string; contribution: bigint; baseCollateral: bigint; maxMembers: number; contributionDuration: number; biddingDuration: number;
   joinDeadline: number; feeBps: number; holdbackBps: number; maxDiscountBps: number; lowBps: number; mediumBps: number; highBps: number;
-  status: Status; round: number; contributionDeadline: number; roundDeadline: number /* = bidding deadline */; reserve: bigint; memberCount: number;
+  status: Status; round: number; contributionDeadline: number; roundDeadline: number /* = auction deadline, 0 until a decline */; reserve: bigint; memberCount: number;
+  phase: Phase; decisionDeadline: number; recipient: string;
 }
 export interface MemberView {
   joined: boolean; tier: Tier; hasWon: boolean; removed: boolean; collateral: bigint; claimable: bigint; paidThisRound: boolean; bidThisRound: bigint;
   defaults: number; collateralUsed: bigint;
 }
 export interface RoundView {
-  round: number; contributionDeadline: number; deadline: number /* bidding deadline */; expectedPot: bigint; collected: bigint;
+  round: number; contributionDeadline: number; deadline: number /* auction deadline, 0 until a decline */; expectedPot: bigint; collected: bigint;
   bestBidder: string; bestDiscount: bigint; maxDiscount: bigint;
+  phase: Phase; recipient: string; decisionDeadline: number; pot: bigint /* assembled pot once contributions closed, else 0 */;
 }
-export interface RoundRecord { winner: string; settledAt: number; pot: bigint; payout: bigint; discount: bigint; fee: bigint; holdback: bigint }
+export interface RoundRecord {
+  winner: string; settledAt: number; pot: bigint; payout: bigint; discount: bigint; fee: bigint; holdback: bigint; outcome: OutcomeName; recipient: string;
+}
+/** The pot a payout offer is measured against: the assembled pot once contributions closed, else the expected pot. */
+export function potOf(r: Pick<RoundView, "pot" | "expectedPot" | "phase">): bigint { return r.phase === 0 ? r.expectedPot : r.pot; }
 export interface ReputationView { paidOnTime: number; missed: number; circlesCompleted: number; circlesRemoved: number }
 
 const n = (v: unknown): number => Number(v);
@@ -99,6 +110,7 @@ async function readCircle(id: number, c: Contract): Promise<CircleView> {
     feeBps: n(r.feeBps), holdbackBps: n(r.holdbackBps), maxDiscountBps: n(r.maxDiscountBps), lowBps: n(r.lowBps), mediumBps: n(r.mediumBps), highBps: n(r.highBps),
     status: n(r.status) as Status, round: n(r.round), contributionDeadline: n(r.contributionDeadline), roundDeadline: n(r.roundDeadline),
     reserve: b(r.reserve), memberCount: n(r.memberCount),
+    phase: n(r.phase) as Phase, decisionDeadline: n(r.decisionDeadline), recipient: String(r.recipient),
   };
 }
 export function getMembers(id: number, c = readContract()): Promise<string[]> {
@@ -119,6 +131,7 @@ async function readRound(id: number, c: Contract): Promise<RoundView> {
   return {
     round: n(r.round), contributionDeadline: n(r.contributionDeadline), deadline: n(r.biddingDeadline), expectedPot: b(r.expectedPot), collected: b(r.collected),
     bestBidder: String(r.bestBidder), bestDiscount: b(r.bestDiscount), maxDiscount: b(r.maxDiscount),
+    phase: n(r.phase) as Phase, recipient: String(r.recipient), decisionDeadline: n(r.decisionDeadline), pot: b(r.pot),
   };
 }
 /** Settlement record for a past round (winner = zero address means the pot was shared as dividends). */
@@ -132,13 +145,21 @@ export function getRoundHistory(id: number, round: number, c = readContract()): 
 }
 async function readRoundHistory(id: number, round: number, c: Contract): Promise<RoundRecord> {
   const r = (await c.getRoundHistory(id, round)) as Result;
-  return { winner: String(r.winner), settledAt: n(r.settledAt), pot: b(r.pot), payout: b(r.payout), discount: b(r.discount), fee: b(r.fee), holdback: b(r.holdback) };
+  return {
+    winner: String(r.winner), settledAt: n(r.settledAt), pot: b(r.pot), payout: b(r.payout), discount: b(r.discount), fee: b(r.fee), holdback: b(r.holdback),
+    outcome: OUTCOME_NAME[n(r.outcome)] ?? "NONE", recipient: String(r.recipient),
+  };
 }
-/** Phase of the current round at `nowSec` (contribution → bidding → settling once the bidding deadline passed). */
-export function roundPhase(r: { contributionDeadline: number; deadline: number }, nowSec = Math.floor(Date.now() / 1000)): "contribution" | "bidding" | "settling" {
-  if (nowSec <= r.contributionDeadline) return "contribution";
-  if (nowSec <= r.deadline) return "bidding";
-  return "settling";
+export type RoundPhaseName = "contribution" | "closing" | "decision" | "bidding" | "settling";
+/**
+ * Phase of the current round at `nowSec`, from the on-chain phase plus its deadline:
+ * contribution → closing (deadline passed, keeper covers misses) → decision (recipient accepts or declines)
+ * → bidding (only after a decline) → settling (decision or auction window passed, keeper settles).
+ */
+export function roundPhase(r: Pick<RoundView, "phase" | "contributionDeadline" | "decisionDeadline" | "deadline">, nowSec = Math.floor(Date.now() / 1000)): RoundPhaseName {
+  if (r.phase === 0) return nowSec <= r.contributionDeadline ? "contribution" : "closing";
+  if (r.phase === 1) return nowSec <= r.decisionDeadline ? "decision" : "settling";
+  return nowSec <= r.deadline ? "bidding" : "settling";
 }
 /** Sends createCircle(CircleParams) from `wallet`. The struct is passed as a plain object (ethers encodes named tuples). */
 export function createCircleCall(wallet: ManagedWallet, p: CircleParams): Promise<ContractTransactionResponse> {

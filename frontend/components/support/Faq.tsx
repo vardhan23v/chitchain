@@ -21,10 +21,18 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     ),
   },
   {
+    q: "How a round works: take the pot or open an auction",
+    a: (
+      <>
+        Every member pays the contribution; the last payment makes the pot ready. The round&apos;s <strong>recipient</strong> (next in join order who has not received a pot) gets the first choice: <strong>accept the full pot</strong> and the round settles with no auction, or <strong>decline and open an auction</strong>. In the auction, members who have not received a pot offer to take less than the full pot; the lowest payout offer wins, and the difference is shared equally by everyone else as dividends. If the recipient does not decide in time, or declines and nobody offers, the recipient receives the full pot. Every step is a contract transaction.
+      </>
+    ),
+  },
+  {
     q: "Transactions and MSTScan",
     a: (
       <>
-        Every action (join, contribute, bid, settle, withdraw) is a real transaction on {CHAIN_NAME}. Each toast and feed item links to <A href={EXPLORER_URL}>MSTScan</A>, where you can verify the amount, the sender and the contract. The stages are waiting for wallet, signing, submitted, confirming and confirmed.
+        Every action (join, contribute, accept or decline the pot, bid, settle, withdraw) is a real transaction on {CHAIN_NAME}. Each toast and feed item links to <A href={EXPLORER_URL}>MSTScan</A>, where you can verify the amount, the sender and the contract. The stages are waiting for wallet, signing, submitted, confirming and confirmed.
       </>
     ),
   },
@@ -32,7 +40,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     q: "Roles: member, organizer, admin, contract",
     a: (
       <>
-        A <strong>member</strong> joins, contributes, bids and withdraws. A <strong>circle organizer</strong> names their circle, invites wallets and reads analytics. A <strong>platform admin</strong> manages users, the audit log and support. The <strong>smart contract</strong> controls the funds, no role can move a member&apos;s money; payouts are pull-only.
+        A <strong>member</strong> joins, contributes, accepts or declines the pot on their turn, bids and withdraws. A <strong>circle organizer</strong> names their circle, invites wallets and reads analytics. A <strong>platform admin</strong> manages users, the audit log and support. The <strong>smart contract</strong> controls the funds, no role can move a member&apos;s money; payouts are pull-only.
       </>
     ),
   },

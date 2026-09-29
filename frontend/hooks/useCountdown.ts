@@ -42,33 +42,35 @@ export function useCountdown(deadline: number | null | undefined, active: boolea
 }
 
 export interface RoundClock {
-  /** Which window we are in right now, derived from the two deadlines (client clock). */
+  /** Which window we are in right now: the on-chain phase plus its deadline (client clock). */
   roundPhase: RoundPhase;
-  /** Countdown to the end of the current window (contribution → bidding → settle). */
+  /** Countdown to the end of the current window (contribution, recipient decision or auction). */
   current: CountdownState;
-  /** Countdown to the bidding deadline (settle-able time). */
+  /** Same as `current` (kept for callers that show the settle-able time). */
   bidding: CountdownState;
   contributionDeadline: number;
+  /** Deadline of the current window. */
   biddingDeadline: number;
 }
 
 /**
- * Two-deadline countdown for a v2 round: contributions close at `contributionDeadline`,
- * bidding closes at `deadline` (= settle-able). The phase flips client-side the moment a deadline passes,
- * without waiting for the next poll; the backend's `round.phase` is used as the initial hint.
+ * v2.2 round clock: the window follows the on-chain phase (contributions → recipient decision → auction only after a
+ * decline). The stage flips client-side the moment the current deadline passes, without waiting for the next poll.
  */
-export function useRoundClock(round: Pick<RoundInfo, "contributionDeadline" | "deadline" | "phase"> | null | undefined, active: boolean): RoundClock {
+export function useRoundClock(
+  round: Pick<RoundInfo, "contributionDeadline" | "deadline" | "decisionDeadline" | "phase" | "phaseCode"> | null | undefined,
+  active: boolean
+): RoundClock {
+  const code = round?.phaseCode ?? 0;
   const contributionDeadline = round?.contributionDeadline ?? 0;
-  const biddingDeadline = round?.deadline ?? 0;
-  const now = useNow(active && biddingDeadline > 0);
-  if (!active || !round || !biddingDeadline) {
+  const windowDeadline = !round ? 0 : code === 0 ? round.contributionDeadline : code === 1 ? round.decisionDeadline ?? 0 : round.deadline;
+  const now = useNow(active && windowDeadline > 0);
+  if (!active || !round || !windowDeadline) {
     const idle: CountdownState = { remaining: 0, phase: "running", overdueMs: 0 };
-    return { roundPhase: round?.phase ?? "settling", current: idle, bidding: idle, contributionDeadline, biddingDeadline };
+    return { roundPhase: round?.phase ?? "settling", current: idle, bidding: idle, contributionDeadline, biddingDeadline: windowDeadline };
   }
-  const bidding = derive(biddingDeadline, now);
-  const contribution = contributionDeadline > 0 ? derive(contributionDeadline, now) : bidding;
-  const nowSec = now / 1000;
-  const roundPhase: RoundPhase = nowSec < contributionDeadline ? "contribution" : nowSec < biddingDeadline ? "bidding" : "settling";
-  const current = roundPhase === "contribution" ? contribution : bidding;
-  return { roundPhase, current, bidding, contributionDeadline, biddingDeadline };
+  const current = derive(windowDeadline, now);
+  const open = now / 1000 <= windowDeadline;
+  const roundPhase: RoundPhase = code === 0 ? (open ? "contribution" : "closing") : code === 1 ? (open ? "decision" : "settling") : open ? "bidding" : "settling";
+  return { roundPhase, current, bidding: current, contributionDeadline, biddingDeadline: windowDeadline };
 }

@@ -5,7 +5,7 @@ import type { AgentEventApi, BidAgentApi } from "./db/ai";
 export interface BusEvents {
   /** A new round is live (CircleStarted seen, or a RoundSettled advanced the circle). */
   roundStarted: (circleId: number) => void;
-  /** The contribution phase of the current round ended; only bidding remains (pot is final). */
+  /** The recipient declined the full pot: the auction is open (pot is final). */
   biddingPhase: (circleId: number) => void;
   /** A decoded contract event was inserted by the indexer. */
   chainEvent: (name: string, circleId: number | null, args: Record<string, string | number | boolean>) => void;

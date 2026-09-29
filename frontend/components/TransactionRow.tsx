@@ -20,7 +20,9 @@ export function txType(e: FeedEvent): TxType {
     case "Covered":
       return "contribution";
     case "BidPlaced":
+    case "FullPotDeclined":
       return "bid";
+    case "FullPotAccepted":
     case "RoundSettled":
     case "DividendCredited":
     case "HoldbackApplied":
@@ -51,7 +53,7 @@ const CELL = "px-3 py-2.5 align-middle";
 
 function actor(e: FeedEvent): string {
   const a = e.args ?? {};
-  const v = a.member ?? a.winner ?? a.creator;
+  const v = a.member ?? a.winner ?? a.recipient ?? a.creator;
   return v ? String(v) : "";
 }
 

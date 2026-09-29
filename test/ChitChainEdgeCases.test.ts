@@ -1,30 +1,17 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
-import { ChitChain } from "../typechain-types";
-import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import { deployEnv, params, type Env } from "./helpers";
 
 describe("ChitChain Edge Cases & Boundary Conditions", () => {
-  let chitChain: ChitChain;
-  let organizer: HardhatEthersSigner;
-  let user1: HardhatEthersSigner;
-  let user2: HardhatEthersSigner;
-
-  beforeEach(async () => {
-    [organizer, user1, user2] = await ethers.getSigners();
-    const Factory = await ethers.getContractFactory("ChitChain");
-    chitChain = (await Factory.deploy()) as ChitChain;
-    await chitChain.waitForDeployment();
-  });
+  let env: Env;
+  beforeEach(async () => { env = await deployEnv(); });
 
   it("should enforce minimum contribution floor", async () => {
-    await expect(
-      chitChain.createCircle("Tiny Pot", 0, 3600, 2, ethers.ZeroAddress)
-    ).to.be.revertedWith("Contribution must be > 0");
+    await expect(env.chit.createCircle(params({ contribution: 0n }))).to.be.revertedWithCustomError(env.chit, "InvalidParams");
   });
 
   it("should enforce valid cycle durations", async () => {
-    await expect(
-      chitChain.createCircle("Zero Duration", ethers.parseEther("0.1"), 0, 2, ethers.ZeroAddress)
-    ).to.be.revertedWith("Invalid duration");
+    await expect(env.chit.createCircle(params({ contributionDuration: 0 }))).to.be.revertedWithCustomError(env.chit, "InvalidParams");
+    await expect(env.chit.createCircle(params({ biddingDuration: 0 }))).to.be.revertedWithCustomError(env.chit, "InvalidParams");
+    await expect(env.chit.createCircle(params({ joinWindow: 0 }))).to.be.revertedWithCustomError(env.chit, "InvalidParams");
   });
 });

@@ -1,33 +1,53 @@
-import { contractAs, errorMessage, getCircle, getCircleCount, isConfigured, keeper, preflight, revertName, sendTx } from "./chain";
+import { contractAs, errorMessage, getCircle, getCircleCount, isConfigured, keeper, preflight, revertName, sendTx, type CircleView } from "./chain";
 import { bus, loop } from "./bus";
 import { auditSystem } from "./auth/audit";
 
-const pending = new Set<string>(); // `${circleId}:${round}` while a settle tx is in flight
+/**
+ * v2.2 keeper. Each round moves through on-chain phases; the keeper only ever triggers the permissionless step whose
+ * deadline has passed (it never decides for anyone):
+ *   Contributing, past contributionDeadline → closeContributions (misses covered from collateral, recipient named)
+ *   Deciding,     past decisionDeadline     → settleRound (the recipient receives the full pot)
+ *   Auction,      past the auction deadline → settleRound (lowest payout offer wins; no bids → recipient)
+ */
+const pending = new Set<string>(); // `${circleId}:${round}:${phase}` while a tx is in flight
 const finished = new Set<number>(); // Completed / Cancelled circles — no need to re-read every tick
-const biddingPlanned = new Set<string>(); // `${circleId}:${round}` once the agent was re-planned for the bidding-only window
-const NON_FATAL = ["BiddingNotOver", "NotActive"];
+const auctionSeen = new Set<string>(); // `${circleId}:${round}` once the auction phase was announced on the bus
+const NON_FATAL = ["BiddingNotOver", "DecisionNotOver", "ContributionsOpen", "WrongPhase", "NotActive"];
 
-/** Settles `circleId` now if its bidding deadline passed. Returns the tx hash, or throws a readable error. */
-export async function settleNow(circleId: number, ctx = "keeper"): Promise<string> {
+export type KeeperStep = "closeContributions" | "settleRound";
+/** The step due for this circle at `nowSec`, or null when nothing is due yet. */
+export function dueStep(c: Pick<CircleView, "status" | "phase" | "contributionDeadline" | "decisionDeadline" | "roundDeadline">, nowSec: number): KeeperStep | null {
+  if (c.status !== 1) return null;
+  if (c.phase === 0) return nowSec > c.contributionDeadline ? "closeContributions" : null;
+  if (c.phase === 1) return nowSec > c.decisionDeadline ? "settleRound" : null;
+  return nowSec > c.roundDeadline ? "settleRound" : null;
+}
+
+/** Runs the due step for `circleId` now. Returns the tx hash, or throws a readable error (e.g. "NothingDue"). */
+export async function settleNow(circleId: number, ctx = "keeper"): Promise<{ txHash: string; step: KeeperStep }> {
   if (!keeper) throw new Error("KEEPER_PRIVATE_KEY not configured");
   const c = await getCircle(circleId);
   if (c.status !== 1) throw new Error("NotActive");
-  const key = `${circleId}:${c.round}`;
-  if (pending.has(key)) throw new Error("settle already pending");
+  const step = dueStep(c, Math.floor(Date.now() / 1000));
+  if (!step) throw new Error("NothingDue");
+  const key = `${circleId}:${c.round}:${c.phase}`;
+  if (pending.has(key)) throw new Error("already pending");
   pending.add(key);
+  const action = step === "closeContributions" ? "keeper.close" : "keeper.settle";
+  const actor = ctx === "keeper" ? "KEEPER" : "SYSTEM";
   try {
     const contract = contractAs(keeper);
-    await preflight(contract, "settleRound", [circleId]); // never send a tx that would revert
+    await preflight(contract, step, [circleId]); // never send a tx that would revert
     let rc;
     try {
-      rc = await sendTx(`${ctx} circle ${circleId} round ${c.round}`, keeper, () => contract.settleRound(circleId));
+      rc = await sendTx(`${ctx} ${step} circle ${circleId} round ${c.round}`, keeper, () => contract[step](circleId));
     } catch (e) {
-      auditSystem(ctx === "keeper" ? "KEEPER" : "SYSTEM", "keeper.settle", `circle:${circleId}`, "failed", null, { round: c.round, error: errorMessage(e), ctx });
+      auditSystem(actor, action, `circle:${circleId}`, "failed", null, { round: c.round, phase: c.phase, error: errorMessage(e), ctx });
       throw e;
     }
-    auditSystem(ctx === "keeper" ? "KEEPER" : "SYSTEM", "keeper.settle", `circle:${circleId}`, "ok", rc.hash, { round: c.round, ctx });
-    bus.emit("roundStarted", circleId);
-    return rc.hash;
+    auditSystem(actor, action, `circle:${circleId}`, "ok", rc.hash, { round: c.round, phase: c.phase, ctx });
+    if (step === "settleRound") bus.emit("roundStarted", circleId);
+    return { txHash: rc.hash, step };
   } finally {
     pending.delete(key);
   }
@@ -39,35 +59,26 @@ async function keeperTick(): Promise<void> {
   const count = await getCircleCount();
   for (let id = 1; id <= count; id++) {
     if (finished.has(id)) continue;
-    let status: number;
-    let roundDeadline: number;
-    let contributionDeadline: number;
-    let round: number;
-    try {
-      const c = await getCircle(id);
-      status = c.status; roundDeadline = c.roundDeadline; contributionDeadline = c.contributionDeadline; round = c.round;
-    } catch (e) {
+    let c: CircleView;
+    try { c = await getCircle(id); } catch (e) {
       console.error(`[keeper] circle ${id}: read failed: ${errorMessage(e)}`);
       continue;
     }
-    if (status === 2 || status === 3) { finished.add(id); continue; }
-    if (status !== 1) continue;
-    // Contribution phase just ended → bidding-only window: let the agent re-plan once against the final pot.
-    const bidKey = `${id}:${round}`;
-    if (nowSec > contributionDeadline && nowSec <= roundDeadline && !biddingPlanned.has(bidKey)) {
-      biddingPlanned.add(bidKey);
-      bus.emit("biddingPhase", id);
-    }
-    if (nowSec <= roundDeadline) continue;
-    if (pending.has(`${id}:${round}`)) continue;
+    if (c.status === 2 || c.status === 3) { finished.add(id); continue; }
+    if (c.status !== 1) continue;
+    // Auction open (recipient declined) → let mandates/agents plan once against the final pot.
+    const auctionKey = `${id}:${c.round}`;
+    if (c.phase === 2 && !auctionSeen.has(auctionKey)) { auctionSeen.add(auctionKey); bus.emit("biddingPhase", id); }
+    if (!dueStep(c, nowSec)) continue;
+    if (pending.has(`${id}:${c.round}:${c.phase}`)) continue;
     try {
       await settleNow(id);
     } catch (e) {
       const name = revertName(e) ?? errorMessage(e);
-      if (NON_FATAL.some((n) => name.includes(n)) || /nonce|already known|replacement/i.test(name)) {
-        console.log(`[keeper] circle ${id} round ${round}: skipped (${name})`);
+      if (NON_FATAL.some((n) => name.includes(n)) || /nonce|already known|replacement|pending/i.test(name)) {
+        console.log(`[keeper] circle ${id} round ${c.round}: skipped (${name})`);
       } else {
-        console.error(`[keeper] circle ${id} round ${round}: settle failed: ${name}`);
+        console.error(`[keeper] circle ${id} round ${c.round}: step failed: ${name}`);
       }
     }
   }

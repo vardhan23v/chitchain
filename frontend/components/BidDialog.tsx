@@ -15,7 +15,9 @@ import type { RoundInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface Props {
-  round: Pick<RoundInfo, "expectedPot" | "maxDiscount" | "bestDiscount" | "bestBidder">;
+  round: Pick<RoundInfo, "potForOffers" | "maxDiscount" | "bestDiscount" | "bestBidder">;
+  /** circle fee in bps (taken from the pot at settlement) */
+  feeBps?: number;
   /** Connected account for the gas check. */
   account: string | null;
   activeMembers: number;
@@ -31,13 +33,14 @@ interface Props {
 }
 
 /**
- * "Place a bid": pot, current best discount, your discount, resulting payout, collateral note, balance check,
- * then "Confirm in wallet" which calls the existing bid action. The discount is what goes on-chain.
+ * "Place a bid": the member enters their PAYOUT OFFER (how much of the pot they will accept). The lowest offer wins.
+ * The contract stores the discount (pot − offer), which is shared as dividends. Shows pot, current lowest payout,
+ * current discount, the resulting discount and dividend, a gas check, then "Confirm in wallet" (the existing bid action).
  */
-export function BidDialog({ round, account, activeMembers, labelFor, onBid, pending, disabled, disabledReason, triggerClassName, triggerSize = "default" }: Props) {
+export function BidDialog({ round, feeBps = 0, account, activeMembers, labelFor, onBid, pending, disabled, disabledReason, triggerClassName, triggerSize = "default" }: Props) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const pot = big(round.expectedPot);
+  const pot = big(round.potForOffers);
   const maxDiscount = big(round.maxDiscount);
   const bestDiscount = big(round.bestDiscount);
   const hasBid = !!round.bestBidder && !sameAddr(round.bestBidder, ZERO_ADDRESS) && bestDiscount > 0n;
@@ -45,30 +48,34 @@ export function BidDialog({ round, account, activeMembers, labelFor, onBid, pend
   const gasCheck = useBalanceCheck(open ? 0n : null, account);
   const short = !!gasCheck && !gasCheck.ok;
 
-  let discount: bigint | null = null;
+  const minPayout = pot > maxDiscount ? pot - maxDiscount : 0n;
+  const lowestPayout = hasBid ? pot - bestDiscount : null;
+  let offer: bigint | null = null;
   try {
-    discount = input ? toWei(input) : null;
+    offer = input ? toWei(input) : null;
   } catch {
-    discount = null;
+    offer = null;
   }
-  const tooHigh = discount !== null && discount > maxDiscount;
-  const notBetter = discount !== null && hasBid && discount <= bestDiscount;
-  const zero = discount !== null && discount <= 0n;
-  const invalid = tooHigh || notBetter || zero;
-  const payout = discount !== null && discount <= pot ? pot - discount : null;
+  const discount = offer !== null && offer <= pot ? pot - offer : null;
+  const aboveCeiling = offer !== null && (lowestPayout !== null ? offer >= lowestPayout : offer >= pot);
+  const belowFloor = offer !== null && offer < minPayout;
+  const invalid = offer !== null && (aboveCeiling || belowFloor || discount === null);
   const others = Math.max(1, activeMembers - 1);
-  const canSend = discount !== null && !invalid && !short && !pending;
+  const fee = (pot * BigInt(feeBps)) / 10_000n;
+  const receive = offer !== null && !invalid && offer > fee ? offer - fee : null;
+  const canSend = offer !== null && discount !== null && !invalid && !short && !pending;
 
-  const hint = tooHigh
-    ? `Maximum discount this round is ${formatMst(maxDiscount)} MST.`
-    : notBetter
-      ? `Beat the current best of ${formatMst(bestDiscount)} MST to lead.`
-      : zero
-        ? "Enter a discount above 0 MST."
-        : "The highest discount wins the pot; the discount is shared as dividends.";
+  const hint = belowFloor
+    ? `The lowest payout allowed this round is ${formatMst(minPayout, 4)} MST.`
+    : aboveCeiling
+      ? lowestPayout !== null
+        ? `Offer less than the current lowest payout of ${formatMst(lowestPayout, 4)} MST to lead.`
+        : `Offer less than the full pot of ${formatMst(pot, 4)} MST.`
+      : "The lowest payout offer wins. The difference from the pot is shared by the other members.";
 
   const submit = async () => {
     if (discount === null || !canSend) return;
+    // on-chain the bid is the discount: pot − your payout offer
     setOpen(false);
     await onBid(discount);
     setInput("");
@@ -85,26 +92,30 @@ export function BidDialog({ round, account, activeMembers, labelFor, onBid, pend
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Place a bid</DialogTitle>
-          <DialogDescription>Offer a discount on the pot. The winner receives the pot minus their discount; the discount becomes dividends for everyone else.</DialogDescription>
+          <DialogDescription>Say how much of the pot you will accept. The lowest payout offer wins; the difference from the pot becomes dividends for everyone else.</DialogDescription>
         </DialogHeader>
-        <dl className="grid grid-cols-2 gap-3 text-[13px]">
+        <dl className="grid grid-cols-3 gap-2 text-[13px]">
           <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
-            <dt className="text-muted-foreground">Current pot</dt>
-            <dd><MstcAmount wei={pot} size="md" className="text-pot" /></dd>
+            <dt className="text-muted-foreground">Pot</dt>
+            <dd><MstcAmount wei={pot} size="md" decimals={4} className="text-pot" /></dd>
           </div>
           <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
-            <dt className="text-muted-foreground">Current best discount</dt>
-            <dd>{hasBid ? <><MstcAmount wei={bestDiscount} size="md" /> <span className="text-[12px] text-muted-foreground">by {labelFor(round.bestBidder)}</span></> : <span className="font-medium text-muted-foreground">No bids yet</span>}</dd>
+            <dt className="text-muted-foreground">Current lowest payout</dt>
+            <dd>{lowestPayout !== null ? <><MstcAmount wei={lowestPayout} size="md" decimals={4} /> <span className="block text-[12px] text-muted-foreground">by {labelFor(round.bestBidder)}</span></> : <span className="font-medium text-muted-foreground">No offers yet</span>}</dd>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+            <dt className="text-muted-foreground">Current discount</dt>
+            <dd>{hasBid ? <MstcAmount wei={bestDiscount} size="md" decimals={4} /> : <span className="font-medium text-muted-foreground">0 MST</span>}</dd>
           </div>
         </dl>
         <div className="space-y-2">
-          <Label htmlFor="bid-discount">Your discount</Label>
+          <Label htmlFor="bid-discount">Your payout offer</Label>
           <div className="relative">
             <Input
               id="bid-discount"
               inputMode="decimal"
               autoFocus
-              placeholder={hasBid ? `more than ${formatMst(bestDiscount)}` : `up to ${formatMst(maxDiscount)}`}
+              placeholder={lowestPayout !== null ? `less than ${formatMst(lowestPayout, 4)}` : `${formatMst(minPayout, 4)} to less than ${formatMst(pot, 4)}`}
               value={input}
               onChange={(e) => setInput(e.target.value.replace(/[^0-9.]/g, ""))}
               className={cn("tnum h-11 pr-14 text-[16px]", invalid && "border-danger focus-visible:ring-danger/30")}
@@ -117,10 +128,11 @@ export function BidDialog({ round, account, activeMembers, labelFor, onBid, pend
         </div>
         <div className="rounded-xl border border-white/[0.08] bg-surface2 p-3">
           <div className="flex items-baseline justify-between gap-2 text-[13px]">
-            <span className="text-muted-foreground">Resulting payout</span>
-            <span className="tnum text-[20px] font-semibold text-foreground">{payout !== null && !invalid ? formatMst(payout) : "0.00"} <span className="text-[12px] font-medium text-muted-foreground">MST</span></span>
+            <span className="text-muted-foreground">Discount if you win</span>
+            <span className="tnum text-[20px] font-semibold text-foreground">{discount !== null && !invalid ? formatMst(discount, 4) : "0.00"} <span className="text-[12px] font-medium text-muted-foreground">MST</span></span>
           </div>
-          {discount !== null && !invalid && <p className="tnum mt-1 text-[12px] text-muted-foreground">About {formatMst(discount / BigInt(others))} MST dividend to each of the other {others} member{others === 1 ? "" : "s"}.</p>}
+          {discount !== null && !invalid && <p className="tnum mt-1 text-[12px] text-muted-foreground">About {formatMst(discount / BigInt(others), 4)} MST shared to each of the other {others} member{others === 1 ? "" : "s"}.</p>}
+          {receive !== null && feeBps > 0 && <p className="tnum mt-1 text-[12px] text-muted-foreground">You receive {formatMst(receive, 4)} MST after the {(feeBps / 100).toFixed(feeBps % 100 ? 2 : 0)} % platform fee; part may stay locked with your collateral until the circle completes.</p>}
           <p className="mt-2 text-[12px] text-muted-foreground">Bidding sends no MST now. Your collateral stays locked and the payout is claimable after settlement.</p>
         </div>
         <BalanceShortfall check={gasCheck} />

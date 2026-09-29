@@ -17,16 +17,16 @@ type Step = { title: string; text: string; Icon: LucideIcon; color: string; bg: 
 const STEPS: Step[] = [
   { title: "Join", text: "Lock collateral sized by your risk tier. It sits in the contract.", Icon: UserPlus, color: "text-primary", bg: "bg-primary/15" },
   { title: "Contribute", text: "Pay the fixed amount each round while contributions are open.", Icon: Coins, color: "text-pot", bg: "bg-pot/15" },
-  { title: "Bid", text: "Say the lowest payout you'd accept. The lowest accepted payout wins.", Icon: Gavel, color: "text-agent", bg: "bg-agent/15" },
-  { title: "Settle", text: "Anyone can settle after bidding closes. The discount becomes dividends.", Icon: Trophy, color: "text-success", bg: "bg-success/15" },
+  { title: "Choose or bid", text: "This round's recipient takes the full pot, or declines. Only then an auction opens and the lowest payout offer wins.", Icon: Gavel, color: "text-agent", bg: "bg-agent/15" },
+  { title: "Settle", text: "The contract pays the winner. After an auction, the discount is shared with everyone else as dividends.", Icon: Trophy, color: "text-success", bg: "bg-success/15" },
 ];
 
 /** Captions under the illustration. Real numbers from the example circle when there is one, otherwise neutral copy. */
 const CAPTIONS: ((ex: PotExample | null) => string)[] = [
   (ex) => (ex ? `${ex.maxMembers} members join and lock collateral in the contract.` : "Members join and lock collateral in the contract."),
   (ex) => (ex ? `Each pays ${formatMst(ex.contributionWei)} MST per round, so the pot is ${formatMst(ex.potWei)} MST.` : "Everyone contributes and the pot grows inside the contract."),
-  (ex) => (ex ? `Members bid a discount, up to ${(ex.maxDiscountBps / 100).toFixed(0)} % of the pot. The lowest accepted payout wins.` : "Members who need money now bid a discount. The lowest accepted payout wins."),
-  () => "The winner is paid out. The discount is shared with everyone else as dividends.",
+  (ex) => (ex ? `The recipient can take the whole pot. If they decline, members offer to take up to ${(ex.maxDiscountBps / 100).toFixed(0)} % less, and the lowest payout offer wins.` : "The recipient can take the whole pot. If they decline, the lowest payout offer wins."),
+  () => "The winner is paid out. After an auction, the discount is shared with everyone else as dividends.",
 ];
 
 function StepCard({ s, i }: { s: Step; i: number }) {
@@ -47,7 +47,7 @@ function StepCard({ s, i }: { s: Step; i: number }) {
 }
 
 /**
- * Landing section: Join, Contribute, Bid, Settle.
+ * Landing section: Join, Contribute, Choose or bid, Settle.
  * Desktop with animations on: the section pins for three screens while the steps light up and the pot illustration
  * plays one round, all driven by scroll position. Smaller screens: a timeline whose rail draws as you scroll.
  * Animations off: the plain four-card grid.

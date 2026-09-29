@@ -40,8 +40,9 @@ export function DefaultEventCard({ d, compact, className }: Props) {
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="text-[15px] font-semibold leading-snug">
-            {memberLabel(d.label, d.member)} missed the Round {d.round} contribution.
+            {partial ? "Default: collateral ran out" : "Default protection activated"}
           </h3>
+          <p className="text-[13px] text-foreground">{memberLabel(d.label, d.member)} missed the Round {d.round} contribution. {partial ? "The contract used all remaining collateral to cover the missed payment." : "The contract used collateral to cover the missed payment."}</p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[13px] text-muted-foreground">
             <span>{partial ? `Partially covered, shortfall ${formatMst(shortfall)} MST.` : `Collateral covered ${formatMst(d.fromCollateral)} MST.`}</span>
             <span className="tnum">{timeAgo(d.ts)}</span>

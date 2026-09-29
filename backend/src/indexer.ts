@@ -77,6 +77,7 @@ export async function indexOnce(): Promise<void> {
       for (const r of rows) {
         bus.emit("chainEvent", r.name, r.circleId, r.args);
         if (r.circleId !== null && (r.name === "CircleStarted" || r.name === "RoundSettled")) bus.emit("roundStarted", r.circleId);
+        if (r.circleId !== null && r.name === "FullPotDeclined") bus.emit("biddingPhase", r.circleId);
       }
     }
     await setLastBlock(to);

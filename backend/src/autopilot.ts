@@ -1,15 +1,19 @@
 import { parseEther } from "ethers";
 import {
-  contractAs, deployer, demoWallets, errorMessage, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, isConfigured, preflight, provider, sendTx,
-  type DemoWallet, type ManagedWallet,
+  contractAs, deployer, demoWallet, demoWallets, errorMessage, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, getRound, isConfigured, potOf,
+  preflight, provider, sendTx, type CircleView, type DemoWallet, type ManagedWallet,
 } from "./chain";
-import { addDemoCircle, demoCircleIds, getSkip } from "./db";
+import { activeBidAgents, addDemoCircle, demoCircleIds, getSkip } from "./db";
+import { DECIDE_DELAY_SEC, OFFER_START_SEC, OFFER_STEP_SEC, demoScript, discountForOffer } from "./demo/script";
 import { loop } from "./bus";
 import { auditSystem } from "./auth/audit";
 
 /**
- * Demo autopilot: for circles created via /demo/new-circle, contribute for every custodial demo wallet
- * ~5 s into each round (while the contribution phase is open) unless the wallet is marked `skip`. One tx at a time per wallet.
+ * Demo autopilot, for circles created via /demo/new-circle (custodial demo wallets A–E only):
+ * - contributes for every demo wallet ~5 s into each round unless the wallet is marked `skip` or the script skips it;
+ * - when a demo wallet is the round's recipient and nobody decided yet, accepts or declines per demo/script.ts;
+ * - after a decline, places the scripted payout offers one by one (real bids from each member's own key).
+ * One tx at a time per wallet.
  */
 const CONTRIBUTE_DELAY_SEC = 5;
 const busy = new Set<string>(); // wallet addresses with a tx in flight
@@ -113,13 +117,74 @@ async function joinOne(circleId: number, w: DemoWallet, st: JoinWalletState): Pr
   }
 }
 
+/** Accept or decline the full pot from a custodial recipient's own key. Shared by the autopilot and POST /demo/decide. */
+export async function decideFor(circleId: number, w: DemoWallet, decision: "accept" | "decline", ctx: string): Promise<string> {
+  const method = decision === "accept" ? "acceptFullPot" : "declineFullPot";
+  const contract = contractAs(w.wallet); // custodial demo wallet — decide from the member's own key
+  await preflight(contract, method, [circleId]);
+  const rc = await withWallet(w.wallet, () => sendTx(`${ctx} ${method} ${w.label} circle ${circleId}`, w.wallet, () => contract[method](circleId)));
+  if (!rc) throw new Error("wallet busy, try again");
+  auditSystem("AUTOPILOT", `autopilot.${decision}`, `circle:${circleId}`, "ok", rc.hash, { member: w.address, label: w.label, ctx });
+  return rc.hash;
+}
+
+const decided = new Set<string>(); // `${circleId}:${round}` once the script acted (or failed) on the decision
+const offered = new Set<string>(); // `${circleId}:${round}:${label}` once a scripted offer was sent or skipped
+
+async function scriptDecision(circleId: number, c: CircleView, nowSec: number): Promise<void> {
+  const key = `${circleId}:${c.round}`;
+  if (decided.has(key)) return;
+  const w = demoWallet(c.recipient);
+  if (!w) { decided.add(key); return; } // a real wallet is the recipient: only they decide
+  const opensAt = c.decisionDeadline - c.biddingDuration;
+  if (nowSec < opensAt + DECIDE_DELAY_SEC || nowSec >= c.decisionDeadline - 2) return;
+  decided.add(key);
+  const decision = demoScript(c.round).decision;
+  try { await decideFor(circleId, w, decision, "autopilot"); } catch (e) {
+    const msg = errorMessage(e);
+    console.error(`[autopilot] ${decision} ${w.label} circle ${circleId} round ${c.round}: ${msg}`);
+    auditSystem("AUTOPILOT", `autopilot.${decision}`, `circle:${circleId}`, "failed", null, { round: c.round, member: w.address, label: w.label, error: msg });
+  }
+}
+
+async function scriptOffers(circleId: number, c: CircleView, nowSec: number): Promise<void> {
+  const offers = demoScript(c.round).offers;
+  if (!offers.length) return;
+  const opensAt = c.roundDeadline - c.biddingDuration;
+  if (nowSec >= c.roundDeadline - 2) return;
+  const agents = new Set((await activeBidAgents()).filter((a) => a.circleId === circleId).map((a) => a.member.toLowerCase()));
+  for (let i = 0; i < offers.length; i++) {
+    const o = offers[i];
+    const key = `${circleId}:${c.round}:${o.label}`;
+    if (offered.has(key)) continue;
+    if (nowSec < opensAt + OFFER_START_SEC + i * OFFER_STEP_SEC) return; // offers go out in order
+    offered.add(key);
+    const w = demoWallets.find((d) => d.label === o.label);
+    if (!w || agents.has(w.address.toLowerCase())) continue; // an AI agent bids for this wallet instead
+    const round = await getRound(circleId);
+    const discount = discountForOffer(potOf(round), o.payoutPct);
+    if (discount <= round.bestDiscount) continue; // someone already offered a lower payout
+    const contract = contractAs(w.wallet); // custodial demo wallet — bid from the member's own key
+    try {
+      await preflight(contract, "placeBid", [circleId, discount]);
+      const rc = await withWallet(w.wallet, () => sendTx(`autopilot offer ${w.label} circle ${circleId} round ${c.round}`, w.wallet, () => contract.placeBid(circleId, discount)));
+      if (rc) auditSystem("AUTOPILOT", "autopilot.bid", `circle:${circleId}`, "ok", rc.hash, { round: c.round, member: w.address, label: w.label, discount: discount.toString(), payoutPct: o.payoutPct });
+    } catch (e) {
+      const msg = errorMessage(e);
+      console.log(`[autopilot] offer ${w.label} circle ${circleId} round ${c.round} skipped: ${msg}`);
+    }
+    return; // one offer per tick keeps the order visible
+  }
+}
+
 async function contributeFor(circleId: number, round: number, label: string, wallet: ManagedWallet, contribution: bigint): Promise<void> {
   const key = `${circleId}:${round}:${wallet.address.toLowerCase()}`;
   if (done.has(key)) return;
   await withWallet(wallet, async () => {
     const m = await getMember(circleId, wallet.address);
     if (!m.joined || m.removed || m.paidThisRound) { done.add(key); return; }
-    if ((await provider.getBalance(wallet.address)) < contribution * 2n) await ensureFunded(wallet.address);
+    // top up to a few contributions plus gas, not a fixed 0.6 MST the deployer may not have
+    if ((await provider.getBalance(wallet.address)) < contribution * 2n) await ensureFunded(wallet.address, contribution * 2n, contribution * 5n + parseEther("0.02"));
     const contract = contractAs(wallet);
     try {
       await preflight(contract, "contribute", [circleId], { value: contribution });
@@ -161,13 +226,16 @@ async function autopilotTick(): Promise<void> {
     let circle;
     try { circle = await getCircle(circleId); } catch (e) { console.error(`[autopilot] circle ${circleId}: ${errorMessage(e)}`); continue; }
     if (circle.status !== 1) continue;
-    // v2: contributions are only accepted until contributionDeadline (bidding continues after that).
+    if (circle.phase === 1) { await scriptDecision(circleId, circle, nowSec); continue; }
+    if (circle.phase === 2) { await scriptOffers(circleId, circle, nowSec); continue; }
+    // Contributing: only until contributionDeadline; the last payment closes the phase on-chain.
     const roundStart = circle.contributionDeadline - circle.contributionDuration;
     if (nowSec < roundStart + CONTRIBUTE_DELAY_SEC || nowSec >= circle.contributionDeadline - 2) continue;
     const members = new Set((await getMembers(circleId)).map((a) => a.toLowerCase()));
     for (const w of demoWallets) {
       if (!members.has(w.address.toLowerCase())) continue;
       if (await getSkip(w.address)) continue;
+      if (demoScript(circle.round).skip.includes(w.label)) continue; // scripted missed payment (collateral covers it)
       await contributeFor(circleId, circle.round, w.label, w.wallet, circle.contribution);
     }
   }

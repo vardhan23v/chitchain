@@ -1,3 +1,42 @@
+# ChitChain v2.2 audit: recipient decision, auction, usernames (2026-09-29)
+
+Contract v2.2 `0x4096bDd55345CD98b4168d70A8595E544eEDCBFd` (block 5802569) on MST testnet. Evidence: `npx hardhat test` 49/49 (12 new decision-flow cases plus the brief's five-round scenario at 100 MST scale); backend `npm test` 68/68 (username rules, demo script); frontend typecheck, lint and build clean; three live demo circles run end to end on testnet (circle #2 is the brief's exact story, circle #3 adds an autonomous AI bid, circle #1 the insufficient-collateral path); headless Chrome screenshots of every phase at 1280 and 390 px with zero horizontal overflow.
+
+Legend: [x] verified front to back on the live deployment · [~] built and verified in part (what is missing is named) · [!] broken · [ ] not built.
+
+| Feature | Status | Evidence / gap |
+|---|---|---|
+| Wallet | [x] | BridgeKey connect, network switch and SIWE login unchanged since the v2.1 audit. Not re-signed with a browser wallet in this session. |
+| Username | [~] | Rules, reserved names and lookalike keys unit-tested; live `GET /usernames/check` verified (`Rahul` → `rahul` available, `adm1n` reserved); unique indexes in Postgres; first-login dialog, profile form and names across the UI built. **Missing:** a live `PUT /me/username` from a real wallet session in this run (needs a BridgeKey signature). Files: `backend/src/users/username.ts`, `backend/src/db/usernames.ts`, `backend/src/routes/users.ts`, `frontend/components/profile/*`. |
+| Create circle | [x] | Circles #1–#3 created on v2.2 (`createCircle` tx on circle #2 `0xe4045bc0…`). |
+| Join circle | [x] | 15 joins across the three circles, collateral locked by tier. |
+| Risk assessment | [x] | Unchanged heuristic + oracle `setRiskTier`; profile shows the tier. |
+| Collateral | [x] | Tier-priced at join; covers misses at close (`DefaultDetected` in circle #2 round 4). |
+| Contributions | [x] | Autopilot and UI; the completing payment closes the phase on-chain (`PotReady` in the same tx). |
+| Recipient selection | [x] | On-chain rotation `(round − 1) mod n`, skipping winners and removed members; circle #2 recipients A, B, C, E, B. |
+| Full pot acceptance | [x] | `acceptFullPot` (circle #2 rounds 1, 3, 4, 5); outcome `ACCEPTED`, no auction events; UI accept button with fee and holdback preview. The in-room button calls the same function from BridgeKey; the demo used the custodial path. |
+| Decline | [x] | `declineFullPot` changes the on-chain phase to Auction (circle #2 round 2 `0x429e904f…`); bids before it revert `WrongPhase` (tests D3, 13). |
+| Auction | [x] | Offers only in the Auction phase, ≥ pot − maxDiscount, strictly lower payout, closed after the window (tests D4–D9). |
+| Lowest bid winner | [x] | Circle #2: D at 0.090 of 0.1; circle #3: AI for C at 0.087. |
+| Payout | [x] | `pot − fee − discount`, holdback applied, pull-only `withdraw` (demo payouts withdrawn). |
+| Dividend | [x] | Discount split equally among the other active members: 0.0025 × 4 in circle #2, 0.00325 × 4 in circle #3; 12.5 × 4 in test D4. |
+| Default protection | [x] | Covered miss (circle #2 round 4) and exhausted collateral with shortfall and removal (circle #1 round 3); "Default protection activated" card. |
+| Next round | [x] | Each settle starts the next round in Contributing; circles complete when every active member has won. |
+| AI bidding | [x] | Circle #3: the agent logged WAIT during contributions and during the recipient decision, then bid after the decline (`0xcea22db6…`, `0x9d160510…`) and won. It never opens an auction. |
+| Dashboard | [x] | One next action per state (pay, choose, place a bid, wait), the decision card or the auction card. |
+| Transaction history | [x] | `PotReady`, `FullPotAccepted`, `FullPotDeclined` indexed and rendered in feed, activity and round history (outcome column). |
+| MSTScan verification | [x] | Every row links to `testnet.mstscan.com/tx/<hash>`; hashes listed in the README. |
+
+Assumptions stated in the brief's terms:
+- **Rotation.** The recipient is the next member in join order who has not received a pot, starting at `(round − 1) mod n`, so the brief's round-by-round recipients hold.
+- **No decision in time.** The recipient receives the full pot, so no one can force an auction by stalling.
+- **Declined and no offers.** The recipient receives the full pot.
+- **Offers.** The recipient may also bid after declining, as in the brief's round 2.
+- **Dividends.** The existing contract rule is kept: equal shares for every other active member, including members who already won, with dust to the first in join order.
+- **Fee and holdback.** The existing platform fee (1 %) and holdback still apply. An accepted full pot is paid as pot minus the fee, with part held as security until the circle completes.
+
+---
+
 > **Post-audit fixes (2026-09-29, commit after 352676c):** demo circle seeding now pre-checks funding and joins wallets from a background queue (circle #5 filled 5 of 5); `POST /demo/cancel`, `GET/POST /admin/treasury*` and `GET /circles/:id/invites/check` added; helmet security headers; `/health` reports demo wallet funding, LLM and CrewAI status; transaction-wait timeout with stuck-transaction UI; pre-send balance checks; tier multipliers must be above zero; chain-only fallback keeps default statuses; invites labelled informational. On v2.1 the previously missing evidence now exists: 5 contributions, 5 oracle tier writes, 3 cancels with refunds, a treasury withdrawal, and an autonomous agent bid on circle #5. Remaining open items: 100 MST-scale run (faucet budget), commit-reveal bidding, multisig oracle, external audit.
 
 # ChitChain implementation audit (read-only), 2026-09-29

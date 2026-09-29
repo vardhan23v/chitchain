@@ -30,7 +30,7 @@ interface Props {
 
 export const NEEDS_APPROVAL = "Needs your approval";
 
-const PHASE: Record<AuctionSnapshot["status"], string> = { CONTRIBUTION: "Contributions open", BIDDING: "Bidding open", SETTLING: "Settling", INACTIVE: "Auction inactive" };
+const PHASE: Record<AuctionSnapshot["status"], string> = { CONTRIBUTION: "Contributions open", DECISION: "Recipient deciding", BIDDING: "Auction open", SETTLING: "Settling", INACTIVE: "Auction inactive" };
 
 /** Live view of an attached agent: status, goal, four auction tiles, the AI status line and the controls. */
 export function AgentDashboard({ agent, auction, latest, labelFor, busy, onPause, onResume, onStop, onEvaluate, onApprove }: Props) {

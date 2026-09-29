@@ -76,7 +76,7 @@ export default function HomePage() {
             </h1>
           </RevealItem>
           <RevealItem>
-            <p className="mt-4 text-[15px] text-muted-foreground md:text-lg">Save together. Bid when you need it. Let smart contracts handle the pot.</p>
+            <p className="mt-4 text-[15px] text-muted-foreground md:text-lg">Save together. Take the pot on your turn, or bid for it when you need it sooner. Let smart contracts handle the money.</p>
           </RevealItem>
           <RevealItem className="mt-6 flex flex-wrap gap-3">
             <Magnetic><Button size="lg" asChild><Link href={enterHref}>Enter ChitChain</Link></Button></Magnetic>

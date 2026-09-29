@@ -53,7 +53,7 @@ me.get("/me", wrap(async (req, res) => {
     if (active) {
       const id = Number(active.id);
       const round = await getRound(id);
-      activeCircle = { ...active, roundNumber: Number(active.round), round: roundInfo(round) };
+      activeCircle = { ...active, roundNumber: Number(active.round), round: await roundInfo(round) };
     }
     if (totals.circles < mine.length) totals.circles = mine.length; // on-chain membership is the authority when the index is behind
   }

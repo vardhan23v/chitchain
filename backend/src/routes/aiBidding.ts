@@ -6,7 +6,7 @@
 import { Router } from "express";
 import { parseEther } from "ethers";
 import { z } from "zod";
-import { demoWallet, getCircle, getCircleCount, isConfigured } from "../chain";
+import { demoWallet, getCircle, getCircleCount, isConfigured, potOf } from "../chain";
 import { bidAgentsOf, createBidAgent, getBidAgent, liveBidAgent, listAgentEvents, type BidAgentApi } from "../db";
 import { audit } from "../auth/audit";
 import { assertOrganizer, requireAuth } from "../auth/middleware";
@@ -149,5 +149,5 @@ aiBidding.post("/ai/bidding/evaluate", requireAuth(), wrap(async (req, res) => {
   if (isRunning(agent.id)) throw new ApiError(409, "an evaluation is already running", "AGENT_BUSY");
   const out = await evaluateNow(agent.id);
   audit(req, "ai.agent.evaluate", `agent:${agent.id}`, "ok", { meta: { decision: out?.decision.decision ?? null } });
-  res.json({ decision: out ? decisionToApi(out.decision, out.bundle.round.expectedPot) : null, agent: await getBidAgent(agent.id) });
+  res.json({ decision: out ? decisionToApi(out.decision, potOf(out.bundle.round)) : null, agent: await getBidAgent(agent.id) });
 }));

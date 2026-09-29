@@ -22,8 +22,10 @@ export function CreateSummary({ v }: { v: CreateInput }) {
   const contribution = safeWei(v.contribution);
   const base = safeWei(v.baseCollateral);
   const pot = contribution * BigInt(v.maxMembers || 0);
+  // v2.2: contributions (can close early) + recipient decision, plus the auction only when the recipient declines
   const roundLen = (v.contributionDuration || 0) + (v.biddingDuration || 0);
-  const total = (v.maxMembers || 0) * roundLen;
+  const roundMax = roundLen + (v.biddingDuration || 0);
+  const total = (v.maxMembers || 0) * roundMax;
   const bpsFor = { lowBps: multToBps(v.lowMult || 0), mediumBps: multToBps(v.mediumMult || 0), highBps: multToBps(v.highMult || 0) };
   const tiers: Tier[] = [1, 2, 3, 0];
   const collateralFor = (t: Tier) => (base * BigInt(t === 1 ? bpsFor.lowBps : t === 2 ? bpsFor.mediumBps : bpsFor.highBps)) / BigInt(BPS);
@@ -33,8 +35,8 @@ export function CreateSummary({ v }: { v: CreateInput }) {
   const samplePayout = pot - maxDiscount - fee;
   const holdback = (samplePayout * BigInt(pctToBps(v.holdbackPct || 0))) / BigInt(BPS);
   const facts: [string, string][] = [
-    ["Round length", formatDuration(roundLen)],
-    ["Total duration", `${formatDuration(total)} · ${v.maxMembers} rounds`],
+    ["Round length", `up to ${formatDuration(roundLen)}, ${formatDuration(roundMax)} with an auction`],
+    ["Total duration", `up to ${formatDuration(total)} · ${v.maxMembers} rounds`],
     ["Fee per round", `${v.feePct}% to the reserve`],
     ["Max discount", `${v.maxDiscountPct}% · ${formatMst(maxDiscount)} MST`],
   ];

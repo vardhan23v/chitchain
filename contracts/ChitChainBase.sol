@@ -15,8 +15,11 @@ abstract contract ChitChainBase is IChitChain {
         uint64  contributionDeadline;
         uint64  biddingDeadline;
         uint256 reserve;
-        uint256 collected;      // contributions received in the current round
-        address[] members;      // join order (deterministic tie-breaks)
+        uint256 collected;      // contributions this round; after close = the assembled pot (incl. collateral cover)
+        address[] members;      // join order (deterministic tie-breaks, recipient rotation)
+        Phase   phase;          // v2.2: Contributing → Deciding → (Auction only after a decline)
+        uint64  decisionDeadline;
+        address recipient;      // designated recipient of the current round, set when contributions close
     }
 
     struct MemberState {
@@ -82,6 +85,9 @@ abstract contract ChitChainBase is IChitChain {
         v.roundDeadline = c.biddingDeadline;
         v.reserve = c.reserve;
         v.memberCount = uint8(c.members.length);
+        v.phase = c.phase;
+        v.decisionDeadline = c.decisionDeadline;
+        v.recipient = c.recipient;
     }
 
     function getMembers(uint256 circleId) external view override returns (address[] memory) {
@@ -100,7 +106,8 @@ abstract contract ChitChainBase is IChitChain {
         uint8 round = c.round;
         v = RoundView(round, c.contributionDeadline, c.biddingDeadline,
             c.params.contribution * _activeCount(c, circleId), c.collected,
-            _bestBidder[circleId][round], _bestDiscount[circleId][round], _maxDiscount(c, circleId));
+            _bestBidder[circleId][round], _bestDiscount[circleId][round], _maxDiscount(c, circleId),
+            c.phase, c.recipient, c.decisionDeadline, c.phase == Phase.Contributing ? 0 : c.collected);
     }
 
     function getRoundHistory(uint256 circleId, uint8 round) external view override returns (RoundRecord memory) {
@@ -133,8 +140,24 @@ abstract contract ChitChainBase is IChitChain {
         return 100;
     }
 
+    /// @dev Max discount = maxDiscountBps of the pot: the expected pot while contributing, the assembled pot after close.
     function _maxDiscount(Circle storage c, uint256 circleId) internal view returns (uint256) {
-        return (c.params.contribution * _activeCount(c, circleId) * c.params.maxDiscountBps) / BPS;
+        uint256 base = c.phase == Phase.Contributing ? c.params.contribution * _activeCount(c, circleId) : c.collected;
+        return (base * c.params.maxDiscountBps) / BPS;
+    }
+
+    /// @dev Rotation: the first member who has not won and is not removed, starting at position (round − 1) mod n in
+    ///      join order and wrapping. Round 1 → A, round 2 → B, …; members who already won are skipped.
+    function _recipientFor(Circle storage c, uint256 circleId, uint8 round) internal view returns (address) {
+        uint256 n = c.members.length;
+        if (n == 0) return address(0);
+        uint256 start = (uint256(round) - 1) % n;
+        for (uint256 k = 0; k < n; k++) {
+            address a = c.members[(start + k) % n];
+            MemberState storage m = _ms[circleId][a];
+            if (!m.removed && !m.hasWon) return a;
+        }
+        return address(0);
     }
 
     function _activeCount(Circle storage c, uint256 circleId) internal view returns (uint256 n) {
@@ -150,8 +173,13 @@ abstract contract ChitChainBase is IChitChain {
         }
     }
 
+    /// @dev Opens the contribution phase of the current round. Decision and auction deadlines are set later, only
+    ///      when the pot is ready and only if the recipient declines.
     function _startRound(Circle storage c) internal {
+        c.phase = Phase.Contributing;
         c.contributionDeadline = uint64(block.timestamp) + c.params.contributionDuration;
-        c.biddingDeadline = c.contributionDeadline + c.params.biddingDuration;
+        c.decisionDeadline = 0;
+        c.biddingDeadline = 0;
+        c.recipient = address(0);
     }
 }

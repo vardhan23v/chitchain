@@ -5,9 +5,9 @@ export type { Role, UserStatus };
 export const now = (): number => Math.floor(Date.now() / 1000);
 
 // ───────────── users (address stored lowercase) ─────────────
-export interface UserRow { walletAddress: string; role: Role; status: UserStatus; displayName: string | null; createdAt: number; lastLogin: number | null }
+export interface UserRow { walletAddress: string; role: Role; status: UserStatus; displayName: string | null; username: string | null; createdAt: number; lastLogin: number | null }
 export const toUserRow = (u: PUser): UserRow => ({
-  walletAddress: u.walletAddress, role: u.role, status: u.status, displayName: u.displayName, createdAt: u.createdAt, lastLogin: u.lastLogin,
+  walletAddress: u.walletAddress, role: u.role, status: u.status, displayName: u.displayName, username: u.username, createdAt: u.createdAt, lastLogin: u.lastLogin,
 });
 
 export async function getUser(addr: string): Promise<UserRow | null> {
@@ -34,7 +34,7 @@ export async function listUsers(opts: { role?: Role; status?: UserStatus; q?: st
     where: {
       ...(opts.role ? { role: opts.role } : {}),
       ...(opts.status ? { status: opts.status } : {}),
-      ...(opts.q ? { OR: [{ walletAddress: { contains: opts.q.toLowerCase() } }, { displayName: { contains: opts.q, mode: "insensitive" } }] } : {}),
+      ...(opts.q ? { OR: [{ walletAddress: { contains: opts.q.toLowerCase() } }, { displayName: { contains: opts.q, mode: "insensitive" } }, { username: { contains: opts.q.toLowerCase() } }] } : {}),
     },
     orderBy: [{ lastLogin: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     take: limit,

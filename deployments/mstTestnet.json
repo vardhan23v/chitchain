@@ -1,10 +1,10 @@
 {
   "network": "mstTestnet",
   "chainId": 91562037,
-  "address": "0xFBA432E34E70d6069677d80944A9eEf83376CA98",
+  "address": "0x4096bDd55345CD98b4168d70A8595E544eEDCBFd",
   "riskOracle": "0x3A9d4acAFD343D67a13756F8a905C08775004948",
   "treasury": "0xBA42c0f43BA244Fd9F0Bc3D196AC560E4336fa69",
-  "deployTx": "0xa875cb696c2f556e3b74aef3c9e10b7b69b2860649079b322a26552b573f023c",
-  "block": 5794708,
-  "deployedAt": "2026-09-28T23:49:44.687Z"
+  "deployTx": "0x9fa621a4a22f283f93eb62acfd1b441e5f39eee61b3f08b53e50354e20b2ce0d",
+  "block": 5802569,
+  "deployedAt": "2026-09-29T06:22:47.070Z"
 }

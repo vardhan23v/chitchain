@@ -347,3 +347,19 @@ Every effect follows the site animation preference (`components/motion/MotionPre
 | Magnetic primary buttons (lean up to 6 px toward the pointer) | landing CTAs | `motion/Magnetic.tsx` |
 | Rolling countdown digits | auction card, featured circle | `motion/RollingClock.tsx` |
 | Hero ring spins continuously | landing featured circle | `.ring-spin` in `globals.css` (stays on under the OS setting, stops when the toggle is Off) |
+
+## 16. Recipient decision, payout offers and usernames (contract v2.2, 2026-09-29)
+
+The auction is no longer the first thing a round shows. Screens follow the on-chain phase and never offer an action that cannot happen yet.
+
+| Component | Where | What it shows |
+|---|---|---|
+| `components/room/RoundTimeline.tsx` | room, organizer analytics | Chips for Contributions → Pot ready → Recipient decision → Auction (only if declined) → Settlement and payout → Dividends (only after an auction) → Next round, and the last settled round's path with its outcome sentence ("Demo A accepted the full pot: 0.0990 MST after the fee. No auction."). The step chips of the last round hide below `md`; the sentence stays. |
+| `components/room/RecipientDecision.tsx` | room and dashboard, while Deciding | "Your turn to receive the pot" for the recipient, otherwise "Recipient decision" naming who decides. Pot, platform fee, amount held with collateral and the claimable amount (`lib/payout.ts` mirrors the contract's fee and holdback math). Two actions with confirmation: **Accept {pot} MST** (primary) and **Decline and open auction** (secondary). Admins see "Accept for Demo X" / "Decline for Demo X" for a custodial demo recipient. |
+| `components/AuctionCard.tsx` | room and dashboard | Before a decline: a one-line card, no tiles, no bid button. After a decline: Pot, Current lowest payout, Current discount, Time remaining, and the offers list ("Demo B will take 0.096 MST (discount 0.004)"). |
+| `components/BidDialog.tsx` | from the auction card | The member types **Your payout offer**; the dialog shows the discount it creates, the dividend each other member would get and what the winner receives after the fee. The contract still receives the discount (`pot − offer`). |
+| `components/dashboard/NextActionCard.tsx` | dashboard | The one next step: "Your contribution is due" with **Pay X MST**, "Your turn to receive the pot" with **Choose now**, "Auction open" with **Place a bid**, "Your offer leads", or "Waiting for round settlement". |
+| `components/MemberName.tsx`, `lib/labels.ts nameOf` | everywhere a member is named | Username, else "Demo A" for custodial wallets, else the short address; the short address is always shown next to a name. |
+| `components/profile/UsernameGate.tsx`, `UsernameForm.tsx`, `ProfileStats.tsx` | first sign-in, `/member/:addr` | "Welcome to ChitChain" dialog after the first wallet sign-in; live availability (rules, reserved, taken, lookalike); profile stats: risk, circles, completed rounds, contributions, defaults, payouts, dividends, wallet. |
+
+Copy rules for this flow: "Receive this round's pot", "Accept {pot} MST", "Decline and open auction", "Your payout offer", "Current lowest payout", "Current discount", "Your share of the discount", "Default protection activated" and "Use collateral to cover missed payment". The member badge reads "First choice on the pot" while deciding and "Declined the pot" during the auction.

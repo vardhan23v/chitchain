@@ -78,7 +78,7 @@ export async function eventsInvolving(addr: string, limit = 50): Promise<EventRo
     take: Math.min(Math.max(limit, 1), 500) * 2, // over-fetch: other args (e.g. txHash-like strings) could match too
   });
   const a = addr.toLowerCase();
-  const KEYS = ["member", "winner", "bestBidder", "bidder", "creator"];
+  const KEYS = ["member", "winner", "bestBidder", "bidder", "creator", "recipient"];
   return rows
     .filter((r) => { const args = JSON.parse(r.argsJson) as Record<string, unknown>; return KEYS.some((k) => typeof args[k] === "string" && (args[k] as string).toLowerCase() === a); })
     .slice(0, limit)

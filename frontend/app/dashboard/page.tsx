@@ -22,6 +22,13 @@ import { TierChip } from "@/components/TierChip";
 import { TransactionRow } from "@/components/TransactionRow";
 import { ActiveChitCard } from "@/components/dashboard/ActiveChitCard";
 import { ControlPanel } from "@/components/dashboard/ControlPanel";
+import { NextActionCard } from "@/components/dashboard/NextActionCard";
+import { RecipientDecision } from "@/components/room/RecipientDecision";
+import { TxStepper } from "@/components/TxStepper";
+import { useRoomActions } from "@/hooks/useRoomActions";
+import { useWallet } from "@/hooks/useWallet";
+import { nameOf } from "@/lib/labels";
+import { useRef } from "react";
 import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { useCircle } from "@/hooks/useCircle";
@@ -54,7 +61,7 @@ function Dashboard() {
   const active = activeList[0] ?? null;
   const down = !!me.error && !me.data;
   const activity = useActivity(hasAddr ? account : null, 5);
-  const who = auth.user?.displayName || (hasAddr ? shortAddr(account) : "there");
+  const who = auth.user?.username || auth.user?.displayName || (hasAddr ? shortAddr(account) : "there");
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -133,7 +140,7 @@ function StatRow({ me, circles, loading }: { me: MeOverview | null; circles: MyC
   return (
     <RevealGroup as="section" mode="load" className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Overview">
       <StatCard label="Total locked" Icon={Lock} tone="text-primary" value={mstNumber(locked)} unit="MST" support={`Collateral across ${circles.length} active chit${circles.length === 1 ? "" : "s"} · testnet`} loading={loading} />
-      <StatCard label="Current pot" Icon={Landmark} tone="text-pot" value={ac ? mstNumber(ac.round.collected) : largest ? 0 : "None"} unit={ac || largest ? "MST" : undefined} support={ac ? `${ac.name ?? `Circle #${ac.id}`} · ${formatMst(ac.round.expectedPot)} MST expected` : "No active chit"} loading={loading} />
+      <StatCard label="Current pot" Icon={Landmark} tone="text-pot" value={ac ? mstNumber(ac.round.collected) : largest ? 0 : "None"} unit={ac || largest ? "MST" : undefined} support={ac ? `${ac.name ?? `Circle #${ac.id}`} · ${ac.round.phaseCode === 0 ? `${formatMst(ac.round.expectedPot)} MST expected` : "pot ready"}` : "No active chit"} loading={loading} />
       <StatCard
         label="Next contribution"
         Icon={Coins}
@@ -162,27 +169,70 @@ function StatRow({ me, circles, loading }: { me: MeOverview | null; circles: MyC
 /** Live room for the newest active chit: the chit card, the money flow with real numbers, and the auction card. */
 function ActiveSection({ summary, account }: { summary: MyCircle; account: string }) {
   const room = useCircle(summary.id, account);
+  const wallet = useWallet();
+  const auth = useAuth();
+  const actions = useRoomActions(summary.id, room.refetch);
+  const focusRef = useRef<HTMLDivElement>(null);
   const data = room.data;
   const circle = data?.circle ?? summary;
   const round = data?.round ?? null;
   const clock = useRoundClock(round, circle.status === 1);
-  const labelFor = (a: string) => data?.members.find((m) => m.address.toLowerCase() === a.toLowerCase())?.label ?? shortAddr(a);
+  const labelFor = (a: string) => { const m = data?.members.find((x) => x.address.toLowerCase() === a.toLowerCase()); return nameOf(m ?? { address: a }); };
   const activeMembers = data ? data.members.filter((m) => m.joined && !m.removed).length : circle.memberCount;
-  const potWei = round ? round.expectedPot : (BigInt(circle.contribution) * BigInt(circle.maxMembers)).toString();
+  const potWei = round ? round.potForOffers : (BigInt(circle.contribution) * BigInt(circle.maxMembers)).toString();
   const bestWei = round && big(round.bestDiscount) > 0n ? round.bestDiscount : null;
-  const nextAuction = round && clock.roundPhase === "contribution" ? formatClock(clock.current.remaining) : null;
+  const nextDecision = round && clock.roundPhase === "contribution" ? formatClock(clock.current.remaining) : null;
+  const focus = () => focusRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   return (
     <div className="space-y-4">
+      {round && data && (
+        <div className="space-y-2">
+          <NextActionCard
+            circle={circle}
+            round={round}
+            me={room.me}
+            phase={clock.roundPhase}
+            wallet={wallet}
+            pending={actions.pending}
+            onContribute={() => void actions.contribute(BigInt(circle.contribution))}
+            onWithdraw={() => void actions.withdraw()}
+            onFocus={focus}
+          />
+          <TxStepper state={actions.tx} onKeepWaiting={actions.keepWaiting} onDismiss={actions.dismiss} />
+        </div>
+      )}
       <div className="grid gap-4 lg:grid-cols-2">
         <ActiveChitCard summary={summary} room={data} loading={room.loading && !data} />
-        {round && clock.roundPhase === "bidding" ? (
-          <AuctionCard circle={circle} round={round} phase={clock.roundPhase} me={room.me} activeMembers={activeMembers} labelFor={labelFor} account={null} onBid={async () => undefined} pending={false} linkToRoom wide />
-        ) : room.loading && !data ? (
-          <Card className="p-5" aria-busy="true"><Skeleton className="h-5 w-32" /><div className="mt-3 grid grid-cols-2 gap-2"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div></Card>
-        ) : (
-          <EmptyState Icon={Gavel} tone="bg-agent/10 text-agent" className="h-full justify-center" title="No live auction" text={nextAuction ? `Bidding opens in ${nextAuction}, once contributions close.` : clock.roundPhase === "settling" ? "This round is settling. The next auction starts with the next round." : "Bidding opens after contributions close each round."} action={<Button asChild variant="outline"><Link href={`/circle/${circle.id}`}>Open the room</Link></Button>} />
-        )}
+        <div ref={focusRef} className="min-w-0">
+          {round && data && round.phaseCode === 1 && circle.status === 1 ? (
+            <RecipientDecision
+              circle={circle}
+              round={round}
+              members={data.members}
+              account={wallet.account}
+              pending={actions.pending}
+              canSign={!!wallet.account && wallet.correctChain}
+              onAccept={() => void actions.accept()}
+              onDecline={() => void actions.decline()}
+              isAdmin={auth.isAdmin}
+              onChanged={() => void room.refetch()}
+            />
+          ) : round && clock.roundPhase === "bidding" ? (
+            <AuctionCard circle={circle} round={round} phase={clock.roundPhase} me={room.me} activeMembers={activeMembers} labelFor={labelFor} account={wallet.account} onBid={actions.bid} pending={actions.pending} wide />
+          ) : room.loading && !data ? (
+            <Card className="p-5" aria-busy="true"><Skeleton className="h-5 w-32" /><div className="mt-3 grid grid-cols-2 gap-2"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div></Card>
+          ) : (
+            <EmptyState
+              Icon={Gavel}
+              tone="bg-agent/10 text-agent"
+              className="h-full justify-center"
+              title="No auction right now"
+              text={nextDecision ? `The pot is ready once everyone pays (${nextDecision} left). Its recipient then accepts it or declines, and only a decline opens an auction.` : clock.roundPhase === "settling" ? "This round is settling. The next round starts with contributions." : "Each round's recipient gets the first choice on the full pot. An auction opens only if they decline."}
+              action={<Button asChild variant="outline"><Link href={`/circle/${circle.id}`}>Open the room</Link></Button>}
+            />
+          )}
+        </div>
       </div>
       <MoneyFlow compact live={{ potMst: potWei, members: circle.memberCount, maxMembers: circle.maxMembers, bestDiscountMst: bestWei }} />
       <nav className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="More">

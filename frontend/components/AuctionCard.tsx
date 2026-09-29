@@ -23,7 +23,7 @@ import type { AuctionBid, CircleSummary, MemberInfo, RoundInfo, RoundPhase } fro
 import { cn } from "@/lib/utils";
 
 interface Props {
-  circle: Pick<CircleSummary, "id" | "name" | "status" | "maxMembers">;
+  circle: Pick<CircleSummary, "id" | "name" | "status" | "maxMembers"> & { feeBps?: number };
   round: RoundInfo;
   /** Client-side phase from useRoundClock. */
   phase: RoundPhase;
@@ -64,6 +64,9 @@ export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor,
   const rows = bids.data ?? [];
   const hasBest = !!round.bestBidder && !sameAddr(round.bestBidder, ZERO_ADDRESS) && big(round.bestDiscount) > 0n;
   const bestDiscount = big(round.bestDiscount);
+  const pot = big(round.potForOffers);
+  const lowestPayout = hasBest ? pot - bestDiscount : null;
+  const recipientName = round.recipientName ?? (round.recipientLabel ? `Demo ${round.recipientLabel}` : round.recipient ? shortAddr(round.recipient) : "the recipient");
   const under30 = bidding && clock.remaining > 0 && clock.remaining <= 30;
 
   const [now, setNow] = useState(() => Date.now());
@@ -81,7 +84,31 @@ export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor,
   });
 
   const eligible = !!me && me.joined && !me.removed && !me.hasWon && bidding;
-  const reason = !active ? (circle.status === 2 ? "This circle has completed, every round is settled." : circle.status === 3 ? "This circle was cancelled, no auction took place." : "Bidding opens once the circle fills and starts.") : phase === "contribution" ? "Bidding opens when contributions close." : phase === "settling" ? "Bidding is closed for this round, waiting for settlement." : !me?.joined ? "Join the circle to bid." : me.hasWon ? "You have already won a round, no more bids." : me.removed ? "Removed members cannot bid." : undefined;
+  const reason = !active
+    ? circle.status === 2 ? "This circle has completed, every round is settled." : circle.status === 3 ? "This circle was cancelled, no auction took place." : "The circle starts once it fills."
+    : phase === "contribution" || phase === "closing" ? "An auction opens only if this round's recipient declines the full pot."
+    : phase === "decision" ? `${recipientName} has the first choice. An auction opens only if they decline.`
+    : phase === "settling" ? "This round is closed, waiting for settlement."
+    : !me?.joined ? "Join the circle to make an offer."
+    : me.hasWon ? "You have already received a pot, so you cannot bid again."
+    : me.removed ? "Removed members cannot bid." : undefined;
+
+  // No auction exists this round yet (contributions or the recipient's decision): say so, and offer no bid action.
+  if (active && round.phaseCode !== 2) {
+    return (
+      <Card className={cn("relative p-4 md:p-5", className?.replace(/\bh-full\b/g, ""))}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-muted-foreground/50" aria-hidden />
+          <h2 className="min-w-0 truncate text-[16px] font-semibold leading-tight tracking-tight">Auction · {circle.name ?? `Circle #${circle.id}`}</h2>
+          <span className="tnum text-[12px] text-muted-foreground">Round {round.round} of {circle.maxMembers}</span>
+        </div>
+        <p className="mt-3 flex items-start gap-2 text-[13px] text-muted-foreground">
+          <Gavel className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>{reason} If it opens, members who have not received a pot offer to take less than the full pot, and the lowest payout offer wins.</span>
+        </p>
+      </Card>
+    );
+  }
 
   return (
     <Card className={cn("relative p-4 md:p-5", className)}>
@@ -91,7 +118,7 @@ export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor,
       <div className="flex flex-wrap items-center gap-2">
         <span className={cn("status-dot h-2 w-2 rounded-full", bidding ? "bg-success" : "bg-muted-foreground/50")} aria-hidden />
         <h2 className="min-w-0 truncate text-[16px] font-semibold leading-tight tracking-tight">
-          {bidding ? "Live auction" : "Auction"} · {circle.name ?? `Circle #${circle.id}`}
+          {bidding ? "Auction open" : "Auction"} · {circle.name ?? `Circle #${circle.id}`}
         </h2>
         <span className="tnum text-[12px] text-muted-foreground">Round {round.round} of {circle.maxMembers}</span>
         <Tooltip>
@@ -101,24 +128,29 @@ export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor,
       </div>
 
       <div className={cn("mt-3 grid grid-cols-2 gap-2.5", wide && "lg:grid-cols-4")}>
-        <Tile label="Current pot"><span className="text-pot">{formatMst(round.expectedPot)}</span> <span className="text-[12px] font-medium text-muted-foreground">MST</span></Tile>
-        <Tile label="Current best discount">
+        <Tile label="Pot"><span className="text-pot">{formatMst(pot, 3)}</span> <span className="text-[12px] font-medium text-muted-foreground">MST</span></Tile>
+        <Tile label="Current lowest payout">
           <Flash value={`${round.bestBidder}:${round.bestDiscount}`} tint="bg-primary/15">
-            {hasBest ? <>{formatMst(bestDiscount)} <span className="text-[12px] font-medium text-muted-foreground">MST</span></> : <span className="text-[15px] font-medium text-muted-foreground">No bids yet</span>}
+            {lowestPayout !== null ? <>{formatMst(lowestPayout, 3)} <span className="text-[12px] font-medium text-muted-foreground">MST</span></> : <span className="text-[15px] font-medium text-muted-foreground">No offers yet</span>}
           </Flash>
         </Tile>
-        <Tile label="Time remaining" className={cn(under30 && "border-warning/40")}>
-          <span className={cn(under30 && "text-warning")}>{bidding ? <RollingClock seconds={clock.remaining} /> : phase === "contribution" ? <span className="text-[15px] font-medium text-muted-foreground">Contributions open</span> : <span className="text-[15px] font-medium text-muted-foreground">Closed</span>}</span>
+        <Tile label="Current discount">
+          {hasBest ? <>{formatMst(bestDiscount, 3)} <span className="text-[12px] font-medium text-muted-foreground">MST</span></> : <span className="text-[15px] font-medium text-muted-foreground">0 MST</span>}
         </Tile>
-        <Tile label="Participants"><span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4 text-muted-foreground" aria-hidden />{activeMembers}</span> <span className="text-[12px] font-medium text-muted-foreground">{rows.length} bid{rows.length === 1 ? "" : "s"}</span></Tile>
+        <Tile label="Time remaining" className={cn(under30 && "border-warning/40")}>
+          <span className={cn(under30 && "text-warning")}>{bidding ? <RollingClock seconds={clock.remaining} /> : <span className="text-[15px] font-medium text-muted-foreground">{phase === "decision" ? "Not open" : phase === "contribution" || phase === "closing" ? "Not open" : "Closed"}</span>}</span>
+        </Tile>
       </div>
 
       <div className="mt-4">
-        <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground"><Gavel className="h-3.5 w-3.5" aria-hidden /> Bid timeline</div>
+        <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
+          <Gavel className="h-3.5 w-3.5" aria-hidden /> Payout offers
+          <span className="ml-auto inline-flex items-center gap-1 text-[12px]"><Users className="h-3.5 w-3.5" aria-hidden />{activeMembers} members · {rows.length} offer{rows.length === 1 ? "" : "s"}</span>
+        </div>
         {bids.loading && !bids.data ? (
           <div className="mt-2 space-y-1.5" aria-busy="true">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-9 w-full rounded-lg" />)}</div>
         ) : rows.length === 0 ? (
-          <p className="mt-2 rounded-xl border border-dashed border-white/[0.1] px-3 py-4 text-center text-[13px] text-muted-foreground">{bids.error && !bids.data ? "Bid history is temporarily unavailable." : "No bids this round yet."}</p>
+          <p className="mt-2 rounded-xl border border-dashed border-white/[0.1] px-3 py-4 text-center text-[13px] text-muted-foreground">{bids.error && !bids.data ? "Bid history is temporarily unavailable." : bidding ? "No offers yet. The lowest payout offer wins." : reason ?? "No offers this round."}</p>
         ) : (
           <ol className="mt-2 max-h-56 space-y-0.5 overflow-y-auto" aria-live="polite" aria-relevant="additions">
             <AnimatePresence initial={false}>
@@ -133,7 +165,7 @@ export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor,
                   className={cn("flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px]", i === 0 && "bg-primary/[0.08]")}
                 >
                   <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", i === 0 ? "bg-primary" : "bg-white/20")} aria-hidden />
-                  <span className="min-w-0 flex-1 truncate">{b.label ?? labelFor(b.member)} <span className="text-muted-foreground">offered</span> <span className="tnum font-semibold">{formatMst(b.discount)} MST</span></span>
+                  <span className="min-w-0 flex-1 truncate">{b.username ?? labelFor(b.member)} <span className="text-muted-foreground">will take</span> <span className="tnum font-semibold">{b.payout ? formatMst(b.payout, 3) : "?"} MST</span> <span className="tnum text-muted-foreground">(discount {formatMst(b.discount, 3)})</span></span>
                   <span className="tnum text-[12px] text-muted-foreground">{timeAgo(b.ts, now)}</span>
                   <TxLink hash={b.txHash} label={shortAddr(b.txHash, 6, 4)} className="text-[12px]" />
                 </motion.li>
@@ -147,7 +179,7 @@ export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor,
         {linkToRoom ? (
           <Link href={`/circle/${circle.id}`} className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-[14px] font-semibold text-primary-foreground transition-transform hover:scale-[1.02]">{eligible ? "Place a bid" : "Open the room"}</Link>
         ) : (
-          <BidDialog round={round} account={account} activeMembers={activeMembers} labelFor={labelFor} onBid={onBid} pending={pending} disabled={!eligible} disabledReason={reason} triggerClassName="w-full" />
+          <BidDialog round={round} feeBps={circle.feeBps} account={account} activeMembers={activeMembers} labelFor={labelFor} onBid={onBid} pending={pending} disabled={!eligible} disabledReason={reason} triggerClassName="w-full" />
         )}
       </div>
     </Card>

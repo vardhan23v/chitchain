@@ -40,9 +40,9 @@ const NODES: Node[] = [
   { key: "collateral", label: "Collateral", text: "Locked on joining.", detail: "Collateral is sized by risk tier. It stays in the contract and covers a missed contribution.", Icon: Lock, tone: "text-warning" },
   { key: "contract", label: "Smart contract", text: "Holds every token.", detail: "No organizer wallet. Contributions, bids, payouts and penalties are enforced by code on MST Testnet.", Icon: FileCode2, tone: "text-primary" },
   { key: "pot", label: "Pot", text: "Contributions for this round.", detail: "The pot is the sum of contributions. It sits in the contract until the round settles.", Icon: PiggyBank, tone: "text-pot" },
-  { key: "auction", label: "Auction", text: "Lowest payout wins.", detail: "Members who need money now bid a discount. The lowest accepted payout wins the pot.", Icon: Gavel, tone: "text-agent" },
-  { key: "winner", label: "Winner", text: "Receives pot minus discount.", detail: "The winner withdraws the pot minus their discount and the platform fee. Payouts are pull-only.", Icon: Trophy, tone: "text-success" },
-  { key: "dividends", label: "Dividends", text: "Discount shared back.", detail: "The winner's discount is split among the other members as a dividend on their next contribution.", Icon: Coins, tone: "text-pot" },
+  { key: "auction", label: "Choice or auction", text: "Recipient chooses first.", detail: "This round's recipient can accept the full pot. Only if they decline does an auction open, where the lowest payout offer wins.", Icon: Gavel, tone: "text-agent" },
+  { key: "winner", label: "Winner", text: "Full pot, or their offer.", detail: "The recipient who accepts gets the full pot; an auction winner gets their payout offer. The platform fee comes off first. Payouts are pull-only.", Icon: Trophy, tone: "text-success" },
+  { key: "dividends", label: "Dividends", text: "Discount shared back.", detail: "After an auction, the difference between the pot and the winning offer is split equally among the other members.", Icon: Coins, tone: "text-pot" },
   { key: "reputation", label: "Reputation", text: "On-chain track record.", detail: "Paying on time and completing circles improves your on-chain record and lowers future collateral.", Icon: Award, tone: "text-foreground" },
 ];
 
@@ -52,7 +52,7 @@ function annotation(node: Node, live?: MoneyFlowLive): string | null {
   if (!live) return null;
   if (node.key === "pot" && live.potMst != null) return `${formatMst(live.potMst)} MST`;
   if (node.key === "members" && live.members != null && live.maxMembers != null) return `${live.members} of ${live.maxMembers}`;
-  if (node.key === "auction" && live.bestDiscountMst !== undefined) return live.bestDiscountMst === null ? "No bid yet" : `Best discount ${formatMst(live.bestDiscountMst)} MST`;
+  if (node.key === "auction" && live.bestDiscountMst !== undefined) return live.bestDiscountMst === null ? "No auction yet" : `Discount ${formatMst(live.bestDiscountMst, 3)} MST`;
   return null;
 }
 

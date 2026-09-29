@@ -28,7 +28,7 @@ export function WalletMenu() {
 
   // Password-admin session (`admin:<username>`): no wallet, so only website items and Sign out.
   if (signedIn && auth.isPasswordAdmin && auth.user) {
-    const name = auth.user.displayName || auth.user.walletAddress.slice("admin:".length);
+    const name = auth.user.username || auth.user.displayName || auth.user.walletAddress.slice("admin:".length);
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -77,7 +77,7 @@ export function WalletMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-full">
-          <span className="font-mono">{auth.user?.displayName || shortAddr(account)}</span>
+          <span className="font-mono">{auth.user?.username || auth.user?.displayName || shortAddr(account)}</span>
           {signedIn && auth.user && <RoleBadge role={auth.user.role} size="xs" className="hidden sm:inline-flex" />}
           <ChevronDown className="h-3 w-3" aria-hidden />
         </Button>
@@ -85,7 +85,7 @@ export function WalletMenu() {
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-sm font-semibold">{auth.user?.displayName || shortAddr(account)}</span>
+            <span className="truncate text-sm font-semibold">{auth.user?.username || auth.user?.displayName || shortAddr(account)}</span>
             {signedIn && auth.user ? <RoleBadge role={auth.user.role} size="xs" /> : <span className="text-[10px] font-normal text-muted-foreground">not signed in</span>}
           </div>
           <div className="text-[11px] font-normal text-muted-foreground">Balance</div>

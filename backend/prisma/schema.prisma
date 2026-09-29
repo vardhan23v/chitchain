@@ -114,6 +114,10 @@ model User {
   role          Role       @default(MEMBER)
   status        UserStatus @default(ACTIVE)
   displayName   String?    @map("display_name")
+  /// Public username (normalized lowercase, unique). The wallet address stays the on-chain identity.
+  username      String?    @unique
+  /// Lookalike key (0→o, 1→l, 3→e, 5→s, 7→t, underscores removed) so "rahul" and "rahu1" cannot both exist.
+  usernameKey   String?    @unique @map("username_key")
   createdAt     Int        @map("created_at")
   lastLogin     Int?       @map("last_login")
 

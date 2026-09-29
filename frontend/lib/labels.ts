@@ -1,4 +1,4 @@
-import type { CircleSummary, ContributionStatus, DefaultStatus, RoundPhase, Status, Tier } from "@/lib/types";
+import type { CircleSummary, ContributionStatus, DefaultStatus, RoundOutcome, RoundPhase, Status, Tier } from "@/lib/types";
 import { bpsToMultiplier, tierBps } from "@/lib/chain";
 import { shortAddr } from "@/lib/format";
 
@@ -13,7 +13,23 @@ export function tierLabelFor(tier: Tier, c?: Pick<CircleSummary, "lowBps" | "med
   return `${base.split(" · ")[0]} · ${bpsToMultiplier(tierBps(c, tier))}`;
 }
 
-export const PHASE_LABEL: Record<RoundPhase, string> = { contribution: "Contributions open", bidding: "Bidding open", settling: "Settling…" };
+export const PHASE_LABEL: Record<RoundPhase, string> = {
+  contribution: "Contributions open",
+  closing: "Closing contributions…",
+  decision: "Recipient deciding",
+  bidding: "Auction open",
+  settling: "Settling…",
+};
+
+/** How a settled round ended, in plain words. */
+export const OUTCOME_LABEL: Record<RoundOutcome, string> = {
+  NONE: "Settled",
+  ACCEPTED: "Full pot accepted",
+  AUCTION: "Won at auction",
+  DECISION_TIMEOUT: "Full pot, no decision in time",
+  NO_BIDS: "Declined, no offers, full pot",
+  NO_RECIPIENT: "Shared as dividends",
+};
 
 export const CONTRIBUTION_STATUS_LABEL: Record<ContributionStatus, string> = {
   PAID: "Paid",
@@ -31,6 +47,16 @@ export const DEFAULT_STATUS_LABEL: Record<DefaultStatus, string> = {
 /** Backend attaches `label` (A–E) to demo wallets; otherwise show the short address. */
 export function memberLabel(label: string | null | undefined, address: string): string {
   return label ? `Member ${label}` : shortAddr(address);
+}
+
+/**
+ * Display name for a wallet: its username when it has one, else "Demo A" for custodial demo wallets, else the short
+ * address. Always render the short address next to it (see `MemberName`) so the name can be verified.
+ */
+export function nameOf(m: { username?: string | null; label?: string | null; address: string }): string {
+  if (m.username) return m.username;
+  if (m.label) return `Demo ${m.label}`;
+  return shortAddr(m.address);
 }
 
 export function memberShort(label: string | null | undefined, address: string): string {

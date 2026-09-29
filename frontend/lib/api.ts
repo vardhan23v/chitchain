@@ -4,7 +4,7 @@ import type {
   AdminOverview, AdminUser, AgentEvent, AgentLog, AuctionBid, AuctionSnapshot, AuditRow, BidAgent, CircleAnalytics, CircleRoom, CircleSummary, DefaultRecord, DemoState, FeedEvent, Invite, Level, LoopStatus,
   Mandate, MeOverview, MyCircle, OrganizerCircle, RiskResult, Role, RoundHistoryRow, Stats, SupportTicket, User, UserStatus,
 } from "@/lib/types";
-import type { AdminTreasury, Health } from "@/lib/types";
+import type { AdminTreasury, Health, Profile, UsernameCheck } from "@/lib/types";
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public code?: string, public body?: unknown) {
@@ -49,6 +49,7 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = 8000): P
 const post = <T>(path: string, body?: unknown, timeoutMs?: number) =>
   request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }, timeoutMs);
 const patch = <T>(path: string, body: unknown) => request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+const put = <T>(path: string, body: unknown) => request<T>(path, { method: "PUT", body: JSON.stringify(body) });
 const del = <T>(path: string) => request<T>(path, { method: "DELETE" });
 
 function qs(p: Record<string, string | number | undefined>): string {
@@ -127,7 +128,15 @@ export const api = {
   demoNewCircle: (body?: DemoNewCircleBody) =>
     post<{ circleId: number; txHash: string }>("/demo/new-circle", body ?? { contributionDuration: 30, biddingDuration: 30 }, 180_000),
   demoWithdraw: (address: string, circleId: number) => post<{ txHash: string }>("/demo/withdraw", { address, circleId }, 60_000),
-  settle: (id: number) => post<{ txHash: string }>(`/circles/${id}/settle`, undefined, 60_000),
+  /** Runs whichever permissionless step is due (close contributions, or settle after the decision / auction window). */
+  settle: (id: number) => post<{ txHash: string; step: "closeContributions" | "settleRound" }>(`/circles/${id}/settle`, undefined, 60_000),
+  /** Admin: the custodial demo recipient accepts or declines the full pot from its own key. */
+  demoDecide: (circleId: number, decision: "accept" | "decline") => post<{ txHash: string }>("/demo/decide", { circleId, decision }, 60_000),
+  checkUsername: (name: string, wallet?: string | null) =>
+    request<UsernameCheck>(`/usernames/check?name=${encodeURIComponent(name)}${wallet ? `&wallet=${wallet}` : ""}`),
+  setUsername: (username: string) => put<{ user: User }>("/me/username", { username }),
+  usernames: (addresses: string[]) => request<{ names: Record<string, string> }>(`/usernames?addresses=${addresses.join(",")}`),
+  profile: (addr: string) => request<Profile>(`/members/${addr}/profile`),
 
   /* ── v3 auth ── */
   authNonce: (address: string) => post<{ nonce: string; message: string; expiresAt: number }>("/auth/nonce", { address }),

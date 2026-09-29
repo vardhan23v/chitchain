@@ -4,6 +4,8 @@
 
 Built for MST Blockchain × NEWRRO Buildathon 2026 — MST Blockchain Track.
 
+**v3.2 changes (contract v2.2):** the round's recipient gets the first choice. After contributions close, the pot is frozen and a rotating recipient either accepts the full pot (round settles, no auction) or declines, which opens the auction on-chain; the lowest payout offer wins and the discount is shared as dividends. New `Phase` (Contributing, Deciding, Auction), `closeContributions`, `acceptFullPot`, `declineFullPot`, events `PotReady` / `FullPotAccepted` / `FullPotDeclined`, and an `outcome` + `recipient` on every round record. Usernames (off-chain display names mapped to wallets) and public profiles in the backend.
+
 **v3 changes:** two-phase rounds (contribution window, then bidding window), per-circle `holdbackBps`, `maxDiscountBps` and collateral multipliers, `DefaultDetected` event with explicit `shortfall`, per-circle `defaults`/`collateralUsed`, on-chain round history, risk score flipped to 0 = safest / 100 = riskiest, currency shown as MST with an MST TESTNET badge, Postgres + Prisma index.
 
 **v2 changes (from review):** `Unassessed` tier with max collateral, tier snapshotted at join, post-win security holdback + circle reserve, defined rules for removed members and early completion, join deadline + cancel/leave, fees and dividends via pull payments, dust rule, cold-start scoring, `nonReentrant` on settle, revised cut order (keep the agent), corrected demo transaction count, custodial-agent disclosure.
@@ -130,16 +132,32 @@ emit HoldbackApplied
 - Low/Medium winners get more cash up front (the reward for reputation); the uncovered slice is backed by the **circle reserve** (fees + forfeits). Pitch honestly: *"trust is priced, not free."*
 - Holdback is returned with remaining collateral at completion.
 
-### 3.3 Round phases and settlement
+### 3.3 Round phases and settlement (v2.2)
 
-Each round starts at `T` (circle start or previous settlement):
-- `contribute` allowed while `now ≤ T + contributionDuration` (else `ContributionClosed`)
-- `placeBid` allowed while `now ≤ T + contributionDuration + biddingDuration` (else `BiddingClosed`); bids may be placed during the contribution phase too
-- `settleRound` allowed only after the bidding deadline (else `BiddingNotOver`)
-
-`settleRound(circleId)` (anyone — the keeper in the MVP — `nonReentrant`, no external calls). **The deduction happens inside the contract**; the keeper only triggers it.
+Each round moves through on-chain phases. `biddingDuration` is used twice: for the recipient's decision and, only after a decline, for the auction.
 
 ```
+Contributing ──(last payment, or closeContributions after contributionDeadline)──▶ Deciding
+Deciding ──acceptFullPot (recipient)──────────────────────────────▶ settle: recipient wins the full pot, outcome ACCEPTED
+Deciding ──declineFullPot (recipient)─────────────────────────────▶ Auction (biddingDeadline = now + biddingDuration)
+Deciding ──settleRound after decisionDeadline (anyone)────────────▶ settle: recipient wins the full pot, outcome DECISION_TIMEOUT
+Auction  ──placeBid (eligible members) until biddingDeadline
+Auction  ──settleRound after biddingDeadline (anyone)─────────────▶ settle: lowest payout offer wins, outcome AUCTION
+                                                                    (no offers → recipient wins the full pot, outcome NO_BIDS)
+```
+
+- `contribute` only while `Contributing` and `now ≤ contributionDeadline` (else `ContributionClosed`). The payment that completes the pot closes the phase.
+- `closeContributions` (anyone, `nonReentrant`) only after the deadline (else `ContributionsOpen`); `WrongPhase` otherwise.
+- `acceptFullPot` / `declineFullPot` only by the recipient (`NotRecipient`), only while `Deciding` (`WrongPhase`), only before `decisionDeadline` (`DecisionClosed`). Accepting settles at once; after either call the other one reverts.
+- `placeBid` only while `Auction` (`WrongPhase` before the decline) and `now ≤ biddingDeadline` (`BiddingClosed`).
+- `settleRound` reverts `WrongPhase` while contributing, `DecisionNotOver` / `BiddingNotOver` before the deadlines.
+
+**Recipient rotation.** When contributions close, the recipient is the first member, starting at position `(round − 1) mod n` in join order and wrapping, who has not won and is not removed. Round 1 → A, round 2 → B; members who already won are skipped.
+
+**The deduction happens inside the contract**; the keeper only triggers `closeContributions` and `settleRound`.
+
+```
+CLOSE CONTRIBUTIONS (closeContributions or the completing contribute):
 1. MISSED PAYMENTS — for each active (not removed) member who didn't pay this round:
      defaults++ ; missed++
      if collateral ≥ contribution: collateral −= contribution; collateralUsed += contribution; pot += contribution
@@ -150,21 +168,21 @@ Each round starts at `T` (circle start or previous settlement):
            removed = true; circlesRemoved++
            emit DefaultDetected(…, shortfall) ; emit Removed(circle, round, member)
    For each member who paid on time: paidOnTime++
-2. pot = sum of contributions actually collected/covered this round
-3. fee = pot × feeBps / 10000 → reserve
-4. WINNER — eligible = active, not removed, !hasWon
-     highest discount bidder among eligible (bestBidder, tie → earlier bid wins; enforced in placeBid by strict >)
-     no valid bid → first eligible member in join order
-     no eligible member → skip payout, pot → dividends to active members, go to 8
-5. payout = pot − discount − fee ; apply post-win holdback (3.2)
+2. pot = contributions + covered misses, frozen in `collected` for the rest of the round
+3. recipient = rotation above; none eligible → settle now with no winner (NO_RECIPIENT, pot − fee shared as dividends)
+   else phase = Deciding, decisionDeadline = now + biddingDuration, emit PotReady(circle, round, recipient, pot, decisionDeadline)
+
+SETTLE (winner, discount, outcome):
+4. fee = pot × feeBps / 10000 → reserve
+5. payout = pot − discount − fee ; apply post-win holdback (3.2)      (discount = 0 for ACCEPTED / DECISION_TIMEOUT / NO_BIDS)
 6. dividends = discount split equally among OTHER active (not removed) members
      remainder (dust) → first eligible recipient in join order
 7. credit winner.claimable += payout ; hasWon = true ; emit RoundSettled(...)
-7b. store RoundRecord{winner, settledAt, pot, payout, discount, fee, holdback} (getRoundHistory)
+7b. store RoundRecord{winner, settledAt, pot, payout, discount, fee, holdback, outcome, recipient} (getRoundHistory)
 8. COMPLETION — if every active member has won → Completed:
      each active member: claimable += collateral (incl. holdback); collateral = 0; circlesCompleted++
      treasuryClaimable += reserve; reserve = 0 ; emit CircleCompleted
-   else round++, contributionDeadline = now + contributionDuration, biddingDeadline = contributionDeadline + biddingDuration
+   else round++, phase = Contributing, contributionDeadline = now + contributionDuration (decision and auction deadlines reset to 0)
 ```
 
 **Removed members (never won):** their collateral and past contributions are **forfeited** to the pool (already distributed via pots/reserve). MVP rule, stated plainly; production would refund past contributions minus a penalty after the circle ends.
@@ -179,9 +197,12 @@ Each round starts at `T` (circle start or previous settlement):
 | `join(id)` payable | member | Before `joinDeadline`; `msg.value == preWin(riskTier[sender])`; snapshots tier; auto-starts when full |
 | `leave(id)` | member | Only while `Open`; refunds collateral to `claimable` |
 | `cancel(id)` | anyone | After `joinDeadline` if not full → `Cancelled`; all collateral → `claimable` |
-| `contribute(id)` payable | active member | `msg.value == contribution`, before the contribution deadline, once per round |
-| `placeBid(id, discount)` | eligible member | `discount ≤ maxDiscountBps of expected pot`; strictly greater than current best (earliest wins ties); UI shows it as "payout I'd accept" = pot − discount |
-| `settleRound(id)` | anyone (keeper) | §3.3; `nonReentrant` |
+| `contribute(id)` payable | active member | `msg.value == contribution`, while Contributing and before the deadline, once per round; the completing payment closes contributions |
+| `closeContributions(id)` | anyone (keeper) | After the contribution deadline; covers misses, names the recipient; `nonReentrant` |
+| `acceptFullPot(id)` | the round's recipient | While Deciding, before `decisionDeadline`; settles the round with the full pot, no auction |
+| `declineFullPot(id)` | the round's recipient | While Deciding, before `decisionDeadline`; opens the auction |
+| `placeBid(id, discount)` | eligible member | Only in the Auction phase; `discount ≤ maxDiscountBps of the assembled pot`; strictly greater than current best (earliest wins ties); UI shows it as the payout offer = pot − discount |
+| `settleRound(id)` | anyone (keeper) | After the decision window (full pot to the recipient) or the auction window (lowest offer wins); §3.3; `nonReentrant` |
 | `setRiskTier(member, tier)` | `riskOracle` | Global; affects only future joins (snapshot at join) |
 | `withdraw(id)` | member | Pull `claimable`; `nonReentrant` |
 | `withdrawTreasury()` | treasury | Pull `treasuryClaimable` |
@@ -191,7 +212,7 @@ Each round starts at `T` (circle start or previous settlement):
 
 ### 3.5 Events
 
-`CircleCreated`, `Joined(id, member, tier, collateral)`, `Left`, `CircleStarted(id, contributionDeadline, biddingDeadline)`, `CircleCancelled`, `Contributed(id, round, member, amount)`, `BidPlaced(id, round, member, discount)`, `DefaultDetected(id, round, member, required, fromCollateral, fromReserve, shortfall)`, `Removed(id, round, member)`, `HoldbackApplied(id, member, amount)`, `RoundSettled(id, round, winner, payout, discount)`, `CircleCompleted`, `RiskTierSet(member, tier)`.
+`CircleCreated`, `Joined(id, member, tier, collateral)`, `Left`, `CircleStarted(id, contributionDeadline, biddingDeadline)`, `CircleCancelled`, `Contributed(id, round, member, amount)`, `PotReady(id, round, recipient, pot, decisionDeadline)`, `FullPotAccepted(id, round, recipient, pot)`, `FullPotDeclined(id, round, recipient, biddingDeadline)`, `BidPlaced(id, round, member, discount)`, `DefaultDetected(id, round, member, required, fromCollateral, fromReserve, shortfall)`, `Removed(id, round, member)`, `HoldbackApplied(id, member, amount)`, `RoundSettled(id, round, winner, payout, discount)`, `CircleCompleted`, `RiskTierSet(member, tier)`.
 
 ### 3.6 Known limits (put in README)
 

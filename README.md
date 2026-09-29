@@ -8,14 +8,14 @@
 </p>
 <p align="center">
   <a href="https://testnet.mstscan.com"><img alt="MST Testnet" src="https://img.shields.io/badge/MST%20Testnet-chain%2091562037-C0392B?style=for-the-badge"></a>
-  <a href="https://testnet.mstscan.com/address/0xFBA432E34E70d6069677d80944A9eEf83376CA98"><img alt="Contract" src="https://img.shields.io/badge/contract-0xFBA4…CA98-C0392B?logo=ethereum&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="https://testnet.mstscan.com/address/0x4096bDd55345CD98b4168d70A8595E544eEDCBFd"><img alt="Contract" src="https://img.shields.io/badge/contract-v2.2%200x4096…CBFd-C0392B?logo=ethereum&amp;logoColor=white&amp;style=for-the-badge"></a>
   <a href="contracts/ChitChain.sol"><img alt="Solidity" src="https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity&amp;logoColor=white&amp;style=for-the-badge"></a>
   <a href="https://chromewebstore.google.com/detail/bridgekey/bfjojdcfenehemjgjlepdjomkpginlkg"><img alt="Wallet" src="https://img.shields.io/badge/wallet-BridgeKey-7C3AED?style=for-the-badge"></a>
   <a href="#no-real-money"><img alt="No real money" src="https://img.shields.io/badge/money-MST%20TESTNET%20only-D97706?style=for-the-badge"></a>
 </p>
 <p align="center">
-  <a href="test"><img alt="Hardhat tests" src="https://img.shields.io/badge/Hardhat%20tests-29%20passing-F7DF1E?logo=ethereum&amp;logoColor=black&amp;style=for-the-badge"></a>
-  <a href="backend"><img alt="Backend tests" src="https://img.shields.io/badge/backend%20tests-60%20passing-16A34A?logo=node.js&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="test"><img alt="Hardhat tests" src="https://img.shields.io/badge/Hardhat%20tests-49%20passing-F7DF1E?logo=ethereum&amp;logoColor=black&amp;style=for-the-badge"></a>
+  <a href="backend"><img alt="Backend tests" src="https://img.shields.io/badge/backend%20tests-68%20passing-16A34A?logo=node.js&amp;logoColor=white&amp;style=for-the-badge"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge"></a>
 </p>
 <p align="center">
@@ -36,9 +36,9 @@
   <a href="agent"><img alt="Groq" src="https://img.shields.io/badge/LLM-Groq%20qwen3-F55036?style=for-the-badge"></a>
 </p>
 
-ChitChain is a trust-minimised chit fund on **MST Blockchain**. Members lock collateral and pay into a pot that lives inside a smart contract. Each round the contract runs a reverse auction, pays the winner, covers missed payments from the defaulter's collateral, and holds back part of early winners' payouts as security for their future dues. An AI risk engine prices each member's collateral (Low 0.5× · Medium 1× · High/Unassessed 2× by default) and an AI bidding agent bids for members based on a plain-language goal. Nobody, not the organiser and not the AI, ever holds the money.
+ChitChain is a trust-minimised chit fund on **MST Blockchain**. Members lock collateral and pay into a pot that lives inside a smart contract. Each round everyone contributes, the contract covers missed payments from the defaulter's collateral, and the round's recipient gets the first choice: take the full pot, or decline so the others can bid in a reverse auction where the lowest payout offer wins and the difference is shared as dividends. Part of early winners' payouts is held back as security for their future dues. An AI risk engine prices each member's collateral (Low 0.5× · Medium 1× · High/Unassessed 2× by default) and an AI bidding agent bids for members based on a plain-language goal. Nobody, not the organiser and not the AI, ever holds the money.
 
-**JOIN → CONTRIBUTE → BID → SETTLE → PROTECT**, every step a real MST testnet transaction.
+**JOIN → CONTRIBUTE → POT READY → ACCEPT the full pot, or DECLINE → AUCTION → SETTLE → DIVIDENDS**, with collateral covering any missed payment. Every step is a real MST testnet transaction.
 
 ## No real money
 This is a **testnet-only prototype**. Every amount in the app is in **MST testnet coins**, which have no monetary value. There is no INR, USD, UPI, bank, card or payment gateway anywhere in the code. The UI shows an `MST TESTNET` badge wherever a balance appears.
@@ -62,8 +62,8 @@ Built in 24 h for **MST Blockchain × NEWRRO Buildathon 2026 — MST Blockchain 
 
 ## MST Blockchain integration
 - Network: **MST Testnet** (chain ID `91562037`, RPC `https://testnetrpc.mstblockchain.com`)
-- Contract: `ChitChain` v2.1 at `0xFBA432E34E70d6069677d80944A9eEf83376CA98` → https://testnet.mstscan.com/address/0xFBA432E34E70d6069677d80944A9eEf83376CA98 (deployed at block 5794708; identical to v2 except `MIN_MEMBERS` is 2 so two-person circles are allowed). The transaction tables below were recorded on v2 at `0xA18D48c29Bf68B750BB3fCb2f109661C5de1bD45` and remain verifiable on MSTScan; v1 lived at `0xe53a0C78def8046ce1199D90EB8D2F81bb5A81d5`.
-- What runs on-chain and why: custody of pot + collateral + reserve, contributions, discount auction, settlement, post-win holdback, default coverage, member removal, dividends, reputation counters. Everything that moves money is a contract rule, so it can be verified on MSTScan.
+- Contract: `ChitChain` **v2.2** at `0x4096bDd55345CD98b4168d70A8595E544eEDCBFd` → https://testnet.mstscan.com/address/0x4096bDd55345CD98b4168d70A8595E544eEDCBFd (deployed at block 5802569, tx [`0x9fa621a4…b2ce0d`](https://testnet.mstscan.com/tx/0x9fa621a4a22f283f93eb62acfd1b441e5f39eee61b3f08b53e50354e20b2ce0d)). v2.2 adds the recipient decision: the auction only exists after the round's recipient declines the full pot. Earlier contracts stay verifiable: v2.1 `0xFBA432E34E70d6069677d80944A9eEf83376CA98`, v2 `0xA18D48c29Bf68B750BB3fCb2f109661C5de1bD45` (the older tables below), v1 `0xe53a0C78def8046ce1199D90EB8D2F81bb5A81d5`.
+- What runs on-chain and why: custody of pot + collateral + reserve, contributions, the recipient's accept or decline, the payout-offer auction, settlement, post-win holdback, default coverage, member removal, dividends, reputation counters. Everything that moves money is a contract rule, so it can be verified on MSTScan.
 - Wallet: **BridgeKey** (EIP-1193, [Chrome Web Store](https://chromewebstore.google.com/detail/bridgekey/bfjojdcfenehemjgjlepdjomkpginlkg)) · SDK: ethers v6 (the library `@mstblockchain/mst-sdk` wraps) · Scaffold structure from MST VibeKit (Hardhat + Next.js)
 - Faucet: https://faucet.masterstroke.academy (10 MST per address per 24 h)
 - Verified facts: `eth_chainId` on the testnet RPC returns `0x5752035` = 91562037; explorer is Blockscout at `testnet.mstscan.com` with `/tx/<hash>` and `/address/<addr>`.
@@ -81,7 +81,26 @@ Built in 24 h for **MST Blockchain × NEWRRO Buildathon 2026 — MST Blockchain 
 | `settleRound` #1 — B wins, **D's missed payment covered from collateral**, holdback 0.20 applied, pot still 0.50 | [`0x05e3c2a1…635826`](https://testnet.mstscan.com/tx/0x05e3c2a1fa8ba24fd10f92fe60413129209ae53b3fb19b44ddb317426b635826) |
 | Withdraw — B pulls 0.27 MST payout | [`0x59f853a5…4c9508`](https://testnet.mstscan.com/tx/0x59f853a5fc6a6417ff88ec9d75a9cf945f9fa22eb9d177429015cf25554c9508) |
 
-Rows above are from the v1 contract's demo circle. The v2 rows (two-phase rounds, `DefaultDetected`) are added below after the v2 demo run. Every event in the live app links to the same explorer.
+### v2.2 demo transactions (circle #2 on v2.2, 0.02 MST per member, 0.1 MST pot)
+The brief's five-round story at testnet scale (500 → 0.1 MST, so the offers 480 / 470 / 460 / 450 become 0.096 / 0.094 / 0.092 / 0.090):
+
+| Step | Tx |
+|---|---|
+| `createCircle` (5 custodial demo wallets, 30 s windows) | [`0xe4045bc0…dde091`](https://testnet.mstscan.com/tx/0xe4045bc0257b27b31746c6ed67fd54d3d7594f5bce007e19f554f819b7dde091) |
+| Round 1: `PotReady` 0.1 MST, recipient A | [`0x535a867f…6ac050`](https://testnet.mstscan.com/tx/0x535a867f973490ba6d7a7d8a09554c2c642fc740e19e0c630f208793b66ac050) |
+| Round 1: **A accepts the full pot** (`FullPotAccepted` + `RoundSettled`, no auction) | [`0x1448d8fe…e4617d`](https://testnet.mstscan.com/tx/0x1448d8feb40e83c969a0dfd1d0dbac5287d6fa976dfac9df2ad5848a52e4617d) |
+| Round 2: `PotReady`, recipient B | [`0x1bd3917e…3bdef8`](https://testnet.mstscan.com/tx/0x1bd3917ecc3a83c566081fb42128a387d6db14af38fde41c315482e4fc3bdef8) |
+| Round 2: **B declines**, the auction opens on-chain (`FullPotDeclined`) | [`0x429e904f…d481e8`](https://testnet.mstscan.com/tx/0x429e904faa26cd77e96fff26021d0c52026090d471577f3e75322d4839d481e8) |
+| Round 2 offers: B 0.096 · C 0.094 · E 0.092 · D 0.090 | [`0x6577b330…3949c4`](https://testnet.mstscan.com/tx/0x6577b330e1086be86e546c242ecc8f3c8475c62c4240d6fbff44255bcc3949c4) · [`0x0e6e42f0…84eb29`](https://testnet.mstscan.com/tx/0x0e6e42f0e565b9d2b02988dc54fed85d254f21cdd0339d2ea580486a5984eb29) · [`0x0be861ce…22b7df`](https://testnet.mstscan.com/tx/0x0be861ced1f36b773645b77e53e2d230b21ac3d0b378b6f63d7d90bc3022b7df) · [`0x00df59d7…ee54e5`](https://testnet.mstscan.com/tx/0x00df59d7e24407b01cff29ad526102cd79ff046b6463ea05db22a0f5a5ee54e5) |
+| Round 2 settled: **D wins at 0.090**; the 0.010 discount is split 0.0025 to A, B, C and E | [`0xf8fec637…db0a2f`](https://testnet.mstscan.com/tx/0xf8fec63734eed1a597d80453c18b1d1e72773d420d8106c5630bbc70eadb0a2f) |
+| Round 3: **C accepts** the full pot | [`0x5b8703c0…68248e`](https://testnet.mstscan.com/tx/0x5b8703c0a00aac393bd757d16ab36403dfa8b45ad6cb5786b15c34ef3368248e) |
+| Round 4: **D misses; default protection covers 0.02 from D's collateral**, pot stays 0.1; recipient E | [`0x0e483fde…52f50a`](https://testnet.mstscan.com/tx/0x0e483fde67a01f07cfb90f79b1b3b659c2002ca13465cfb316bc46909952f50a) |
+| Round 4: **E accepts** | [`0x1fb9fa9e…d01c2d`](https://testnet.mstscan.com/tx/0x1fb9fa9ebf198e56239b0161ff863731da9d7c5e905b472f1747ec86d6d01c2d) |
+| Round 5: B accepts; `CircleCompleted` | [`0x73650414…e3a859`](https://testnet.mstscan.com/tx/0x73650414fec322367bb1f908cedcab21e44901619002d9b32d0a127e00e3a859) |
+
+Circle #1 on v2.2 shows the insufficient-collateral path: E started with too little test MST, its collateral covered two misses and it was removed in round 3 with a real shortfall ([`0x8d458594…e39395`](https://testnet.mstscan.com/tx/0x8d458594ecaf50bc6c632afdcb01ce33d33b89bd62abfe52cfcdd7ec71e39395)).
+
+Rows above the v2.2 table are from the v1 contract's demo circle. The v2 rows (two-phase rounds, `DefaultDetected`) are added below after the v2 demo run. Every event in the live app links to the same explorer.
 
 ### v2 demo transactions (circle #2 on the v2 contract)
 | Action | Tx |
@@ -102,16 +121,16 @@ Rounds 1–2 show the full-cover case (pot fully funded); round 3 shows the hone
 ## How it works
 
 ### Circle configuration
-A creator sets: contribution per round, members (2–20), contribution window, bidding window, join window, platform fee (≤ 3 %), base collateral (≥ contribution), holdback %, max discount (≤ 50 %), and the collateral multipliers for Low / Medium / High risk. Nothing is hard-coded per circle.
+A creator sets: contribution per round, members (2–20), contribution window, decision and auction window (the same length is used for the recipient's decision and, after a decline, for the auction), join window, platform fee (≤ 3 %), base collateral (≥ contribution), holdback %, max discount (≤ 50 %), and the collateral multipliers for Low / Medium / High risk. Nothing is hard-coded per circle.
 
 ### Collateral (JOIN)
 Required collateral = `baseCollateral × multiplier(tier)`; defaults 0.5× / 1× / 2×. An **Unassessed** wallet pays the High multiplier, so a fresh Sybil wallet never gets a discount. The tier is snapshotted at join; later oracle updates do not change a running circle.
 
 ### Contributions (CONTRIBUTE)
-Every active member pays exactly `contribution` once per round, before the contribution deadline. Status per member: `PAID`, `PENDING`, `COVERED_BY_COLLATERAL`, `PARTIALLY_COVERED`, `DEFAULTED`.
+Every active member pays exactly `contribution` once per round, before the contribution deadline. The payment that completes the pot closes the contribution phase at once; otherwise anyone (normally the keeper) calls `closeContributions` after the deadline, which covers every miss (below) and makes the pot ready. Status per member: `PAID`, `PENDING`, `COVERED_BY_COLLATERAL`, `PARTIALLY_COVERED`, `DEFAULTED`.
 
 ### Defaults (PROTECT) — the critical rule
-When the round is settled, the contract itself checks who has not paid:
+When contributions close, the contract itself checks who has not paid:
 ```
 required = contribution
 if collateral ≥ required:    collateral −= required; pot += required        → DefaultDetected(shortfall = 0)
@@ -119,15 +138,20 @@ else:                        fromCollateral = collateral; fromReserve = min(gap,
                              shortfall = required − fromCollateral − fromReserve
                              member removed                                   → DefaultDetected(shortfall) + Removed
 ```
-The keeper only calls `settleRound`; the deduction is contract logic and produces one on-chain event with `required`, `fromCollateral`, `fromReserve` and `shortfall`. The UI says "Pot fully funded" **only** when `shortfall == 0`; a partial cover is shown as "Pot short by X MST". Nothing is ever minted to hide a gap.
+The keeper only calls `closeContributions`; the deduction is contract logic and produces one on-chain event with `required`, `fromCollateral`, `fromReserve` and `shortfall`. The UI says "Pot fully funded" **only** when `shortfall == 0`; a partial cover is shown as "Pot short by X MST". Nothing is ever minted to hide a gap.
 
-### Bidding (BID)
-A reverse auction: members state the payout they would accept from the pot; the contract stores it as a discount (`pot − accepted`). The lowest accepted payout (highest discount) wins; equal bids lose to the earlier one; the discount is capped by `maxDiscountBps`.
+### Recipient decision (FIRST CHOICE)
+When the pot is ready (`PotReady`), the contract names the round's **recipient**: starting at position `(round − 1) mod n` in join order, the first member who has not received a pot and is not removed (round 1 → A, round 2 → B, and members who already won are skipped). Only the recipient can call:
+- `acceptFullPot` — the round settles immediately with the recipient as winner and discount 0. **No auction is created.**
+- `declineFullPot` — the phase changes to `Auction` on-chain and the auction window starts.
+
+The recipient cannot accept after declining or decline after accepting (`WrongPhase`), and nobody else can decide (`NotRecipient`). If the decision window passes with no choice, anyone can settle and the recipient receives the full pot (outcome `DECISION_TIMEOUT`).
+
+### Auction (BID) — only after a decline
+Members who have not received a pot make a **payout offer**: how much of the pot they will accept. The contract stores it as a discount (`pot − offer`). The lowest payout offer (highest discount) wins; an offer must be lower than the current lowest; the discount is capped by `maxDiscountBps` of the assembled pot. `placeBid` reverts with `WrongPhase` while contributing or deciding, and with `BiddingClosed` after the window. If the auction closes with no offers, the recipient receives the full pot (outcome `NO_BIDS`).
 
 ### Settlement (SETTLE)
-`payout = pot − fee − discount`, then the holdback below is applied and the rest is credited to the winner's claimable balance. Anyone can settle after the bidding deadline; the backend keeper does it automatically within a few seconds.
-
-If nobody bids, the round settles with no winner: the pot minus the fee is shared as dividends among the active members and no holdback applies. The UI shows it as "No bids, pot shared as dividends" (see round 5 of demo circle #5).
+`payout = pot − fee − discount` (discount 0 when the full pot is accepted), then the holdback below is applied and the rest is credited to the winner's claimable balance. `settleRound` is permissionless once the decision or auction window has passed; the keeper does it within a few seconds. Each round's record (`getRoundHistory`) stores the recipient and the outcome: `ACCEPTED`, `AUCTION`, `DECISION_TIMEOUT`, `NO_BIDS` or `NO_RECIPIENT` (nobody eligible left, the pot minus fee is shared as dividends).
 
 ### Dividends
 ```
@@ -156,10 +180,13 @@ LOW ≤ 39 · MEDIUM 40–69 · HIGH ≥ 70 · cold start = 40 (MEDIUM)
 The LLM only writes a two-sentence explanation from those factors (template fallback if offline). The tier is written on-chain by the risk-oracle wallet with `setRiskTier`, and the contract, not the frontend, enforces the collateral.
 
 ### AI bidding agent (experimental)
-A member gives a goal ("I need about 0.45 MST this round"), optional desired payout, max discount, urgency and risk tolerance. Each round the agent reads the live pot, lowest accepted payout, time left and rounds left, asks the LLM for `{bidThisRound, discountPct, reason}`, then applies deterministic guardrails (eligibility, cap, must beat the best bid, member's limits) and a `staticCall` preflight before sending `placeBid` from the member's **custodial demo wallet**. Every decision, including skips, is logged with reason, round, timestamp, wallet and tx hash. It does not guarantee optimal outcomes.
+A member gives a goal ("I need about 0.45 MST this round"), optional desired payout, max discount, urgency and risk tolerance. The agent never opens an auction and never decides for the recipient: it waits through contributions and the recipient's decision, and acts only once the recipient has declined and the auction is open on-chain. Then it reads the live pot, lowest accepted payout, time left and rounds left, asks the LLM for `{bidThisRound, discountPct, reason}`, then applies deterministic guardrails (eligibility, cap, must beat the best bid, member's limits) and a `staticCall` preflight before sending `placeBid` from the member's **custodial demo wallet**. Every decision, including skips, is logged with reason, round, timestamp, wallet and tx hash. It does not guarantee optimal outcomes.
 
 ### Keeper
-Every 3 s the backend checks each active circle; when the bidding deadline has passed it calls `settleRound`. It can trigger, never decide.
+Every 3 s the backend checks each active circle and triggers only the permissionless step whose deadline passed: `closeContributions` after the contribution deadline, `settleRound` after the decision or auction window. It can trigger, never decide: it never accepts, declines or bids for anyone.
+
+### Usernames
+After a wallet signs in for the first time it is asked for a username (3 to 20 characters, letters, numbers and single underscores, starting with a letter, stored in lowercase). Names are unique, reserved words and platform prefixes (admin, support, demo, mst, chitchain…) are refused, anything that looks like an address is refused, and lookalikes such as `rahul` and `rahu1` count as the same name. The username is an off-chain display name mapped to the wallet; the wallet address stays the on-chain identity and is shown next to the name everywhere. The profile page shows username, wallet, risk tier, circles, completed rounds, contributions, defaults, payouts and dividends, all read from the contract or its indexed events.
 
 ## Roles and Responsibilities
 
@@ -233,11 +260,11 @@ Dark midnight theme with the MST red accent ([DESIGN.md §14](DESIGN.md)): a 240
 | Page | What it shows |
 |---|---|
 | `/` | Hero with the signature money-flow visualisation, network stats, a live ticker of the newest on-chain events, the latest circle, a scroll-driven "How it works" (the pot illustration plays one round as you scroll), why blockchain, transparency, roles and the circles grid |
-| `/dashboard` | Greeting, stat cards (total locked, current pot, next contribution, reputation), the active chit card, money flow, live auction, AI risk card and recent transactions |
-| `/circle/:id` | Pot meter, auction card with bid timeline and the "Place a bid" dialog, AI bidding agent panel (recommendation and on-chain transaction kept apart), members, round history, defaults and the live feed |
+| `/dashboard` | Greeting, the one next action for your active chit (pay the contribution, accept or decline your pot, place a bid, or wait for settlement), stat cards, the active chit card, the recipient decision or live auction, money flow, AI risk card and recent transactions |
+| `/circle/:id` | Round timeline (contributions, pot ready, recipient decision, auction only if declined, settlement, dividends) with how the last round ended, pot meter, the recipient decision card (accept the full pot or decline and open an auction, with fee and holdback preview), the auction card with pot, current lowest payout and current discount and the "Place a bid" payout-offer dialog, AI bidding agent panel, members with usernames, round history with outcomes, defaults and the live feed |
 | `/activity` | Transaction centre with type tabs and the 5-step transaction state machine (Preparing, Wallet confirmation, Submitted, Confirming on MST, Confirmed) |
-| `/create`, `/member/:addr`, `/collateral`, `/support` | Two-column create form with live summary; profile with the risk card and on-chain history; per-circle collateral; help centre and tickets |
-| `/organizer`, `/organizer/circles/:id`, `/admin`, `/demo` | Organizer dashboard and per-circle analytics; platform admin (users, audit log, support, config, system health, treasury); demo controls for the custodial wallets |
+| `/create`, `/member/:addr`, `/collateral`, `/support` | Two-column create form with live summary; profile with username, stats, the risk card and on-chain history (and username settings for your own wallet); per-circle collateral; help centre and tickets |
+| `/organizer`, `/organizer/circles/:id`, `/admin`, `/demo` | Organizer dashboard (recipient, decision, auction status, lowest payout, discount, defaults, collateral per circle) and per-circle analytics with the round timeline; platform admin (users, audit log, support, config, system health, treasury); demo controls for the custodial wallets |
 
 **Motion.** Twelve scroll-driven and ambient effects ([DESIGN.md §15](DESIGN.md)): reading-progress bar, headline word reveal, hero parallax, pointer-following glow, live ticker, pinned scrollytelling "How it works", self-tracing money-flow connector, self-drawing history rail, spotlight card borders, magnetic buttons, rolling countdown digits and the spinning hero ring. Everything is transforms and opacity, and every effect has a static fallback. An **Animations** switch in the footer and sidebar cycles System, On, Off per browser: System follows the OS reduce-motion setting, the choice is stored in `localStorage` and mirrored on `<html data-motion>` before the first paint. Layout is checked at desktop and phone widths for horizontal overflow, clipped text and console errors.
 
@@ -421,7 +448,7 @@ Same autonomous flow as circle #8, now on the current contract: demo rival (wall
 | Agent bid (wallet C, 0.0299 MST discount, payout 0.22 MST) | [`0xe2b7…6511`](https://testnet.mstscan.com/tx/0xe2b78527c3865dcd27165a91b26b19396ad7d6a1eb4c3a0879910fc4101b6511) |
 
 ## MSTScan verification
-Every action in the UI links to `https://testnet.mstscan.com/tx/<hash>`. Open the contract page, tab **Logs**, to see `DefaultDetected`, `HoldbackApplied`, `RoundSettled` and `DividendCredited` with their decoded arguments. Only hashes returned by the MST network are ever displayed.
+Every action in the UI links to `https://testnet.mstscan.com/tx/<hash>`. Open the contract page, tab **Logs**, to see `PotReady`, `FullPotAccepted`, `FullPotDeclined`, `BidPlaced`, `DefaultDetected`, `HoldbackApplied`, `RoundSettled` and `DividendCredited` with their decoded arguments. Only hashes returned by the MST network are ever displayed.
 
 ## Honest limits
 - Testnet prototype; MST testnet coins are used only for demonstration and have no monetary value. No real money is involved.
@@ -429,9 +456,10 @@ Every action in the UI links to `https://testnet.mstscan.com/tx/<hash>`. Open th
 - AI bidding is experimental and does not guarantee optimal or profitable decisions.
 - Keeper, risk oracle and **agent wallets are custodial/centralised** in the MVP (backend holds keys). Production: multisig oracle, session keys for the agent.
 - Bids are public → last-second sniping possible. Production: commit–reveal.
+- Usernames live in the backend database (the wallet is the identity); they are display names, not on-chain records.
 - Low/Medium early winners are only partially secured (50 % / 75 % of remaining dues); the gap is backed by the circle reserve (fees + forfeits) up to its balance.
 - Removed members forfeit collateral and past contributions to the pool (MVP rule; production refunds minus penalty at the end).
-- MST is volatile → production needs a rupee-pegged asset.
+- MST is volatile → production needs a stable-value asset.
 - Contract is tested but **unaudited**. Testnet only. Not "fully decentralised": keeper, oracle and agent are backend wallets.
 - A real deployment would need legal and regulatory compliance; ChitChain is not an unregistered real-world chit fund operator.
 

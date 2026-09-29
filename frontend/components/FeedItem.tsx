@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bot, CheckCircle2, Coins, Gavel, Lock, LogIn, LogOut, Play, ShieldHalf, ShieldAlert, Trophy, Wallet, XCircle, type LucideIcon, Ban, Flag, Sparkles, UserCheck } from "lucide-react";
+import { Bot, CheckCircle2, Coins, Gavel, Lock, LogIn, LogOut, Play, ShieldHalf, ShieldAlert, Trophy, Wallet, XCircle, type LucideIcon, Ban, Flag, Sparkles, UserCheck, HandCoins } from "lucide-react";
 import { EASE } from "@/components/motion/Reveal";
 import { TxLink } from "@/components/TxLink";
 import { ZERO_ADDRESS } from "@/lib/contract";
@@ -23,21 +23,27 @@ export function renderFeedEvent(e: FeedEvent, labels: LabelMap): Rendered {
     const s = str(addr);
     return labels[s.toLowerCase()] ?? shortAddr(s);
   };
-  const member = who(a.member ?? a.winner ?? a.creator);
+  const member = who(a.member ?? a.winner ?? a.recipient ?? a.creator);
   switch (e.name) {
     case "Contributed":
       return { Icon: CheckCircle2, color: "text-success", text: `${member} paid ${formatMst(str(a.amount))} MST` };
+    case "PotReady":
+      return { Icon: HandCoins, color: "text-pot", text: `Round ${str(a.round ?? e.round)} pot ready: ${formatMst(str(a.pot), 3)} MST. ${member} has the first choice` };
+    case "FullPotAccepted":
+      return { Icon: HandCoins, color: "text-success", text: `${member} accepted the full ${formatMst(str(a.pot), 3)} MST pot, no auction` };
+    case "FullPotDeclined":
+      return { Icon: Gavel, color: "text-primary", text: `${member} declined the full pot, auction open` };
     case "BidPlaced":
       if (e.agent) {
-        return { Icon: Bot, color: "text-agent", text: `Agent for ${who(e.agent.member || a.member)} offered a ${formatMst(str(a.discount))} MST discount`, reason: e.agent.reason };
+        return { Icon: Bot, color: "text-agent", text: `Agent for ${who(e.agent.member || a.member)} offered to take ${formatMst(str(a.discount), 3)} MST less than the pot`, reason: e.agent.reason };
       }
-      return { Icon: Gavel, color: "text-primary", text: `${member} offered a ${formatMst(str(a.discount))} MST discount` };
+      return { Icon: Gavel, color: "text-primary", text: `${member} offered to take ${formatMst(str(a.discount), 3)} MST less than the pot` };
     case "DefaultDetected": {
       const shortfall = big(str(a.shortfall));
       if (shortfall > 0n) {
         return { Icon: ShieldAlert, color: "text-danger", text: `${member} missed, partially covered, shortfall ${formatMst(shortfall)} MST` };
       }
-      return { Icon: ShieldHalf, color: "text-warning", text: `${member} missed, collateral covered ${formatMst(str(a.fromCollateral))} MST` };
+      return { Icon: ShieldHalf, color: "text-warning", text: `Default protection: ${member} missed, collateral covered ${formatMst(str(a.fromCollateral))} MST` };
     }
     case "Covered": // v1 event, kept for old indexed rows
       return { Icon: ShieldHalf, color: "text-warning", text: `${member} missed, collateral covered ${formatMst(str(a.fromCollateral ?? a.amount))} MST` };
@@ -47,11 +53,11 @@ export function renderFeedEvent(e: FeedEvent, labels: LabelMap): Rendered {
       return { Icon: Lock, color: "text-primary", text: `${formatMst(str(a.amount))} MST held back to secure ${member}'s future dues` };
     case "RoundSettled":
       if (!a.winner || str(a.winner).toLowerCase() === ZERO_ADDRESS) {
-        return { Icon: Trophy, color: "text-muted-foreground", text: `Round ${str(a.round ?? e.round)} settled with no bids, pot shared as dividends` };
+        return { Icon: Trophy, color: "text-muted-foreground", text: `Round ${str(a.round ?? e.round)} had no one left to receive the pot, shared as dividends` };
       }
       return { Icon: Trophy, color: "text-primary", text: `${who(a.winner)} won Round ${str(a.round ?? e.round)} · ${formatMst(str(a.payout))} MST payout` };
     case "DividendCredited":
-      return { Icon: Coins, color: "text-success", text: `${member} earned ${formatMst(str(a.amount))} MST dividend` };
+      return { Icon: Coins, color: "text-success", text: `${member} got ${formatMst(str(a.amount), 4)} MST, their share of the discount` };
     case "Joined":
       return { Icon: LogIn, color: "text-primary", text: `${member} joined · ${TIER_NAME[Number(a.tier) as Tier] ?? "Unassessed"} · locked ${formatMst(str(a.collateral))} MST` };
     case "Left":

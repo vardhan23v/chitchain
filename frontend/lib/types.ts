@@ -2,7 +2,14 @@
 export type Tier = 0 | 1 | 2 | 3; // Unassessed, Low, Medium, High
 export type Status = 0 | 1 | 2 | 3; // Open, Active, Completed, Cancelled
 
-export type RoundPhase = "contribution" | "bidding" | "settling";
+/**
+ * v2.2 round stage: contribution → closing (deadline passed, keeper covers misses) → decision (the recipient accepts the
+ * full pot or declines) → bidding (only after a decline) → settling (a window passed, the keeper settles).
+ */
+export type RoundPhase = "contribution" | "closing" | "decision" | "bidding" | "settling";
+/** On-chain round phase: 0 Contributing, 1 Deciding, 2 Auction. */
+export type PhaseCode = 0 | 1 | 2;
+export type RoundOutcome = "NONE" | "ACCEPTED" | "AUCTION" | "DECISION_TIMEOUT" | "NO_BIDS" | "NO_RECIPIENT";
 export type ContributionStatus = "PAID" | "PENDING" | "COVERED_BY_COLLATERAL" | "PARTIALLY_COVERED" | "DEFAULTED";
 export type DefaultStatus = "COVERED_BY_COLLATERAL" | "PARTIALLY_COVERED";
 
@@ -34,21 +41,38 @@ export interface CircleSummary {
   name: string | null;
   /** v3: wallet of the user who claimed the circle (lowercase) or null. */
   organizerWallet: string | null;
+  /** v2.2 on-chain phase of the current round, the decision deadline and the round's recipient (zero address while contributing). */
+  phase?: PhaseCode;
+  decisionDeadline?: number;
+  recipient?: string;
 }
 
 export interface RoundInfo {
   round: number;
   contributionDeadline: number;
-  /** bidding deadline */
+  /** auction deadline (0 until the recipient declines) */
   deadline: number;
+  /** recipient decision deadline (0 while contributing) */
+  decisionDeadline: number;
   expectedPot: string;
+  /** contributions so far; after close, the assembled pot */
   collected: string;
+  /** assembled pot once contributions closed, else "0" */
+  pot: string;
+  /** the pot payout offers are measured against (pot once closed, else expectedPot) */
+  potForOffers: string;
   bestBidder: string;
+  bestBidderName?: string | null;
   bestDiscount: string;
   maxDiscount: string;
-  /** expectedPot − bestDiscount */
-  lowestAcceptedPayout: string;
+  /** potForOffers − bestDiscount; null until someone bid */
+  lowestAcceptedPayout: string | null;
   phase: RoundPhase;
+  phaseCode: PhaseCode;
+  /** designated recipient (first choice on the full pot); null while contributing */
+  recipient: string | null;
+  recipientLabel: string | null;
+  recipientName: string | null;
 }
 
 export interface DefaultInfo {
@@ -69,6 +93,8 @@ export type DefaultRecord = DefaultInfo & { member: string; label: string | null
 export interface MemberInfo {
   address: string;
   label: string | null;
+  /** public username (null when the wallet has none) */
+  username?: string | null;
   custodial: boolean;
   joined: boolean;
   tier: Tier;
@@ -89,6 +115,13 @@ export interface RoundHistoryRow {
   round: number;
   winner: string | null;
   winnerLabel: string | null;
+  winnerName?: string | null;
+  /** how the round ended (ACCEPTED = full pot taken, AUCTION = lowest payout offer won, …) */
+  outcome?: RoundOutcome;
+  recipient?: string | null;
+  recipientLabel?: string | null;
+  recipientName?: string | null;
+  decisionTxHash?: string | null;
   pot: string;
   payout: string;
   discount: string;
@@ -243,8 +276,33 @@ export interface User {
   role: Role;
   status: UserStatus;
   displayName: string | null;
+  /** public username; the wallet address stays the on-chain identity */
+  username?: string | null;
   createdAt: number;
   lastLogin: number | null;
+}
+
+export interface UsernameCheck {
+  username: string;
+  available: boolean;
+  reason?: string;
+  message: string | null;
+  rule: string;
+}
+
+/** GET /members/:addr/profile — every count comes from the contract or indexed contract events. */
+export interface Profile {
+  address: string;
+  username: string | null;
+  label: string | null;
+  custodial: boolean;
+  riskTier: string | null;
+  onChainTier: string | null;
+  score: number | null;
+  stats: {
+    circles: number; completedRounds: number; contributions: number; contributedTotal: string; defaults: number;
+    circlesCompleted: number; circlesRemoved: number; payouts: number; payoutsTotal: string; dividendsTotal: string;
+  };
 }
 
 export interface Session { token: string; user: User; expiresAt: number }
@@ -272,7 +330,8 @@ export interface OrganizerCircle extends Omit<CircleSummary, "round"> {
   pendingContributions: number;
   defaults: number;
   collateralTotal: string;
-  lowestAcceptedPayout: string;
+  /** null until someone made an offer */
+  lowestAcceptedPayout: string | null;
 }
 
 export interface CircleAnalytics {
@@ -404,7 +463,7 @@ export interface AgentEvent {
   data: AgentEventData | null;
 }
 
-export type AuctionStatus = "CONTRIBUTION" | "BIDDING" | "SETTLING" | "INACTIVE";
+export type AuctionStatus = "CONTRIBUTION" | "DECISION" | "BIDDING" | "SETTLING" | "INACTIVE";
 
 /** Public auction snapshot (`GET /auction/:circleId`). Wei strings plus `*Mst` numbers. */
 export interface AuctionSnapshot {
@@ -420,6 +479,9 @@ export interface AuctionSnapshot {
   bestPayout: string;
   biddingDeadline: number;
   contributionDeadline: number;
+  decisionDeadline?: number;
+  recipient?: string | null;
+  recipientLabel?: string | null;
   secondsRemaining: number;
   bidCount: number;
   expectedPotMst?: number;
@@ -433,6 +495,7 @@ export interface AuctionBid {
   round: number;
   member: string;
   label: string | null;
+  username?: string | null;
   discount: string;
   payout: string;
   txHash: string;

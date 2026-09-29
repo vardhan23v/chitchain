@@ -2,8 +2,8 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import {
-  ONE, CD, BD, FEE_BPS, Tier, Status, params,
-  deployEnv, createAndFill, runRound, checkBalanceInvariant, settledEvent, claimable, collateral, type Env,
+  ONE, CD, BD, FEE_BPS, Tier, Status, Phase, Outcome, params,
+  deployEnv, createAndFill, runRound, expectEvent, settled, checkBalanceInvariant, claimable, collateral, type Env,
 } from "./helpers";
 
 const fee = (pot: bigint) => (pot * BigInt(FEE_BPS)) / 10_000n;
@@ -13,52 +13,82 @@ describe("ChitChain v2 — phases, per-circle params, defaults, history", () => 
   let env: Env;
   beforeEach(async () => { env = await deployEnv(); });
 
-  it("13. contribute after the contribution deadline reverts; bids still accepted", async () => {
+  it("13. contribute after the contribution deadline reverts; bids are rejected until the auction opens", async () => {
     const [A, B] = env.members;
     const id = await createAndFill(env, M5);
+    await expect(env.chit.connect(B).placeBid(id, ONE / 10n)).to.be.revertedWithCustomError(env.chit, "WrongPhase").withArgs(Phase.Contributing);
     await time.increase(CD + 1);
     await expect(env.chit.connect(A).contribute(id, { value: ONE })).to.be.revertedWithCustomError(env.chit, "ContributionClosed");
-    await expect(env.chit.connect(B).placeBid(id, ONE / 10n)).to.emit(env.chit, "BidPlaced");
+    await env.chit.closeContributions(id);
+    await expect(env.chit.connect(B).placeBid(id, ONE / 10n)).to.be.revertedWithCustomError(env.chit, "WrongPhase").withArgs(Phase.Deciding);
+    await expect(env.chit.connect(A).contribute(id, { value: ONE })).to.be.revertedWithCustomError(env.chit, "ContributionClosed");
   });
 
-  it("14. bid after the bidding deadline reverts; settle reverts before the bidding deadline", async () => {
+  it("14. nobody paid: close covers every miss from collateral, then settle waits for the decision window", async () => {
     const [A, B] = env.members;
     const id = await createAndFill(env, M5);
-    await expect(env.chit.settleRound(id)).to.be.revertedWithCustomError(env.chit, "BiddingNotOver");
     await time.increase(CD + 1);
-    await expect(env.chit.settleRound(id)).to.be.revertedWithCustomError(env.chit, "BiddingNotOver");
+    const close = env.chit.closeContributions(id);
+    await expect(close).to.emit(env.chit, "DefaultDetected").withArgs(id, 1, A.address, ONE, ONE, 0, 0);
+    await expect(close).to.emit(env.chit, "PotReady");
+    await expect(env.chit.settleRound(id)).to.be.revertedWithCustomError(env.chit, "DecisionNotOver");
     await time.increase(BD + 1);
-    await expect(env.chit.connect(B).placeBid(id, ONE / 10n)).to.be.revertedWithCustomError(env.chit, "BiddingClosed");
-    // nobody paid → every miss is covered from collateral, so the pot is still full
-    const tx = env.chit.settleRound(id);
-    await expect(tx).to.emit(env.chit, "DefaultDetected").withArgs(id, 1, A.address, ONE, ONE, 0, 0);
-    await expect(tx).to.emit(env.chit, "RoundSettled").withArgs(id, 1, A.address, 5n * ONE, 5n * ONE - fee(5n * ONE) - 3n * ONE, 0, fee(5n * ONE));
+    await expect(env.chit.connect(A).acceptFullPot(id)).to.be.revertedWithCustomError(env.chit, "DecisionClosed");
+    await expect(env.chit.connect(B).placeBid(id, ONE / 10n)).to.be.revertedWithCustomError(env.chit, "WrongPhase").withArgs(Phase.Deciding);
+    // decision window passed → the recipient receives the full pot (still full: every miss was covered)
+    await expect(env.chit.settleRound(id)).to.emit(env.chit, "RoundSettled").withArgs(id, 1, A.address, 5n * ONE, 5n * ONE - fee(5n * ONE) - 3n * ONE, 0, fee(5n * ONE));
+    expect((await env.chit.getRoundHistory(id, 1)).outcome).to.equal(Outcome.DecisionTimeout);
     await checkBalanceInvariant(env, id);
   });
 
-  it("15. a bid placed during the contribution phase wins at settlement", async () => {
+  it("15. the last contribution closes the phase early and names the recipient", async () => {
     const [A, B, C, D, E] = env.members;
     const id = await createAndFill(env, M5);
-    const ev = await settledEvent(env, await runRound(env, id, [A, B, C, D, E], [{ who: C, discount: ONE / 4n }]));
-    expect(ev.args.winner).to.equal(C.address);
-    expect(ev.args.discount).to.equal(ONE / 4n);
+    for (const m of [A, B, C, D]) await env.chit.connect(m).contribute(id, { value: ONE });
+    expect((await env.chit.getRound(id)).phase).to.equal(Phase.Contributing);
+    const t = env.chit.connect(E).contribute(id, { value: ONE });
+    await expect(t).to.emit(env.chit, "PotReady");
+    const r = await env.chit.getRound(id);
+    expect(r.phase).to.equal(Phase.Deciding);
+    expect(r.recipient).to.equal(A.address);
+    expect(r.pot).to.equal(5n * ONE);
+    expect(r.collected).to.equal(5n * ONE);
+    await checkBalanceInvariant(env, id);
   });
 
-  it("16. getRound / getCircle expose both deadlines and advance them each round", async () => {
+  it("16. getRound / getCircle expose phase, recipient and each deadline as it is set", async () => {
     const [A, B, C, D, E] = env.members;
     const id = await createAndFill(env, M5);
     const start = await time.latest();
     let r = await env.chit.getRound(id);
+    expect(r.phase).to.equal(Phase.Contributing);
     expect(r.contributionDeadline).to.equal(start + CD);
-    expect(r.biddingDeadline).to.equal(start + CD + BD);
+    expect(r.decisionDeadline).to.equal(0);
+    expect(r.biddingDeadline).to.equal(0);
+    expect(r.recipient).to.equal(ethers.ZeroAddress);
+    for (const m of [A, B, C, D, E]) await env.chit.connect(m).contribute(id, { value: ONE });
+    const closedAt = await time.latest();
+    r = await env.chit.getRound(id);
+    expect(r.decisionDeadline).to.equal(closedAt + BD);
+    const c = await env.chit.getCircle(id);
+    expect(c.phase).to.equal(Phase.Deciding);
+    expect(c.recipient).to.equal(A.address);
+    expect(c.decisionDeadline).to.equal(r.decisionDeadline);
+    await env.chit.connect(A).declineFullPot(id);
+    const declinedAt = await time.latest();
+    r = await env.chit.getRound(id);
+    expect(r.phase).to.equal(Phase.Auction);
+    expect(r.biddingDeadline).to.equal(declinedAt + BD);
     expect((await env.chit.getCircle(id)).roundDeadline).to.equal(r.biddingDeadline);
-    expect((await env.chit.getCircle(id)).contributionDeadline).to.equal(r.contributionDeadline);
-    await runRound(env, id, [A, B, C, D, E], [{ who: B, discount: ONE / 10n }], { bidInBiddingPhase: true });
+    await env.chit.connect(B).placeBid(id, ONE / 10n);
+    await time.increase(BD + 1);
+    await env.chit.settleRound(id);
     const settledAt = await time.latest();
     r = await env.chit.getRound(id);
     expect(r.round).to.equal(2);
+    expect(r.phase).to.equal(Phase.Contributing);
     expect(r.contributionDeadline).to.equal(settledAt + CD);
-    expect(r.biddingDeadline).to.equal(settledAt + CD + BD);
+    expect(r.recipient).to.equal(ethers.ZeroAddress);
   });
 
   it("17. createCircle validates every new parameter", async () => {
@@ -89,9 +119,9 @@ describe("ChitChain v2 — phases, per-circle params, defaults, history", () => 
     const id = await createAndFill(env, M5, { params: { holdbackBps: 1000 } });
     const pot = 5n * ONE, payout0 = pot - fee(pot);
     // owed 4, required 75% = 3, collateral 1 → tier gap 2; flat 10% of 4.95 = 0.495 → holdback 2
-    const tx = runRound(env, id, [A, B, C, D, E]);
-    await expect(tx).to.emit(env.chit, "HoldbackApplied").withArgs(id, A.address, 2n * ONE);
-    await expect(tx).to.emit(env.chit, "RoundSettled").withArgs(id, 1, A.address, pot, payout0 - 2n * ONE, 0, fee(pot));
+    const res = await runRound(env, id, [A, B, C, D, E]);
+    expectEvent(res, "HoldbackApplied", [id, A.address, 2n * ONE]);
+    expectEvent(res, "RoundSettled", [id, 1, A.address, pot, payout0 - 2n * ONE, 0, fee(pot)]);
     expect(await collateral(env, id, A)).to.equal(3n * ONE);
   });
 
@@ -100,9 +130,9 @@ describe("ChitChain v2 — phases, per-circle params, defaults, history", () => 
     const id = await createAndFill(env, M5, { params: { holdbackBps: 5000 } });
     const pot = 5n * ONE, payout0 = pot - fee(pot);
     const flat = payout0 / 2n; // 2.475 > tier gap 2
-    const tx = runRound(env, id, [A, B, C, D, E]);
-    await expect(tx).to.emit(env.chit, "HoldbackApplied").withArgs(id, A.address, flat);
-    await expect(tx).to.emit(env.chit, "RoundSettled").withArgs(id, 1, A.address, pot, payout0 - flat, 0, fee(pot));
+    const res = await runRound(env, id, [A, B, C, D, E]);
+    expectEvent(res, "HoldbackApplied", [id, A.address, flat]);
+    expectEvent(res, "RoundSettled", [id, 1, A.address, pot, payout0 - flat, 0, fee(pot)]);
     expect(await collateral(env, id, A)).to.equal(ONE + flat);
     expect((await env.chit.getRoundHistory(id, 1)).holdback).to.equal(flat);
   });
@@ -110,7 +140,7 @@ describe("ChitChain v2 — phases, per-circle params, defaults, history", () => 
   it("21. holdbackBps 0 reproduces the v1 numbers", async () => {
     const [A, B, C, D, E] = env.members;
     const id = await createAndFill(env, M5);
-    await expect(runRound(env, id, [A, B, C, D, E])).to.emit(env.chit, "HoldbackApplied").withArgs(id, A.address, 2n * ONE);
+    expectEvent(await runRound(env, id, [A, B, C, D, E]), "HoldbackApplied", [id, A.address, 2n * ONE]);
   });
 
   it("22. flat holdback is released at completion; contract ends empty", async () => {
@@ -130,7 +160,7 @@ describe("ChitChain v2 — phases, per-circle params, defaults, history", () => 
   it("23. collateral-covered miss: DefaultDetected with zero shortfall, counters updated, not removed", async () => {
     const [A, B, C, D, E] = env.members;
     const id = await createAndFill(env, [Tier.Medium, Tier.Medium, Tier.Medium, Tier.High, Tier.Medium]);
-    await expect(runRound(env, id, [A, B, C, E])).to.emit(env.chit, "DefaultDetected").withArgs(id, 1, D.address, ONE, ONE, 0, 0);
+    expectEvent(await runRound(env, id, [A, B, C, E]), "DefaultDetected", [id, 1, D.address, ONE, ONE, 0, 0]);
     const d = await env.chit.getMember(id, D.address);
     expect(d.removed).to.be.false;
     expect(d.defaults).to.equal(1);
@@ -145,9 +175,9 @@ describe("ChitChain v2 — phases, per-circle params, defaults, history", () => 
     await runRound(env, id, [A, B, C, D, E]);              // builds reserve = 0.05
     const reserve = (await env.chit.getCircle(id)).reserve;
     const shortfall = ONE - ONE / 2n - reserve;            // due 1 − collateral 0.5 − reserve 0.05
-    const tx = runRound(env, id, [A, B, C, E]);
-    await expect(tx).to.emit(env.chit, "DefaultDetected").withArgs(id, 2, D.address, ONE, ONE / 2n, reserve, shortfall);
-    await expect(tx).to.emit(env.chit, "Removed").withArgs(id, 2, D.address);
+    const res = await runRound(env, id, [A, B, C, E]);
+    expectEvent(res, "DefaultDetected", [id, 2, D.address, ONE, ONE / 2n, reserve, shortfall]);
+    expectEvent(res, "Removed", [id, 2, D.address]);
     expect((await env.chit.getRoundHistory(id, 2)).pot).to.equal(5n * ONE - shortfall);
     expect((await env.chit.getMember(id, D.address)).defaults).to.equal(1);
     // a removed member is never charged again (double-default prevention)
@@ -189,6 +219,8 @@ describe("ChitChain v2 — phases, per-circle params, defaults, history", () => 
     expect(h.holdback).to.equal(2n * ONE);
     expect(h.payout).to.equal(pot - fee(pot) - ONE / 5n - 2n * ONE);
     expect(h.settledAt).to.equal(at);
+    expect(h.outcome).to.equal(Outcome.Auction);
+    expect(h.recipient).to.equal(A.address);
     expect((await env.chit.getRoundHistory(id, 2)).settledAt).to.equal(0);
   });
 
@@ -204,16 +236,25 @@ describe("ChitChain v2 — phases, per-circle params, defaults, history", () => 
     expect((await env.chit.getCircle(id)).status).to.equal(Status.Completed);
   });
 
-  it("28. maxDiscountBps caps bids per circle; 0 disables the auction", async () => {
+  it("28. maxDiscountBps caps bids per circle (of the assembled pot); 0 disables the auction", async () => {
     const [A, B, C, D, E] = env.members;
+    const all = [A, B, C, D, E];
     const id = await createAndFill(env, M5, { params: { maxDiscountBps: 2000 } });
-    expect((await env.chit.getRound(id)).maxDiscount).to.equal(ONE);  // 20% of 5
+    expect((await env.chit.getRound(id)).maxDiscount).to.equal(ONE);  // 20% of the expected 5
+    for (const m of all) await env.chit.connect(m).contribute(id, { value: ONE });
+    await env.chit.connect(A).declineFullPot(id);
     await expect(env.chit.connect(B).placeBid(id, ONE + 1n)).to.be.revertedWithCustomError(env.chit, "BidTooHigh").withArgs(ONE);
     await env.chit.connect(B).placeBid(id, ONE);
     const id2 = await createAndFill(env, M5, { params: { maxDiscountBps: 0 } });
+    for (const m of all) await env.chit.connect(m).contribute(id2, { value: ONE });
+    await env.chit.connect(A).declineFullPot(id2);
     await expect(env.chit.connect(B).placeBid(id2, 1n)).to.be.revertedWithCustomError(env.chit, "BidTooHigh").withArgs(0);
-    const ev = await settledEvent(env, await runRound(env, id2, [A, B, C, D, E]));
-    expect(ev.args.winner).to.equal(A.address);
+    await time.increase(BD + 1);
+    // declined but nobody could bid → the recipient receives the full pot
+    await expect(env.chit.settleRound(id2)).to.emit(env.chit, "RoundSettled");
+    const h = await env.chit.getRoundHistory(id2, 1);
+    expect(h.winner).to.equal(A.address);
+    expect(h.outcome).to.equal(Outcome.NoBids);
   });
 
   it("29. spec extras: duplicate / wrong-amount contribution, non-member bid, treasury auth, no collateral withdrawal", async () => {
@@ -225,7 +266,7 @@ describe("ChitChain v2 — phases, per-circle params, defaults, history", () => 
     await env.chit.connect(a).contribute(id, { value: ONE });
     await expect(env.chit.connect(a).contribute(id, { value: ONE })).to.be.revertedWithCustomError(env.chit, "AlreadyPaid");
     await expect(env.chit.connect(env.members[1]).contribute(id, { value: ONE - 1n })).to.be.revertedWithCustomError(env.chit, "WrongAmount").withArgs(ONE, ONE - 1n);
-    await expect(env.chit.connect(stranger).placeBid(id, 1n)).to.be.revertedWithCustomError(env.chit, "NotEligibleToBid");
+    await expect(env.chit.connect(stranger).placeBid(id, 1n)).to.be.revertedWithCustomError(env.chit, "WrongPhase");
     await expect(env.chit.connect(stranger).contribute(id, { value: ONE })).to.be.revertedWithCustomError(env.chit, "NotMember");
     await expect(env.chit.connect(A).withdrawTreasury()).to.be.revertedWithCustomError(env.chit, "OnlyTreasury");
     // active collateral is not withdrawable: claimable is 0 while locked

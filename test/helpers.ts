@@ -2,12 +2,12 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import type { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import type { ContractTransactionResponse, LogDescription } from "ethers";
 import type { ChitChain, IChitChain } from "../typechain-types";
 
 export const ONE = ethers.parseEther("1");
 export const CD = 30;          // contribution phase seconds
-export const BD = 30;          // bidding phase seconds
-export const ROUND = CD + BD;  // full round length
+export const BD = 30;          // recipient decision window, and the auction window after a decline
 export const JOIN_WINDOW = 600;
 export const FEE_BPS = 100;    // 1%
 
@@ -71,26 +71,89 @@ export async function createAndFill(
   return id;
 }
 
+export const Phase = { Contributing: 0, Deciding: 1, Auction: 2 } as const;
+export const Outcome = { None: 0, Accepted: 1, Auction: 2, DecisionTimeout: 3, NoBids: 4, NoRecipient: 5 } as const;
+
+export type Decision = "accept" | "decline" | "timeout";
+export interface RoundResult {
+  /** the transaction that settled the round (accept, settleRound, or the close when nobody was eligible) */
+  tx: ContractTransactionResponse;
+  /** every event emitted by the round's transactions, in order */
+  events: LogDescription[];
+  recipient: string | null;
+}
+
+async function parsed(env: Env, tx: ContractTransactionResponse): Promise<LogDescription[]> {
+  const rc = await tx.wait();
+  return rc!.logs.map((l) => { try { return env.chit.interface.parseLog(l); } catch { return null; } }).filter((x): x is LogDescription => !!x);
+}
+
 /**
- * Everyone in `payers` contributes, `bids` are placed in order, time passes, keeper settles.
- * With `bidInBiddingPhase` the bids are placed after the contribution deadline.
+ * v2.2 round: everyone in `payers` contributes (the last payment closes contributions early); otherwise the deadline
+ * passes and anyone closes them, covering misses. Then the recipient decides:
+ *   "accept"  → acceptFullPot (no auction)
+ *   "decline" → declineFullPot, `bids` are placed in order, the auction deadline passes, settleRound
+ *   "timeout" → the decision window passes, settleRound gives the recipient the full pot
+ * Default decision: "decline" when bids are given, else "timeout".
  */
 export async function runRound(
   env: Env,
   id: bigint,
   payers: HardhatEthersSigner[],
   bids: { who: HardhatEthersSigner; discount: bigint }[] = [],
-  opts: { bidInBiddingPhase?: boolean } = {},
-) {
+  opts: { decision?: Decision } = {},
+): Promise<RoundResult> {
+  const events: LogDescription[] = [];
+  const startRound = (await env.chit.getCircle(id)).round;
   const c = await env.chit.getCircle(id);
-  for (const p of payers) await env.chit.connect(p).contribute(id, { value: c.contribution });
-  if (opts.bidInBiddingPhase) await time.increase(CD + 1);
-  for (const b of bids) await env.chit.connect(b.who).placeBid(id, b.discount);
+  let last: ContractTransactionResponse | null = null;
+  for (const p of payers) { last = await env.chit.connect(p).contribute(id, { value: c.contribution }); events.push(...(await parsed(env, last))); }
+  if ((await env.chit.getRound(id)).phase === BigInt(Phase.Contributing) && (await env.chit.getCircle(id)).round === startRound) {
+    await time.increase(CD + 1);
+    last = await env.chit.closeContributions(id);
+    events.push(...(await parsed(env, last)));
+  }
   await checkBalanceInvariant(env, id);
-  await time.increase(opts.bidInBiddingPhase ? BD + 1 : ROUND + 1);
-  const tx = await env.chit.settleRound(id);
+  const after = await env.chit.getCircle(id);
+  if (after.status !== BigInt(Status.Active) || after.round !== startRound) return { tx: last!, events, recipient: null }; // settled at close
+  const r = await env.chit.getRound(id);
+  const recipient = await ethers.getSigner(r.recipient);
+  const decision = opts.decision ?? (bids.length ? "decline" : "timeout");
+  let tx: ContractTransactionResponse;
+  if (decision === "accept") {
+    tx = await env.chit.connect(recipient).acceptFullPot(id);
+  } else if (decision === "decline") {
+    events.push(...(await parsed(env, await env.chit.connect(recipient).declineFullPot(id))));
+    for (const b of bids) events.push(...(await parsed(env, await env.chit.connect(b.who).placeBid(id, b.discount))));
+    await checkBalanceInvariant(env, id);
+    await time.increase(BD + 1);
+    tx = await env.chit.settleRound(id);
+  } else {
+    await time.increase(BD + 1);
+    tx = await env.chit.settleRound(id);
+  }
+  events.push(...(await parsed(env, tx)));
   await checkBalanceInvariant(env, id);
-  return tx;
+  return { tx, events, recipient: r.recipient };
+}
+
+/** Events named `name` from a round, optionally checking each arg of the first match. */
+export function eventsNamed(res: RoundResult, name: string): LogDescription[] {
+  return res.events.filter((e) => e.name === name);
+}
+export function expectEvent(res: RoundResult, name: string, args: unknown[]): void {
+  const found = eventsNamed(res, name);
+  const norm = (v: unknown) => (typeof v === "number" ? BigInt(v) : v);
+  const ok = found.some((e) => args.every((a, i) => {
+    const got = e.args[i];
+    return typeof got === "bigint" ? got === norm(a) : String(got).toLowerCase() === String(a).toLowerCase();
+  }));
+  expect(ok, `${name}(${args.map(String).join(", ")}) in [${found.map((e) => e.args.map(String).join(", ")).join(" | ")}]`).to.be.true;
+}
+export function settled(res: RoundResult): LogDescription {
+  const e = eventsNamed(res, "RoundSettled")[0];
+  expect(e, "RoundSettled").to.not.be.undefined;
+  return e;
 }
 
 /** Invariant 1: contract balance == Σ collateral + Σ claimable + reserve + treasuryClaimable + collected. */
@@ -110,11 +173,6 @@ export async function checkBalanceInvariant(env: Env, id: bigint) {
   }
   sum += await env.chit.treasuryClaimable();
   expect(balance, `balance invariant (circle ${id})`).to.equal(sum);
-}
-
-export async function settledEvent(env: Env, tx: Awaited<ReturnType<ChitChain["settleRound"]>>) {
-  const rc = await tx.wait();
-  return rc!.logs.map((l) => env.chit.interface.parseLog(l)).find((p) => p?.name === "RoundSettled")!;
 }
 
 export async function claimable(env: Env, id: bigint, who: HardhatEthersSigner) {

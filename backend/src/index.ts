@@ -8,6 +8,7 @@ import { startIndexer } from "./indexer";
 import { startKeeper } from "./keeper";
 import { startAutopilot } from "./autopilot";
 import { planRound } from "./agent/bidder";
+import { users } from "./routes/users";
 import { bus, loopStatus } from "./bus";
 import { circles } from "./routes/circles";
 import { feed } from "./routes/feed";
@@ -70,6 +71,7 @@ app.use(feed);
 app.use(members);
 app.use(agent);
 app.use(demo);
+app.use(users); // usernames + public profiles (before `me`, which guards /me/*)
 app.use(me);
 app.use(organizer);
 app.use(support);
@@ -79,11 +81,7 @@ app.use(aiBidding); // v4 autonomous AI bidding (SSE stream included)
 app.use((_req, res) => { res.status(404).json({ error: "not found", code: "NOT_FOUND" }); });
 app.use(errorMiddleware);
 
-// A new round (CircleStarted / RoundSettled / keeper settle) → agent re-plans for every mandate in that circle.
-bus.on("roundStarted", (circleId) => {
-  planRound(circleId).catch((e) => console.error(`[agent] circle ${circleId}: ${e instanceof Error ? e.message : String(e)}`));
-});
-// Contribution phase over (bidding-only window) → one more plan per mandate so the agent can react to the final pot.
+// v2.2: mandates only act once the recipient declined and the auction opened (FullPotDeclined / keeper sees the Auction phase).
 bus.on("biddingPhase", (circleId) => {
   planRound(circleId, "bidding").catch((e) => console.error(`[agent] circle ${circleId} (bidding): ${e instanceof Error ? e.message : String(e)}`));
 });

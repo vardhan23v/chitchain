@@ -10,7 +10,7 @@ import { TableScroll, TD, TH } from "@/components/TableScroll";
 import { TierChip } from "@/components/TierChip";
 import type { MemberExtra } from "@/components/MemberCard";
 import { big, formatMst, sameAddr, shortAddr } from "@/lib/format";
-import { memberShort } from "@/lib/labels";
+import { nameOf } from "@/lib/labels";
 import type { CircleSummary, MemberInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +51,7 @@ export function MembersTable({ circle, members, viewer, extras, className }: Pro
                       <Avatar address={m.address} size={28} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 font-semibold leading-tight">
-                          <Link href={`/member/${m.address}`} className="hover:underline">{memberShort(m.label, m.address)}</Link>
+                          <Link href={`/member/${m.address}`} className="hover:underline">{nameOf(m)}</Link>
                           {isYou && <span className="rounded-full bg-primary px-1.5 py-px text-[10px] font-bold text-primary-foreground">You</span>}
                         </div>
                         <div className="font-mono text-[12px] text-muted-foreground">{shortAddr(m.address)}</div>

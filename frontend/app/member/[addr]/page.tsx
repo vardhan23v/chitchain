@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { ExternalLink, History, Info, RefreshCw, ShieldCheck, Wallet } from "lucide-react";
+import { ExternalLink, History, Info, RefreshCw, ShieldCheck, UserRound, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,11 @@ import { scoreBand } from "@/components/ScoreGauge";
 import { TierChip } from "@/components/TierChip";
 import { TxLink } from "@/components/TxLink";
 import { useRisk } from "@/hooks/useRisk";
+import { useAuth } from "@/hooks/useAuth";
+import { usePolling } from "@/hooks/usePolling";
+import { ProfileStats } from "@/components/profile/ProfileStats";
+import { UsernameForm } from "@/components/profile/UsernameForm";
+import { api } from "@/lib/api";
 import { useWallet } from "@/hooks/useWallet";
 import { addrUrl, sameAddr } from "@/lib/format";
 import { TIER_NAME } from "@/lib/labels";
@@ -45,6 +50,10 @@ const BAND_CLS = { Low: "text-success", Medium: "text-warning", High: "text-dang
 
 function Profile({ address, isYou }: { address: string; isYou: boolean }) {
   const { data, error, loading, assess, assessing, lastTx } = useRisk(address);
+  const auth = useAuth();
+  const names = usePolling<{ names: Record<string, string> }>(() => api.usernames([address]), 30_000, [address, auth.user?.username]);
+  const username = names.data?.names[address.toLowerCase()] ?? null;
+  const signedInHere = isYou && !!auth.user && sameAddr(auth.user.walletAddress, address);
   const labelMap: Record<string, string> = {};
 
   const onAssess = async () => {
@@ -63,7 +72,8 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
         title={
           <span className="flex items-center gap-3">
             <Avatar address={address} size={40} />
-            <span className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</span>
+            {username ? <span>{username}</span> : <span className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</span>}
+            {username && <span className="font-mono text-[15px] font-normal text-muted-foreground">{address.slice(0, 6)}…{address.slice(-4)}</span>}
             {isYou && <Badge>You</Badge>}
           </span>
         }
@@ -74,6 +84,14 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
           </Button>
         }
       />
+
+      <ProfileStats address={address} />
+      {signedInHere && (
+        <Card id="settings" className="scroll-mt-20 p-4 md:p-5">
+          <SectionTitle Icon={UserRound}>{username ? "Change your username" : "Choose a username"}</SectionTitle>
+          <div className="mt-3 max-w-md"><UsernameForm submitLabel={username ? "Save username" : "Create profile"} onSaved={() => void names.refetch()} /></div>
+        </Card>
+      )}
 
       <div id="risk" className="grid scroll-mt-20 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <RiskCard data={data} loading={loading} error={error} className="min-w-0" />

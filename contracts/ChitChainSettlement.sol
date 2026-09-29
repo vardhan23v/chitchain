@@ -5,6 +5,61 @@ import {ChitChainBase} from "./ChitChainBase.sol";
 
 /// @title ChitChainSettlement — the round-settlement steps (ARCHITECTURE.md §3.3). No external calls anywhere here.
 abstract contract ChitChainSettlement is ChitChainBase {
+    /// @dev Contributions close: cover misses from collateral/reserve, freeze the pot in `collected`, pick the
+    ///      designated recipient and give them the first choice until decisionDeadline. With no eligible recipient the
+    ///      round settles at once and the pot is shared as dividends.
+    function _closeContributions(Circle storage c, uint256 circleId) internal {
+        uint8 round = c.round;
+        c.collected = _collectMissed(c, circleId, round);
+        address recipient = _recipientFor(c, circleId, round);
+        if (recipient == address(0)) {
+            _settle(c, circleId, address(0), 0, Outcome.NoRecipient);
+            return;
+        }
+        c.recipient = recipient;
+        c.phase = Phase.Deciding;
+        c.decisionDeadline = uint64(block.timestamp) + c.params.biddingDuration;
+        emit PotReady(circleId, round, recipient, c.collected, c.decisionDeadline);
+    }
+
+    /// @dev Settles the current round. `winner` = address(0) shares the pot (minus fee) as dividends. The winner gets
+    ///      pot − fee − discount (minus holdback); the discount is split equally among the other active members.
+    function _settle(Circle storage c, uint256 circleId, address winner, uint256 discount, Outcome outcome) internal {
+        uint8 round = c.round;
+        uint256 pot = c.collected;
+        c.collected = 0;
+
+        uint256 fee = (pot * c.params.feeBps) / BPS;
+        c.reserve += fee;
+        uint256 payout;
+        uint256 holdback;
+
+        if (winner == address(0)) {
+            _shareDividends(c, circleId, round, pot - fee, address(0));
+            discount = 0;
+        } else {
+            MemberState storage w = _ms[circleId][winner];
+            w.hasWon = true;
+            payout = pot - fee - discount;
+            (payout, holdback) = _applyHoldback(c, circleId, winner, w, payout);
+            if (_activeCount(c, circleId) > 1) {
+                _shareDividends(c, circleId, round, discount, winner);
+            } else {
+                payout += discount; // no one else to share with
+            }
+            w.claimable += payout;
+        }
+        _history[circleId][round] = RoundRecord(winner, uint64(block.timestamp), pot, payout, discount, fee, holdback, outcome, c.recipient);
+        emit RoundSettled(circleId, round, winner, pot, payout, discount, fee);
+
+        if (_eligibleCount(c, circleId) == 0) {
+            _complete(c, circleId);
+        } else {
+            c.round = round + 1;
+            _startRound(c);
+        }
+    }
+
     /// @dev Step 1: every active member who did not pay is a default. Cover from collateral, then reserve; remove if
     ///      collateral could not cover the full amount. Returns the pot actually assembled this round.
     function _collectMissed(Circle storage c, uint256 circleId, uint8 round) internal returns (uint256 pot) {
@@ -38,20 +93,6 @@ abstract contract ChitChainSettlement is ChitChainBase {
                 emit Removed(circleId, round, a);
             }
         }
-    }
-
-    /// @dev Step 4: highest bidder if still eligible, else first eligible member in join order (discount 0).
-    function _pickWinner(Circle storage c, uint256 circleId, uint8 round) internal view returns (address, uint256) {
-        address best = _bestBidder[circleId][round];
-        if (best != address(0)) {
-            MemberState storage b = _ms[circleId][best];
-            if (!b.removed && !b.hasWon) return (best, _bestDiscount[circleId][round]);
-        }
-        for (uint256 i = 0; i < c.members.length; i++) {
-            MemberState storage m = _ms[circleId][c.members[i]];
-            if (!m.removed && !m.hasWon) return (c.members[i], 0);
-        }
-        return (address(0), 0);
     }
 
     /// @dev Step 5: holdback = min(payout, max(tier coverage gap, payout × holdbackBps)). Locked in the winner's

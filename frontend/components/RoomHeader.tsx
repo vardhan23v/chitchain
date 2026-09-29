@@ -32,8 +32,10 @@ const STATUS = {
 export function RoomHeader({ circle, round, txCount, onSettle, settling, source }: Props) {
   const active = circle.status === 1;
   const clock = useRoundClock(round, active);
-  const deadline = clock.roundPhase === "contribution" ? clock.contributionDeadline : clock.biddingDeadline;
-  const label = clock.roundPhase === "settling" ? undefined : PHASE_LABEL[clock.roundPhase];
+  // v2.2: the countdown follows the current window (contributions, recipient decision, or the auction after a decline)
+  const deadline = clock.biddingDeadline;
+  const label = clock.roundPhase === "settling" || clock.roundPhase === "closing" ? undefined : PHASE_LABEL[clock.roundPhase];
+  const closing = clock.roundPhase === "closing" || (round.phaseCode === 0 && clock.roundPhase !== "contribution");
   const st = STATUS[circle.status];
 
   return (
@@ -62,7 +64,7 @@ export function RoomHeader({ circle, round, txCount, onSettle, settling, source 
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.2, ease: EASE }}
               >
-                <Countdown deadline={deadline || null} active={active} label={label} tone={clock.roundPhase} onSettle={onSettle} settling={settling} />
+                <Countdown deadline={deadline || null} active={active} label={label} tone={clock.roundPhase} onSettle={onSettle} settling={settling} settleLabel={closing ? "Close contributions" : "Settle the round"} />
               </motion.span>
             </AnimatePresence>
           )}

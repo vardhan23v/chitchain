@@ -2,7 +2,7 @@ import { Contract, Interface, JsonRpcProvider, type ContractRunner } from "ether
 import abi from "@/lib/abi/ChitChain.json";
 import { CONTRACT_ADDRESS, HAS_CONTRACT, RPC_URL } from "@/lib/chain";
 import { getBrowserProvider } from "@/lib/wallet";
-import type { CircleSummary, ContributionStatus, MemberInfo, MyCircle, RoundHistoryRow, RoundInfo, RoundPhase, Status, Tier } from "@/lib/types";
+import type { CircleSummary, ContributionStatus, MemberInfo, MyCircle, PhaseCode, RoundHistoryRow, RoundInfo, RoundOutcome, RoundPhase, Status, Tier } from "@/lib/types";
 
 export const chitInterface = new Interface(abi);
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -54,35 +54,57 @@ export function toCircleSummary(id: number, c: Record<string, unknown>): CircleS
     roundDeadline: n(c.roundDeadline),
     reserve: s(c.reserve),
     memberCount: n(c.memberCount),
+    phase: n(c.phase) as PhaseCode,
+    decisionDeadline: n(c.decisionDeadline),
+    recipient: String(c.recipient ?? ZERO_ADDRESS),
     isDemo: false,
     name: null,
     organizerWallet: null,
   };
 }
 
-/** Phase from the two deadlines (mirrors the backend rule). */
-export function phaseFor(contributionDeadline: number, biddingDeadline: number, nowSec = Math.floor(Date.now() / 1000)): RoundPhase {
-  if (nowSec < contributionDeadline) return "contribution";
-  if (nowSec < biddingDeadline) return "bidding";
-  return "settling";
+/** Stage from the on-chain phase plus its deadline (mirrors the backend `roundPhase`). */
+export function phaseFor(
+  r: { phase?: PhaseCode; contributionDeadline: number; decisionDeadline?: number; deadline: number },
+  nowSec = Math.floor(Date.now() / 1000)
+): RoundPhase {
+  const code = r.phase ?? 0;
+  if (code === 0) return nowSec <= r.contributionDeadline ? "contribution" : "closing";
+  if (code === 1) return nowSec <= (r.decisionDeadline ?? 0) ? "decision" : "settling";
+  return nowSec <= r.deadline ? "bidding" : "settling";
 }
+
+const OUTCOMES: RoundOutcome[] = ["NONE", "ACCEPTED", "AUCTION", "DECISION_TIMEOUT", "NO_BIDS", "NO_RECIPIENT"];
 
 export function toRoundInfo(r: Record<string, unknown>): RoundInfo {
   const expectedPot = BigInt(s(r.expectedPot));
   const bestDiscount = BigInt(s(r.bestDiscount));
+  const phaseCode = n(r.phase) as PhaseCode;
+  const pot = BigInt(s(r.pot));
+  const potForOffers = phaseCode === 0 ? expectedPot : pot;
   const contributionDeadline = n(r.contributionDeadline);
+  const decisionDeadline = n(r.decisionDeadline);
   const deadline = n(r.biddingDeadline);
+  const bestBidder = String(r.bestBidder);
+  const recipient = String(r.recipient ?? ZERO_ADDRESS);
   return {
     round: n(r.round),
     contributionDeadline,
+    decisionDeadline,
     deadline,
     expectedPot: expectedPot.toString(),
     collected: s(r.collected),
-    bestBidder: String(r.bestBidder),
+    pot: pot.toString(),
+    potForOffers: potForOffers.toString(),
+    bestBidder,
     bestDiscount: bestDiscount.toString(),
     maxDiscount: s(r.maxDiscount),
-    lowestAcceptedPayout: (expectedPot > bestDiscount ? expectedPot - bestDiscount : 0n).toString(),
-    phase: phaseFor(contributionDeadline, deadline),
+    lowestAcceptedPayout: bestBidder === ZERO_ADDRESS ? null : (potForOffers > bestDiscount ? potForOffers - bestDiscount : 0n).toString(),
+    phase: phaseFor({ phase: phaseCode, contributionDeadline, decisionDeadline, deadline }),
+    phaseCode,
+    recipient: recipient === ZERO_ADDRESS ? null : recipient,
+    recipientLabel: null,
+    recipientName: null,
   };
 }
 
@@ -146,12 +168,16 @@ export function toMemberInfo(address: string, m: Record<string, unknown>, requir
 
 export function toRoundHistoryRow(round: number, r: Record<string, unknown>, activeMembers: number): RoundHistoryRow {
   const winner = String(r.winner);
+  const recipient = String(r.recipient ?? ZERO_ADDRESS);
   const discount = BigInt(s(r.discount));
   const others = Math.max(1, activeMembers - 1);
   return {
     round,
     winner: winner === ZERO_ADDRESS ? null : winner,
     winnerLabel: null,
+    outcome: OUTCOMES[n(r.outcome)] ?? "NONE",
+    recipient: recipient === ZERO_ADDRESS ? null : recipient,
+    recipientLabel: null,
     pot: s(r.pot),
     payout: s(r.payout),
     discount: discount.toString(),
@@ -216,7 +242,7 @@ export async function readMyCircles(addr: string): Promise<MyCircle[]> {
       const m = await c.getMember(circle.id, addr);
       if (!m.joined) return;
       const req = (await c.requiredCollateral(addr, circle.id)) as bigint;
-      const phase = circle.status === 1 ? phaseFor(circle.contributionDeadline, circle.roundDeadline) : undefined;
+      const phase = circle.status === 1 ? phaseFor({ phase: circle.phase, contributionDeadline: circle.contributionDeadline, decisionDeadline: circle.decisionDeadline, deadline: circle.roundDeadline }) : undefined;
       out.push({ ...circle, me: toMemberInfo(addr, m, req, { active: circle.status === 1, phase, contribution: BigInt(circle.contribution) }) });
     })
   );

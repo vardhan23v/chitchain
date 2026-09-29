@@ -23,7 +23,17 @@ export function useRoomActions(id: number, refetch: () => Promise<void>) {
     [id, run, after]
   );
   const bid = useCallback(
-    (discount: bigint) => run(async () => (await getSignerContract()).placeBid(id, discount), { success: "Bid placed.", onMined: after }),
+    (discount: bigint) => run(async () => (await getSignerContract()).placeBid(id, discount), { success: "Bid placed. Your payout offer is on-chain.", onMined: after }),
+    [id, run, after]
+  );
+  /** The round's recipient takes the full pot: settles the round on-chain, no auction. */
+  const accept = useCallback(
+    () => run(async () => (await getSignerContract()).acceptFullPot(id), { success: "Full pot accepted. Your payout is claimable.", onMined: after }),
+    [id, run, after]
+  );
+  /** The round's recipient declines the full pot: the auction opens on-chain. */
+  const decline = useCallback(
+    () => run(async () => (await getSignerContract()).declineFullPot(id), { success: "Full pot declined. The auction is open.", onMined: after }),
     [id, run, after]
   );
   const withdraw = useCallback(
@@ -38,13 +48,17 @@ export function useRoomActions(id: number, refetch: () => Promise<void>) {
     () => run(async () => (await getSignerContract()).cancel(id), { success: "Circle cancelled. Your collateral is claimable.", onMined: after }),
     [id, run, after]
   );
-  /** Settle from the connected wallet; if no wallet, ask the backend keeper. */
+  /**
+   * Move the round on once its window passed: close contributions (misses covered from collateral) or settle the round.
+   * From the connected wallet when there is one; otherwise the backend keeper sends it.
+   */
   const settle = useCallback(
-    async (hasWallet: boolean) => {
-      if (hasWallet) return run(async () => (await getSignerContract()).settleRound(id), { success: "Round settled.", onMined: after });
+    async (hasWallet: boolean, step: "closeContributions" | "settleRound" = "settleRound") => {
+      const done = step === "closeContributions" ? "Contributions closed. The recipient can now decide." : "Round settled.";
+      if (hasWallet) return run(async () => (await getSignerContract())[step](id), { success: done, onMined: after });
       try {
         const r = await api.settle(id);
-        toast.success("Round settled by the keeper.", { description: r.txHash });
+        toast.success(r.step === "closeContributions" ? "Contributions closed by the keeper." : "Round settled by the keeper.", { description: r.txHash });
         await after();
         return r.txHash;
       } catch (e) {
@@ -55,5 +69,5 @@ export function useRoomActions(id: number, refetch: () => Promise<void>) {
     [id, run, after]
   );
 
-  return { pending, tx, keepWaiting, dismiss, join, contribute, bid, withdraw, leave, cancel, settle };
+  return { pending, tx, keepWaiting, dismiss, join, contribute, bid, accept, decline, withdraw, leave, cancel, settle };
 }

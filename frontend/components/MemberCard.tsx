@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useReducedMotion } from "@/components/motion/MotionPref";
 import { EASE } from "@/components/motion/Reveal";
-import { XCircle } from "lucide-react";
+import { XCircle, HandCoins } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/Avatar";
@@ -12,8 +12,8 @@ import { CollateralBar } from "@/components/CollateralBar";
 import { ConfettiLite } from "@/components/Motion";
 import { ContributionChip, WonChip } from "@/components/StatusChip";
 import { TierChip } from "@/components/TierChip";
-import { memberShort } from "@/lib/labels";
-import { formatMst, shortAddr } from "@/lib/format";
+import { nameOf } from "@/lib/labels";
+import { formatMst, sameAddr, shortAddr } from "@/lib/format";
 import type { CircleSummary, MemberInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +67,7 @@ export function MemberCard({ m, circle, isYou, extra }: Props) {
         <Avatar address={m.address} />
         <div className="min-w-0">
           <div className="flex items-center gap-1 text-sm font-semibold">
-            <Link href={`/member/${m.address}`} className="hover:underline">{memberShort(m.label, m.address)}</Link>
+            <Link href={`/member/${m.address}`} className="hover:underline">{nameOf(m)}</Link>
             {isYou && <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">You</span>}
           </div>
           <div className="truncate font-mono text-[12px] text-muted-foreground">{shortAddr(m.address)}</div>
@@ -77,6 +77,9 @@ export function MemberCard({ m, circle, isYou, extra }: Props) {
         <TierChip tier={m.tier} circle={circle} short />
         {m.removed && (
           <Badge variant="status-removed"><XCircle className="h-3 w-3" aria-hidden />Removed</Badge>
+        )}
+        {circleActive && circle.recipient && sameAddr(circle.recipient, m.address) && (circle.phase ?? 0) > 0 && (
+          <Badge variant="pot"><HandCoins className="h-3 w-3" aria-hidden />{circle.phase === 2 ? "Declined the pot" : "First choice on the pot"}</Badge>
         )}
         {m.hasWon && <WonChip round={extra?.wonRound} />}
         {!m.removed && circleActive && <ContributionChip status={m.contributionStatus} />}

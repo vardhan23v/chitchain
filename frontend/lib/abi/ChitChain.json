@@ -69,6 +69,21 @@
   },
   {
     "inputs": [],
+    "name": "ContributionsOpen",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DecisionClosed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DecisionNotOver",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "DirectPaymentRejected",
     "type": "error"
   },
@@ -114,6 +129,11 @@
   },
   {
     "inputs": [],
+    "name": "NotRecipient",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NothingToWithdraw",
     "type": "error"
   },
@@ -146,6 +166,17 @@
       }
     ],
     "name": "WrongAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IChitChain.Phase",
+        "name": "current",
+        "type": "uint8"
+      }
+    ],
+    "name": "WrongPhase",
     "type": "error"
   },
   {
@@ -401,6 +432,68 @@
       },
       {
         "indexed": true,
+        "internalType": "uint8",
+        "name": "round",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "pot",
+        "type": "uint256"
+      }
+    ],
+    "name": "FullPotAccepted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "circleId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "round",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "biddingDeadline",
+        "type": "uint64"
+      }
+    ],
+    "name": "FullPotDeclined",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "circleId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
         "internalType": "address",
         "name": "member",
         "type": "address"
@@ -469,6 +562,43 @@
       }
     ],
     "name": "Left",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "circleId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint8",
+        "name": "round",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "pot",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "decisionDeadline",
+        "type": "uint64"
+      }
+    ],
+    "name": "PotReady",
     "type": "event"
   },
   {
@@ -666,6 +796,19 @@
         "type": "uint256"
       }
     ],
+    "name": "acceptFullPot",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "circleId",
+        "type": "uint256"
+      }
+    ],
     "name": "cancel",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -682,6 +825,19 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "circleId",
+        "type": "uint256"
+      }
+    ],
+    "name": "closeContributions",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -775,6 +931,19 @@
         "type": "uint256"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "circleId",
+        "type": "uint256"
+      }
+    ],
+    "name": "declineFullPot",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -884,6 +1053,21 @@
             "internalType": "uint8",
             "name": "memberCount",
             "type": "uint8"
+          },
+          {
+            "internalType": "enum IChitChain.Phase",
+            "name": "phase",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint64",
+            "name": "decisionDeadline",
+            "type": "uint64"
+          },
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
           }
         ],
         "internalType": "struct IChitChain.CircleView",
@@ -1040,6 +1224,26 @@
             "internalType": "uint256",
             "name": "maxDiscount",
             "type": "uint256"
+          },
+          {
+            "internalType": "enum IChitChain.Phase",
+            "name": "phase",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint64",
+            "name": "decisionDeadline",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pot",
+            "type": "uint256"
           }
         ],
         "internalType": "struct IChitChain.RoundView",
@@ -1101,6 +1305,16 @@
             "internalType": "uint256",
             "name": "holdback",
             "type": "uint256"
+          },
+          {
+            "internalType": "enum IChitChain.Outcome",
+            "name": "outcome",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
           }
         ],
         "internalType": "struct IChitChain.RoundRecord",

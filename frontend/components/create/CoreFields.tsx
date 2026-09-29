@@ -35,7 +35,7 @@ export function CoreFields({ v, set, errors }: FieldsProps) {
         </div>
       </FormSection>
 
-      <FormSection Icon={Clock} title="Timing" text="Each round = contribution window + bidding window. The join window is how long the circle waits to fill.">
+      <FormSection Icon={Clock} title="Timing" text="Each round: contributions, then the recipient's decision window, and an auction window only if they decline. The join window is how long the circle waits to fill.">
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Contribution window" htmlFor="cwin" error={errors.contributionDuration} hint="Time to pay each round.">
             <Select value={String(v.contributionDuration)} onValueChange={(s) => set("contributionDuration", Number(s))}>
@@ -43,7 +43,7 @@ export function CoreFields({ v, set, errors }: FieldsProps) {
               <SelectContent>{WINDOW_OPTIONS.map((o) => <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
-          <Field label="Bidding window" htmlFor="bwin" error={errors.biddingDuration} hint="Extra time for bids after contributions close.">
+          <Field label="Decision and auction window" htmlFor="bwin" error={errors.biddingDuration} hint="Time the recipient has to accept or decline the pot, and again for the auction if they decline.">
             <Select value={String(v.biddingDuration)} onValueChange={(s) => set("biddingDuration", Number(s))}>
               <SelectTrigger id="bwin"><SelectValue /></SelectTrigger>
               <SelectContent>{WINDOW_OPTIONS.map((o) => <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>)}</SelectContent>

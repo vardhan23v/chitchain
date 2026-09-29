@@ -14,6 +14,8 @@ Follow the `focused-code-edit` skill for every change. Start from the folder map
 | Frontend theme | `frontend/app/globals.css` (tokens, `.card-hover`, `.grid-texture`, `.status-dot`), `frontend/tailwind.config.ts` | Only for theme-level changes |
 | Frontend shell | `frontend/components/shell/{Sidebar,TopHeader,MobileTabs}.tsx`, `frontend/lib/routes.ts`, `frontend/app/layout.tsx` | Navigation changes |
 | Motion primitives | `frontend/components/motion/{Reveal,CountUp,Flash,MotionPref,MotionToggle,ScrollProgress,Parallax,SplitText,CursorGlow,DrawLine,Spotlight,Magnetic,RollingClock}.tsx`, `frontend/components/landing/{MoneyFlow,LiveTicker,PotStory}.tsx`, `frontend/components/HowItWorks.tsx` | Reuse, do not duplicate; DESIGN.md §15 lists what each does |
+| Round flow UI (contract v2.2) | `frontend/components/room/{RecipientDecision,RoundTimeline}.tsx`, `frontend/components/{AuctionCard,BidDialog}.tsx`, `frontend/components/dashboard/NextActionCard.tsx`, `frontend/lib/payout.ts` | Recipient accept / decline, payout offers; DESIGN.md §16 |
+| Usernames and profile | `frontend/components/profile/*`, `frontend/components/MemberName.tsx`, `backend/src/users/username.ts`, `backend/src/db/usernames.ts`, `backend/src/routes/users.ts` | Display names only; the wallet stays the identity |
 | Backend API | `backend/src/routes/*`, `backend/src/index.ts` | Only when the user asks for API or backend changes |
 | Backend loops | `backend/src/{keeper,autopilot,indexer}.ts`, `backend/src/ai/loop.ts` | Chain automation, AI agent |
 | Chain access | `backend/src/chain.ts` (read cache, `sendTx`, custodial wallets) | Never log keys |
