@@ -6,6 +6,7 @@
 [![MST Testnet](https://img.shields.io/badge/MST%20Testnet-chain%2091562037-C0392B)](https://testnet.mstscan.com)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity&logoColor=white)](contracts/ChitChain.sol)
 [![Hardhat tests](https://img.shields.io/badge/Hardhat%20tests-29%20passing-F7DF1E?logo=ethereum&logoColor=black)](test)
+[![Backend tests](https://img.shields.io/badge/backend%20tests-60%20passing-16A34A?logo=node.js&logoColor=white)](backend)
 [![No real money](https://img.shields.io/badge/money-MST%20TESTNET%20only-D97706)](#no-real-money)
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)](frontend)
 [![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?logo=prisma&logoColor=white)](backend/prisma/schema.prisma)
@@ -34,7 +35,7 @@ Built in 24 h for **MST Blockchain × NEWRRO Buildathon 2026 — MST Blockchain 
 - App: https://frontend-production-d322.up.railway.app
 - Backend API: https://backend-production-64738.up.railway.app/health
 - Demo video: `<link>`
-- Hosting: frontend, backend and PostgreSQL all run on **Railway** (deployed with the Railway CLI, no GitHub integration).
+- Hosting: frontend, backend, the CrewAI `ai-agent` service and PostgreSQL all run on **Railway** (deployed with the Railway CLI, no GitHub integration).
 
 ## MST Blockchain integration
 - Network: **MST Testnet** (chain ID `91562037`, RPC `https://testnetrpc.mstblockchain.com`)
@@ -102,6 +103,8 @@ A reverse auction: members state the payout they would accept from the pot; the 
 
 ### Settlement (SETTLE)
 `payout = pot − fee − discount`, then the holdback below is applied and the rest is credited to the winner's claimable balance. Anyone can settle after the bidding deadline; the backend keeper does it automatically within a few seconds.
+
+If nobody bids, the round settles with no winner: the pot minus the fee is shared as dividends among the active members and no holdback applies. The UI shows it as "No bids, pot shared as dividends" (see round 5 of demo circle #5).
 
 ### Dividends
 ```
@@ -200,6 +203,21 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) (behaviour), [INTERFACE.md](INTERFACE.md)
 
 **Separation of duties:** the blockchain is custody + rules; the AI is judgement. The AI's only privileged on-chain power is `setRiskTier` (risk oracle wallet). The bidding agent bids from **custodial demo wallets** that are labelled as such in the UI.
 
+## Interface
+
+Dark midnight theme with the MST red accent ([DESIGN.md §14](DESIGN.md)): a 240 px sidebar (icon rail below 1280 px, bottom tabs on phones), a sticky header with the network pill, notifications and wallet menu, and an overview-first layout. Red marks the primary action, the active nav item and chain references; money in the contract is sky, the AI agent is violet. Every amount is MST and labelled testnet, every number is read from the contract or the indexer, and anything unavailable says so instead of showing a placeholder.
+
+| Page | What it shows |
+|---|---|
+| `/` | Hero with the signature money-flow visualisation, network stats, a live ticker of the newest on-chain events, the latest circle, a scroll-driven "How it works" (the pot illustration plays one round as you scroll), why blockchain, transparency, roles and the circles grid |
+| `/dashboard` | Greeting, stat cards (total locked, current pot, next contribution, reputation), the active chit card, money flow, live auction, AI risk card and recent transactions |
+| `/circle/:id` | Pot meter, auction card with bid timeline and the "Place a bid" dialog, AI bidding agent panel (recommendation and on-chain transaction kept apart), members, round history, defaults and the live feed |
+| `/activity` | Transaction centre with type tabs and the 5-step transaction state machine (Preparing, Wallet confirmation, Submitted, Confirming on MST, Confirmed) |
+| `/create`, `/member/:addr`, `/collateral`, `/support` | Two-column create form with live summary; profile with the risk card and on-chain history; per-circle collateral; help centre and tickets |
+| `/organizer`, `/organizer/circles/:id`, `/admin`, `/demo` | Organizer dashboard and per-circle analytics; platform admin (users, audit log, support, config, system health, treasury); demo controls for the custodial wallets |
+
+**Motion.** Twelve scroll-driven and ambient effects ([DESIGN.md §15](DESIGN.md)): reading-progress bar, headline word reveal, hero parallax, pointer-following glow, live ticker, pinned scrollytelling "How it works", self-tracing money-flow connector, self-drawing history rail, spotlight card borders, magnetic buttons, rolling countdown digits and the spinning hero ring. Everything is transforms and opacity, and every effect has a static fallback. An **Animations** switch in the footer and sidebar cycles System, On, Off per browser: System follows the OS reduce-motion setting, the choice is stored in `localStorage` and mirrored on `<html data-motion>` before the first paint. Layout is checked at desktop and phone widths for horizontal overflow, clipped text and console errors.
+
 ## Repo layout
 ```
 contracts/    ChitChain.sol · ChitChainBase.sol · IChitChain.sol · test/ReentrantAttacker.sol
@@ -208,7 +226,8 @@ scripts/      ping · deploy · export-abi · seed-demo
 deployments/  mstTestnet.json (address, deploy tx, block)
 backend/      Express + Prisma/PostgreSQL: indexer, keeper, risk engine, bidding agent, demo autopilot
 agent/        Python 3.12 + CrewAI + FastAPI: AI bidding crew (decides only; Node guards and executes)
-frontend/     Next.js 14 + Tailwind + shadcn/ui
+frontend/     Next.js 14 + Tailwind + shadcn/ui + framer-motion (motion primitives in components/motion/)
+CLAUDE.md     working rules for AI-assisted edits: folder map, house style, commands, deploy
 ```
 
 ## Data architecture (Prisma + PostgreSQL)
@@ -233,12 +252,12 @@ keeper ── settleRound ──► chain          agent ── placeBid ──�
 | `RiskCache` | `risk_cache` | cached risk result JSON per address (30 s TTL) | address |
 | `DemoSkip` | `demo_skip` | demo console "skip payment" toggle per wallet | address |
 | `DemoCircle` | `demo_circles` | circles the demo autopilot manages | circleId |
-| `Meta` | `meta` | key/value, e.g. `last_block` for the indexer cursor | key |
+| `Meta` | `meta` | key/value: `last_block` (indexer cursor) and `contract_address` (a changed deployment resets the chain-derived tables) | key |
 
 Design choices:
 - **Idempotent ingestion.** The indexer polls `queryFilter` from `last_block + 1` in ≤ 2,000-block chunks and inserts with `createMany({ skipDuplicates: true })` in one transaction, so restarts never duplicate feed items.
 - **Schema as code.** Tables are created from the Prisma schema at boot (`prisma db push` in `npm start`), so a fresh Railway Postgres works with zero manual steps. Migrations (`prisma migrate`) are the next step once the schema stabilises.
-- **Rebuildable.** Drop the database and the feed rebuilds from `START_BLOCK`. Only agent mandates and logs are backend-native state.
+- **Rebuildable.** Drop the database and the feed rebuilds from `START_BLOCK`. When `CHITCHAIN_ADDRESS` changes (a redeploy), the indexer wipes the chain-derived tables itself and re-indexes, so circle ids never collide across contracts. Only agent mandates and logs are backend-native state.
 - **Wei stays a string.** Amounts are stored as decimal strings and converted to `bigint` at the code edge, never as floats.
 
 Local development:
@@ -287,7 +306,8 @@ Demo flow: open `/demo` → **Fund wallets** → **Assess all** (D becomes High,
 ## Running tests
 ```bash
 npx hardhat test                 # 29 contract cases incl. balance invariant after every step
-(cd backend && npm test)         # risk score, agent guardrails, v4 risk guard + fallback unit tests
+(cd backend && npm test)         # 60 cases: risk score, agent guardrails, v4 risk guard + fallback
+(cd frontend && npm run typecheck && npx next lint && npm run build)   # never run the build while the dev server is up
 ```
 Contract cases cover: creation and parameter validation, joining, Low/Medium/High/Unassessed and custom collateral multipliers, correct / wrong / duplicate contributions, valid / too-high / not-higher / non-member / after-deadline bids, winner selection, payout, discount, dividends and dust, default detection with full, partial and reserve-assisted coverage, double-default prevention, holdback (tier floor, flat %, release), withdrawal restrictions, unauthorised oracle/treasury calls, re-entrancy, settlement timing and multi-round completion.
 
