@@ -2,5 +2,5 @@ crewai[litellm]>=0.80
 litellm>=1.60
 fastapi>=0.115
 uvicorn[standard]>=0.30
-httpx>=0.27
+httpx>=0.28.1
 pydantic>=2.7
