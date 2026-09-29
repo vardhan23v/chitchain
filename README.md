@@ -368,6 +368,15 @@ Three circles whose join window closed with only one member were cancelled by th
 | Treasury | `POST /admin/treasury/withdraw` sent `withdrawTreasury()` from the treasury wallet and moved 0.04 MST of accrued fees out of the contract | [`0xf3dc…76b2`](https://testnet.mstscan.com/tx/0xf3dcfbb969bfcab5193c9aa4408fd2c05f06d298a19cdb38a67d43f322bd76b2) |
 | Demo circle #5 | `POST /demo/new-circle` now pre-checks funding, creates the circle, responds at once, and the autopilot join queue joined all five demo wallets in the background (5 of 5, no failures) | [`0xe969…8588`](https://testnet.mstscan.com/tx/0xe969cc1b0d370442e0564a5368e5c4ed67f9dbc51cf84a46fe15eadefdf8c588) |
 
+### AI agent on v2.1 (circle #5, round 1, 2026-09-29)
+
+Same autonomous flow as circle #8, now on the current contract: demo rival (wallet A) bid a 0.005 MST discount, the CrewAI crew returned `BID 0.0299 MST` (reason code `DESIRED_PAYOUT`), the risk guard passed, and wallet C's bid was confirmed in block 5795839; the agent then held the winning bid until the round settled.
+
+| Step | Transaction |
+|---|---|
+| Demo rival bid (wallet A) | [`0x39ac…a401`](https://testnet.mstscan.com/tx/0x39ac4725599e88ad31d6159977aa690510326554cdd0c1036e2942cc53b4a401) |
+| Agent bid (wallet C, 0.0299 MST discount, payout 0.22 MST) | [`0xe2b7…6511`](https://testnet.mstscan.com/tx/0xe2b78527c3865dcd27165a91b26b19396ad7d6a1eb4c3a0879910fc4101b6511) |
+
 ## MSTScan verification
 Every action in the UI links to `https://testnet.mstscan.com/tx/<hash>`. Open the contract page, tab **Logs**, to see `DefaultDetected`, `HoldbackApplied`, `RoundSettled` and `DividendCredited` with their decoded arguments. Only hashes returned by the MST network are ever displayed.
 
