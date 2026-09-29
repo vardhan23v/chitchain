@@ -78,7 +78,7 @@ export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor,
   });
 
   const eligible = !!me && me.joined && !me.removed && !me.hasWon && bidding;
-  const reason = !active ? "Bidding opens when the circle is active." : phase === "contribution" ? "Bidding opens when contributions close." : phase === "settling" ? "Bidding is closed for this round, waiting for settlement." : !me?.joined ? "Join the circle to bid." : me.hasWon ? "You have already won a round, no more bids." : me.removed ? "Removed members cannot bid." : undefined;
+  const reason = !active ? (circle.status === 2 ? "This circle has completed, every round is settled." : circle.status === 3 ? "This circle was cancelled, no auction took place." : "Bidding opens once the circle fills and starts.") : phase === "contribution" ? "Bidding opens when contributions close." : phase === "settling" ? "Bidding is closed for this round, waiting for settlement." : !me?.joined ? "Join the circle to bid." : me.hasWon ? "You have already won a round, no more bids." : me.removed ? "Removed members cannot bid." : undefined;
 
   return (
     <Card className={cn("relative p-4 md:p-5", className)}>

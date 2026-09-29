@@ -90,8 +90,8 @@ export default function HomePage() {
       </RevealGroup>
 
       {featured && (
-        <section aria-label="Live now" className="space-y-4">
-          <SectionTitle Icon={Radio} tone="text-primary">Live now</SectionTitle>
+        <section aria-label={featured.status <= 1 ? "Live now" : "Latest circle"} className="space-y-4">
+          <SectionTitle Icon={Radio} tone={featured.status <= 1 ? "text-primary" : "text-muted-foreground"}>{featured.status <= 1 ? "Live now" : "Latest circle"}</SectionTitle>
           <Card className="p-5 md:p-6">
             <FeaturedCircle c={featured} />
           </Card>

@@ -74,7 +74,7 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div id="risk" className="grid scroll-mt-20 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <RiskCard data={data} loading={loading} error={error} className="min-w-0" />
         <Card className="min-w-0 p-4 md:p-5">
           <SectionTitle Icon={ShieldCheck} trailing={<Badge variant="outline" className="text-muted-foreground">0 = safest · 100 = riskiest</Badge>}>Risk tier on-chain</SectionTitle>
@@ -102,7 +102,7 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
         </Card>
       </div>
 
-      <section className="space-y-3">
+      <section id="reputation" className="scroll-mt-20 space-y-3">
         <SectionTitle Icon={History} tone="text-chain" trailing={data?.history?.length ? <span className="tnum">{data.history.length} events</span> : undefined}>On-chain history</SectionTitle>
         {data?.history?.length ? (
           <Card className="p-2 md:p-3">

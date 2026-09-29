@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Bot, CheckCircle2, Coins, Gavel, Lock, LogIn, LogOut, Play, ShieldHalf, ShieldAlert, Trophy, Wallet, XCircle, type LucideIcon, Ban, Flag, Sparkles, UserCheck } from "lucide-react";
 import { EASE } from "@/components/motion/Reveal";
 import { TxLink } from "@/components/TxLink";
+import { ZERO_ADDRESS } from "@/lib/contract";
 import { big, formatMst, shortAddr, timeAgo } from "@/lib/format";
 import { TIER_NAME } from "@/lib/labels";
 import type { FeedEvent, Tier } from "@/lib/types";
@@ -45,6 +46,9 @@ export function renderFeedEvent(e: FeedEvent, labels: LabelMap): Rendered {
     case "HoldbackApplied":
       return { Icon: Lock, color: "text-primary", text: `${formatMst(str(a.amount))} MST held back to secure ${member}'s future dues` };
     case "RoundSettled":
+      if (!a.winner || str(a.winner).toLowerCase() === ZERO_ADDRESS) {
+        return { Icon: Trophy, color: "text-muted-foreground", text: `Round ${str(a.round ?? e.round)} settled with no bids, pot shared as dividends` };
+      }
       return { Icon: Trophy, color: "text-primary", text: `${who(a.winner)} won Round ${str(a.round ?? e.round)} · ${formatMst(str(a.payout))} MST payout` };
     case "DividendCredited":
       return { Icon: Coins, color: "text-success", text: `${member} earned ${formatMst(str(a.amount))} MST dividend` };

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Activity, BookOpenText, ExternalLink, Gavel, KeyRound, LayoutGrid, LogOut, Orbit, Settings, ShieldCheck, Star, Wallet, type LucideIcon } from "lucide-react";
+import { Activity, BookOpenText, ExternalLink, Gavel, KeyRound, LayoutGrid, LifeBuoy, LogOut, Orbit, ShieldCheck, Star, Wallet, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavItems } from "@/components/shell/MobileTabs";
@@ -63,11 +63,12 @@ export function Sidebar() {
     { href: "/activity", label: "Transactions", Icon: Activity },
     { href: `${member}${member === "/login" ? "" : "#reputation"}`, label: "Reputation", Icon: Star },
     { href: "/#how", label: "How it works", Icon: BookOpenText },
-    { href: `${member}${member === "/login" ? "" : "#settings"}`, label: "Settings", Icon: Settings },
+    { href: "/support", label: "Support", Icon: LifeBuoy },
   ];
   // Only one item per href family is marked active, so the sidebar shows a single indicator.
   const activeLabel = (() => {
     if (isActive("/activity")) return "Transactions";
+    if (isActive("/support")) return "Support";
     if (isActive("/member")) return "AI risk";
     if (isActive("/dashboard") || isActive("/organizer") || isActive("/admin")) return "Overview";
     if (isActive("/")) return "Auctions";

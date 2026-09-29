@@ -7,6 +7,7 @@ import { MstcAmount } from "@/components/MstcAmount";
 import { TxLink } from "@/components/TxLink";
 import { WithdrawDialog } from "@/components/WithdrawDialog";
 import type { LabelMap } from "@/components/FeedItem";
+import { ZERO_ADDRESS } from "@/lib/contract";
 import { formatMst, shortAddr } from "@/lib/format";
 import type { CircleSummary, FeedEvent, MemberInfo } from "@/lib/types";
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 const who = (labels: LabelMap, a: unknown) => labels[String(a).toLowerCase()] ?? shortAddr(String(a));
+const noWinner = (a: unknown) => !a || String(a).toLowerCase() === ZERO_ADDRESS;
 
 /** DESIGN §12: Cancelled banner and Completed summary. */
 export function RoomBanners({ circle, me, members, events, labels, onWithdraw, pending }: Props) {
@@ -57,9 +59,15 @@ export function RoomBanners({ circle, me, members, events, labels, onWithdraw, p
           {settled.map((e) => (
             <RevealItem as="li" key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5">
               <span className="tnum w-16 text-muted-foreground">Round {String(e.args.round ?? e.round)}</span>
-              <span className="font-medium">{who(labels, e.args.winner)}</span>
-              <span className="tnum">payout <span className="font-semibold text-success">{formatMst(String(e.args.payout ?? "0"))}</span></span>
-              <span className="tnum text-muted-foreground">discount {formatMst(String(e.args.discount ?? "0"))}</span>
+              {noWinner(e.args.winner) ? (
+                <span className="text-muted-foreground">No bids, pot shared as dividends</span>
+              ) : (
+                <>
+                  <span className="font-medium">{who(labels, e.args.winner)}</span>
+                  <span className="tnum">payout <span className="font-semibold text-success">{formatMst(String(e.args.payout ?? "0"))}</span></span>
+                  <span className="tnum text-muted-foreground">discount {formatMst(String(e.args.discount ?? "0"))}</span>
+                </>
+              )}
               <TxLink hash={e.txHash} label="MSTScan" className="ml-auto text-xs" />
             </RevealItem>
           ))}
