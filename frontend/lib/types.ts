@@ -202,6 +202,9 @@ export interface ServiceHealth {
   provider?: string;
   error?: string | null;
   lastOkAt?: number | null;
+  configured?: boolean;
+  reachable?: boolean | null;
+  baseUrl?: string | null;
 }
 
 /** GET /health. `demo`, `crew` and `llm` are absent on older backends. */

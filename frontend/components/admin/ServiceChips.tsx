@@ -16,6 +16,13 @@ function summarise(v: ServiceHealth | string | boolean | undefined): { label: st
     const warn = ["degraded", "stale", "slow", "warming"].includes(s);
     return { label: v.charAt(0).toUpperCase() + v.slice(1), tone: ok ? "ok" : warn ? "warn" : "bad" };
   }
+  // Backend shape: crew = { configured, reachable, model }, llm = { configured, baseUrl, model }.
+  if (v.status === undefined && v.ok === undefined && (v.configured !== undefined || v.reachable !== undefined)) {
+    const detail = v.model ?? undefined;
+    if (v.configured === false) return { label: "Not configured", tone: "warn", detail: detail ? `${detail} · deterministic fallback` : "deterministic fallback" };
+    if (v.reachable === false) return { label: "Unreachable", tone: "bad", detail };
+    return { label: "Online", tone: "ok", detail };
+  }
   const status = v.status?.toLowerCase();
   const ok = v.ok === true || (v.ok === undefined && !!status && ["ok", "online", "up", "ready", "healthy", "connected"].includes(status));
   const warn = !ok && !!status && ["degraded", "stale", "slow", "warming"].includes(status);
