@@ -1,5 +1,5 @@
 import { EventLog, type Log } from "ethers";
-import { contractAddress, isConfigured, provider, readContract } from "./chain";
+import { contractAddress, invalidateChainCache, isConfigured, provider, readContract } from "./chain";
 import { config } from "./config";
 import { getLastBlock, getMeta, insertEvents, prisma, setLastBlock, setMeta, type NewEvent } from "./db";
 import { bus, loop } from "./bus";
@@ -72,6 +72,7 @@ export async function indexOnce(): Promise<void> {
     const rows = await toRows(logs);
     const inserted = rows.length ? await insertEvents(rows) : 0;
     if (inserted > 0) {
+      invalidateChainCache();
       console.log(`[indexer] blocks ${from}-${to}: ${inserted} new event(s)`);
       for (const r of rows) {
         bus.emit("chainEvent", r.name, r.circleId, r.args);

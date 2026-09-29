@@ -15,8 +15,8 @@ export const FAUCET_URL = "https://faucet.masterstroke.academy";
 export const BRIDGEKEY_URL = "https://chromewebstore.google.com/detail/bridgekey/bfjojdcfenehemjgjlepdjomkpginlkg"; // Chrome Web Store listing
 
 /** Polling intervals (ms). Backend is primary; contract views are the fallback. */
-export const POLL_API_MS = 2500;
-export const POLL_CHAIN_MS = 3000;
+export const POLL_API_MS = 4000;
+export const POLL_CHAIN_MS = 6000;
 export const RPC_SLOW_MS = 10_000;
 export const KEEPER_LATE_MS = 15_000;
 

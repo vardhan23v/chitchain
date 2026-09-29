@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { ZeroAddress } from "ethers";
 import {
-  contractAddress, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, getRound, getRoundHistory, isConfigured, labelOf, provider,
+  cachedRead, contractAddress, getCircle, getCircleCount, getMember, getMembers, getRequiredCollateral, getRound, getRoundHistory, isConfigured, labelOf, provider,
   roundPhase, toJson, type CircleView, type MemberView, type RoundView,
 } from "../chain";
 import { z } from "zod";
@@ -224,7 +224,7 @@ circles.post("/circles/:id/claim", requireAuth(), wrap(async (req, res) => {
 
 circles.get("/stats", wrap(async (_req, res) => {
   if (!isConfigured()) { res.json({ circlesLive: 0, circlesTotal: 0, mstcInContract: "0", txCount: 0 }); return; }
-  const [list, balance, txCount] = await Promise.all([allCircles(), provider.getBalance(contractAddress!), countDistinctTx()]);
+  const [list, balance, txCount] = await Promise.all([allCircles(), cachedRead("balance:contract", () => provider.getBalance(contractAddress!)), countDistinctTx()]);
   res.json({
     circlesLive: list.filter(({ c }) => c.status === 0 || c.status === 1).length,
     circlesTotal: list.length,

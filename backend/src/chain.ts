@@ -71,8 +71,27 @@ export interface ReputationView { paidOnTime: number; missed: number; circlesCom
 const n = (v: unknown): number => Number(v);
 const b = (v: unknown): bigint => BigInt(v as bigint | string | number);
 
-export async function getCircleCount(c = readContract()): Promise<number> { return n(await c.circleCount()); }
-export async function getCircle(id: number, c = readContract()): Promise<CircleView> {
+/**
+ * Short-lived single-flight cache for RPC reads. The MST RPC costs ~0.5 s per call, several endpoints poll every few
+ * seconds, and loops read the same views, so identical reads within `ttlMs` share one round trip. Cleared whenever a
+ * transaction we sent mines or the indexer sees new events, so nothing stays stale after state changes.
+ */
+const cache = new Map<string, { at: number; value: Promise<unknown> }>();
+export const CHAIN_CACHE_MS = 2000;
+export function cachedRead<T>(key: string, fn: () => Promise<T>, ttlMs = CHAIN_CACHE_MS): Promise<T> {
+  const now = Date.now();
+  const hit = cache.get(key);
+  if (hit && now - hit.at < ttlMs) return hit.value as Promise<T>;
+  const value = fn().catch((e) => { cache.delete(key); throw e; });
+  cache.set(key, { at: now, value });
+  if (cache.size > 5000) for (const [k, v] of cache) if (now - v.at >= ttlMs) cache.delete(k);
+  return value;
+}
+export function invalidateChainCache(): void { cache.clear(); }
+
+export async function getCircleCount(c = readContract()): Promise<number> { return cachedRead("count", async () => n(await c.circleCount())); }
+export function getCircle(id: number, c = readContract()): Promise<CircleView> { return cachedRead(`circle:${id}`, () => readCircle(id, c)); }
+async function readCircle(id: number, c: Contract): Promise<CircleView> {
   const r = (await c.getCircle(id)) as Result;
   return {
     creator: String(r.creator), contribution: b(r.contribution), baseCollateral: b(r.baseCollateral), maxMembers: n(r.maxMembers),
@@ -82,10 +101,11 @@ export async function getCircle(id: number, c = readContract()): Promise<CircleV
     reserve: b(r.reserve), memberCount: n(r.memberCount),
   };
 }
-export async function getMembers(id: number, c = readContract()): Promise<string[]> {
-  return Array.from((await c.getMembers(id)) as Result).map(String);
+export function getMembers(id: number, c = readContract()): Promise<string[]> {
+  return cachedRead(`members:${id}`, async () => Array.from((await c.getMembers(id)) as Result).map(String));
 }
-export async function getMember(id: number, addr: string, c = readContract()): Promise<MemberView> {
+export function getMember(id: number, addr: string, c = readContract()): Promise<MemberView> { return cachedRead(`member:${id}:${addr.toLowerCase()}`, () => readMember(id, addr, c)); }
+async function readMember(id: number, addr: string, c: Contract): Promise<MemberView> {
   const r = (await c.getMember(id, addr)) as Result;
   return {
     joined: Boolean(r.joined), tier: n(r.tier) as Tier, hasWon: Boolean(r.hasWon), removed: Boolean(r.removed),
@@ -93,7 +113,8 @@ export async function getMember(id: number, addr: string, c = readContract()): P
     defaults: n(r.defaults), collateralUsed: b(r.collateralUsed),
   };
 }
-export async function getRound(id: number, c = readContract()): Promise<RoundView> {
+export function getRound(id: number, c = readContract()): Promise<RoundView> { return cachedRead(`round:${id}`, () => readRound(id, c)); }
+async function readRound(id: number, c: Contract): Promise<RoundView> {
   const r = (await c.getRound(id)) as Result;
   return {
     round: n(r.round), contributionDeadline: n(r.contributionDeadline), deadline: n(r.biddingDeadline), expectedPot: b(r.expectedPot), collected: b(r.collected),
@@ -101,7 +122,15 @@ export async function getRound(id: number, c = readContract()): Promise<RoundVie
   };
 }
 /** Settlement record for a past round (winner = zero address means the pot was shared as dividends). */
-export async function getRoundHistory(id: number, round: number, c = readContract()): Promise<RoundRecord> {
+export function getRoundHistory(id: number, round: number, c = readContract()): Promise<RoundRecord> {
+  // Settled rounds never change; unsettled ones return settledAt 0 and are re-read after the short TTL.
+  return cachedRead(`history:${id}:${round}`, async () => {
+    const rec = await readRoundHistory(id, round, c);
+    if (rec.settledAt > 0) cache.set(`history:${id}:${round}`, { at: Date.now() + 60 * 60 * 1000, value: Promise.resolve(rec) });
+    return rec;
+  });
+}
+async function readRoundHistory(id: number, round: number, c: Contract): Promise<RoundRecord> {
   const r = (await c.getRoundHistory(id, round)) as Result;
   return { winner: String(r.winner), settledAt: n(r.settledAt), pot: b(r.pot), payout: b(r.payout), discount: b(r.discount), fee: b(r.fee), holdback: b(r.holdback) };
 }
@@ -119,11 +148,12 @@ export function createCircleCall(wallet: ManagedWallet, p: CircleParams): Promis
     feeBps: p.feeBps, holdbackBps: p.holdbackBps, maxDiscountBps: p.maxDiscountBps, lowBps: p.lowBps, mediumBps: p.mediumBps, highBps: p.highBps,
   }) as Promise<ContractTransactionResponse>;
 }
-export async function getRequiredCollateral(addr: string, id: number, c = readContract()): Promise<bigint> {
-  return b(await c.requiredCollateral(addr, id));
+export function getRequiredCollateral(addr: string, id: number, c = readContract()): Promise<bigint> {
+  return cachedRead(`required:${id}:${addr.toLowerCase()}`, async () => b(await c.requiredCollateral(addr, id)));
 }
-export async function getRiskTier(addr: string, c = readContract()): Promise<Tier> { return n(await c.riskTier(addr)) as Tier; }
-export async function getReputation(addr: string, c = readContract()): Promise<ReputationView> {
+export function getRiskTier(addr: string, c = readContract()): Promise<Tier> { return cachedRead(`tier:${addr.toLowerCase()}`, async () => n(await c.riskTier(addr)) as Tier); }
+export function getReputation(addr: string, c = readContract()): Promise<ReputationView> { return cachedRead(`rep:${addr.toLowerCase()}`, () => readReputation(addr, c)); }
+async function readReputation(addr: string, c: Contract): Promise<ReputationView> {
   const r = (await c.reputation(addr)) as Result;
   return { paidOnTime: n(r.paidOnTime), missed: n(r.missed), circlesCompleted: n(r.circlesCompleted), circlesRemoved: n(r.circlesRemoved) };
 }
@@ -184,6 +214,7 @@ export async function sendTx(ctx: string, signer: ManagedWallet, send: () => Pro
   const rc = await res.wait(1).catch(fail);
   if (!rc || rc.status !== 1) return fail(new Error(`[${ctx}] tx ${res.hash} reverted`));
   tx.mined += 1;
+  invalidateChainCache();
   console.log(`[${ctx}] mined block ${rc.blockNumber} txHash ${res.hash}`);
   return rc;
 }

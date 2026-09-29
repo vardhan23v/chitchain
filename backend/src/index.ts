@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { config } from "./config";
-import { contractAddress, keeper, provider, txStats } from "./chain";
+import { cachedRead, contractAddress, keeper, provider, txStats } from "./chain";
 import { getLastBlock, initDb } from "./db";
 import { startIndexer } from "./indexer";
 import { startKeeper } from "./keeper";
@@ -35,7 +35,7 @@ app.use((req, _res, next) => { if (req.method !== "GET") console.log(`[api] ${re
 
 app.get("/health", wrap(async (_req, res) => {
   let latestBlock: number | null = null;
-  try { latestBlock = await provider.getBlockNumber(); } catch { /* rpc down */ }
+  try { latestBlock = await cachedRead("blockNumber", () => provider.getBlockNumber(), 5000); } catch { /* rpc down */ }
   const loops = loopStatus();
   const indexer = loops.find((l) => l.name === "indexer");
   const nowSec = Math.floor(Date.now() / 1000);
