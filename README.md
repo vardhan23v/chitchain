@@ -1,30 +1,40 @@
 # ChitChain — the pot sits in a contract, not in anyone's account
 
-[![Live app](https://img.shields.io/badge/live%20app-Railway-7C3AED?logo=railway&logoColor=white&style=for-the-badge)](https://frontend-production-d322.up.railway.app)
-[![Backend](https://img.shields.io/badge/backend-health-16A34A?logo=express&logoColor=white&style=for-the-badge)](https://backend-production-64738.up.railway.app/health)
-[![Contract](https://img.shields.io/badge/contract-0xFBA4…CA98-C0392B?logo=ethereum&logoColor=white&style=for-the-badge)](https://testnet.mstscan.com/address/0xFBA432E34E70d6069677d80944A9eEf83376CA98)
-[![MST Testnet](https://img.shields.io/badge/MST%20Testnet-chain%2091562037-C0392B?style=for-the-badge)](https://testnet.mstscan.com)
-[![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity&logoColor=white&style=for-the-badge)](contracts/ChitChain.sol)
-[![Hardhat tests](https://img.shields.io/badge/Hardhat%20tests-29%20passing-F7DF1E?logo=ethereum&logoColor=black&style=for-the-badge)](test)
-[![Backend tests](https://img.shields.io/badge/backend%20tests-60%20passing-16A34A?logo=node.js&logoColor=white&style=for-the-badge)](backend)
-[![No real money](https://img.shields.io/badge/money-MST%20TESTNET%20only-D97706?style=for-the-badge)](#no-real-money)
-[![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white&style=for-the-badge)](frontend)
-[![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?logo=prisma&logoColor=white&style=for-the-badge)](backend/prisma/schema.prisma)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Railway-4169E1?logo=postgresql&logoColor=white&style=for-the-badge)](backend/prisma/schema.prisma)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![AI agent](https://img.shields.io/badge/AI%20agent-health-8B7CF6?logo=fastapi&logoColor=white&style=for-the-badge)](https://ai-agent-production-fef8.up.railway.app/health)
-[![CrewAI](https://img.shields.io/badge/CrewAI-bidding%20crew-FF5A50?style=for-the-badge)](agent)
-[![Groq](https://img.shields.io/badge/LLM-Groq%20qwen3-F55036?style=for-the-badge)](agent)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white&style=for-the-badge)](agent)
-[![FastAPI](https://img.shields.io/badge/FastAPI-agent%20service-009688?logo=fastapi&logoColor=white&style=for-the-badge)](agent/main.py)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white&style=for-the-badge)](backend)
-[![Express](https://img.shields.io/badge/Express-API-000000?logo=express&logoColor=white&style=for-the-badge)](backend/src)
-[![ethers](https://img.shields.io/badge/ethers-v6-2535A0?style=for-the-badge)](frontend/lib)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-06B6D4?logo=tailwindcss&logoColor=white&style=for-the-badge)](frontend/tailwind.config.ts)
-[![Framer Motion](https://img.shields.io/badge/Framer%20Motion-11-0055FF?logo=framer&logoColor=white&style=for-the-badge)](frontend/components/motion)
-[![Wallet](https://img.shields.io/badge/wallet-BridgeKey-7C3AED?style=for-the-badge)](https://chromewebstore.google.com/detail/bridgekey/bfjojdcfenehemjgjlepdjomkpginlkg)
-[![Theme](https://img.shields.io/badge/theme-dark%20midnight%20%2B%20MST%20red-D7263D?style=for-the-badge)](DESIGN.md)
-[![Hosted on Railway](https://img.shields.io/badge/hosted%20on-Railway-0B0D0E?logo=railway&logoColor=white&style=for-the-badge)](https://railway.app)
+<p align="center">
+  <a href="https://frontend-production-d322.up.railway.app"><img alt="Live app" src="https://img.shields.io/badge/live%20app-Railway-7C3AED?logo=railway&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="https://backend-production-64738.up.railway.app/health"><img alt="Backend" src="https://img.shields.io/badge/backend-health-16A34A?logo=express&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="https://ai-agent-production-fef8.up.railway.app/health"><img alt="AI agent" src="https://img.shields.io/badge/AI%20agent-health-8B7CF6?logo=fastapi&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="https://railway.app"><img alt="Hosted on Railway" src="https://img.shields.io/badge/hosted%20on-Railway-0B0D0E?logo=railway&amp;logoColor=white&amp;style=for-the-badge"></a>
+</p>
+<p align="center">
+  <a href="https://testnet.mstscan.com"><img alt="MST Testnet" src="https://img.shields.io/badge/MST%20Testnet-chain%2091562037-C0392B?style=for-the-badge"></a>
+  <a href="https://testnet.mstscan.com/address/0xFBA432E34E70d6069677d80944A9eEf83376CA98"><img alt="Contract" src="https://img.shields.io/badge/contract-0xFBA4…CA98-C0392B?logo=ethereum&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="contracts/ChitChain.sol"><img alt="Solidity" src="https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="https://chromewebstore.google.com/detail/bridgekey/bfjojdcfenehemjgjlepdjomkpginlkg"><img alt="Wallet" src="https://img.shields.io/badge/wallet-BridgeKey-7C3AED?style=for-the-badge"></a>
+  <a href="#no-real-money"><img alt="No real money" src="https://img.shields.io/badge/money-MST%20TESTNET%20only-D97706?style=for-the-badge"></a>
+</p>
+<p align="center">
+  <a href="test"><img alt="Hardhat tests" src="https://img.shields.io/badge/Hardhat%20tests-29%20passing-F7DF1E?logo=ethereum&amp;logoColor=black&amp;style=for-the-badge"></a>
+  <a href="backend"><img alt="Backend tests" src="https://img.shields.io/badge/backend%20tests-60%20passing-16A34A?logo=node.js&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge"></a>
+</p>
+<p align="center">
+  <a href="frontend"><img alt="Next.js" src="https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="backend"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="frontend/tailwind.config.ts"><img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-CSS-06B6D4?logo=tailwindcss&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="frontend/components/motion"><img alt="Framer Motion" src="https://img.shields.io/badge/Framer%20Motion-11-0055FF?logo=framer&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="frontend/lib"><img alt="ethers" src="https://img.shields.io/badge/ethers-v6-2535A0?style=for-the-badge"></a>
+  <a href="DESIGN.md"><img alt="Theme" src="https://img.shields.io/badge/theme-dark%20midnight%20%2B%20MST%20red-D7263D?style=for-the-badge"></a>
+</p>
+<p align="center">
+  <a href="backend/src"><img alt="Express" src="https://img.shields.io/badge/Express-API-000000?logo=express&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="backend/prisma/schema.prisma"><img alt="Prisma" src="https://img.shields.io/badge/Prisma-5-2D3748?logo=prisma&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="backend/prisma/schema.prisma"><img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-Railway-4169E1?logo=postgresql&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="agent"><img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="agent/main.py"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-agent%20service-009688?logo=fastapi&amp;logoColor=white&amp;style=for-the-badge"></a>
+  <a href="agent"><img alt="CrewAI" src="https://img.shields.io/badge/CrewAI-bidding%20crew-FF5A50?style=for-the-badge"></a>
+  <a href="agent"><img alt="Groq" src="https://img.shields.io/badge/LLM-Groq%20qwen3-F55036?style=for-the-badge"></a>
+</p>
 
 ChitChain is a trust-minimised chit fund on **MST Blockchain**. Members lock collateral and pay into a pot that lives inside a smart contract. Each round the contract runs a reverse auction, pays the winner, covers missed payments from the defaulter's collateral, and holds back part of early winners' payouts as security for their future dues. An AI risk engine prices each member's collateral (Low 0.5× · Medium 1× · High/Unassessed 2× by default) and an AI bidding agent bids for members based on a plain-language goal. Nobody, not the organiser and not the AI, ever holds the money.
 
