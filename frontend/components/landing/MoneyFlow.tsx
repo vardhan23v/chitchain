@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useAnimationFrame, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useAnimationFrame, useMotionValueEvent, useScroll, useTransform } from "framer-motion";
+import { useReducedMotion } from "@/components/motion/MotionPref";
 import { Award, Coins, FileCode2, Gavel, Lock, PiggyBank, Trophy, Users, type LucideIcon } from "lucide-react";
 import { formatMst } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -111,11 +112,17 @@ export function MoneyFlow({ live, compact, className }: MoneyFlowProps) {
   const reduce = useReducedMotion();
   const lg = useLg();
   const visible = usePageVisible();
-  const running = !reduce && visible;
   const wrap = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [open, setOpen] = useState<string | null>(null);
+  // Scroll trace: a solid line draws over the dashed connector as the flow enters the viewport, and nodes switch on left to right.
+  const { scrollYProgress } = useScroll({ target: wrap, offset: ["start 95%", "start 40%"] });
+  const draw = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  const [lit, setLit] = useState(NODES.length);
+  useMotionValueEvent(draw, "change", (v) => setLit(Math.round(v * NODES.length)));
+  const litCount = reduce ? NODES.length : lit;
+  const running = !reduce && visible && litCount >= NODES.length;
 
   useEffect(() => {
     const el = wrap.current;
@@ -141,10 +148,11 @@ export function MoneyFlow({ live, compact, className }: MoneyFlowProps) {
         {d && (
           <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" aria-hidden>
             <path ref={pathRef} d={d} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" strokeDasharray="4 6" />
+            {!reduce && <motion.path d={d} fill="none" stroke="hsl(var(--pot))" strokeOpacity="0.8" strokeWidth="1.5" strokeLinecap="round" style={{ pathLength: draw }} />}
             <Particles pathRef={pathRef} running={running} />
           </svg>
         )}
-        {NODES.map((node) => {
+        {NODES.map((node, i) => {
           const note = annotation(node, live);
           const isOpen = open === node.key;
           return (
@@ -158,7 +166,7 @@ export function MoneyFlow({ live, compact, className }: MoneyFlowProps) {
               onBlur={() => setOpen((o) => (o === node.key ? null : o))}
               onClick={() => setOpen((o) => (o === node.key ? null : node.key))}
               aria-expanded={isOpen}
-              className="relative flex items-start gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-col lg:items-center lg:text-center"
+              className={cn("relative flex items-start gap-3 rounded-xl text-left transition-opacity duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-col lg:items-center lg:text-center", i >= litCount && "opacity-40")}
             >
               <span className={cn("relative z-[1] flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/10 bg-surface2 transition-colors", isOpen && "border-white/20 bg-surface3", node.tone)}>
                 <node.Icon className="h-5 w-5" aria-hidden />

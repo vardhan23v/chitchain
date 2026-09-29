@@ -1,13 +1,16 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useReducedMotion } from "@/components/motion/MotionPref";
+import { RollingClock } from "@/components/motion/RollingClock";
 import { Button } from "@/components/ui/button";
 import { EASE } from "@/components/motion/Reveal";
 import { MstcAmount } from "@/components/MstcAmount";
 import { DemoBadge } from "@/components/TestnetBadge";
 import { useCountdown } from "@/hooks/useCountdown";
-import { formatClock, formatMst } from "@/lib/format";
+import { formatMst } from "@/lib/format";
 import type { CircleSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +44,13 @@ export function FeaturedCircle({ c }: { c: CircleSummary }) {
     return { x: 100 + 82 * Math.cos(a), y: 100 + 82 * Math.sin(a), filled: i < c.memberCount };
   });
   const status = active ? `Round ${c.round} of ${c.maxMembers}` : open ? `${c.memberCount} of ${c.maxMembers} joined` : c.status === 2 ? "Completed" : "Cancelled";
-  const clock = active ? `Round closes in ${formatClock(round.remaining)}` : open ? (join.remaining > 0 ? `Join window closes in ${formatClock(join.remaining)}` : "Join window closed") : `${c.maxMembers} rounds of ${formatMst(pot)} MST`;
+  const clock: ReactNode = active ? (
+    <>Round closes in <RollingClock seconds={round.remaining} /></>
+  ) : open ? (
+    join.remaining > 0 ? <>Join window closes in <RollingClock seconds={join.remaining} /></> : "Join window closed"
+  ) : (
+    `${c.maxMembers} rounds of ${formatMst(pot)} MST`
+  );
 
   return (
     <div className="relative mx-auto w-full max-w-[360px]">

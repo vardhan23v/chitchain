@@ -34,7 +34,7 @@ interface Props {
 export function StatTile({ label, value, hint, loading, testnet, Icon, iconClassName, badge, className, valueClassName, children }: Props) {
   const shown = typeof value === "number" && Number.isFinite(value) ? <CountUp value={value} fromZero /> : value;
   return (
-    <motion.div variants={revealItem} className={cn("card-hover flex min-w-0 flex-col rounded-2xl border border-white/[0.08] bg-surface p-4 text-card-foreground shadow-card md:p-5", className)}>
+    <motion.div variants={revealItem} className={cn("spotlight card-hover flex min-w-0 flex-col rounded-2xl border border-white/[0.08] bg-surface p-4 text-card-foreground shadow-card md:p-5", className)}>
       <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
         <span className="truncate">{label}</span>
         {badge}

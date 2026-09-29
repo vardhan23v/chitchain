@@ -46,7 +46,7 @@
   }
 
   * { @apply border-border; }
-  html { -webkit-tap-highlight-color: transparent; background: #0D0F13; color-scheme: dark; }
+  html { -webkit-tap-highlight-color: transparent; background: #0D0F13; color-scheme: dark; scroll-behavior: smooth; }
   body { @apply text-foreground antialiased; background: #0D0F13; font-size: 15px; overflow-x: hidden; }
   /* The only decoration: a fixed 1 px grid at 4 % and one radial red glow at 6 % top-left. */
   body::before {
@@ -108,6 +108,26 @@
 @keyframes ringSpin { to { transform: rotate(360deg); } }
 .ring-spin { transform-box: view-box; transform-origin: 50% 50%; animation: ringSpin 32s linear infinite; will-change: transform; }
 
-@media (prefers-reduced-motion: reduce) {
-  *:not(.ring-spin), *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+/* Spotlight: a pointer-tracked highlight on a card's 1 px border. SpotlightGroup sets --mx/--my per card. */
+.spotlight { position: relative; }
+.spotlight::after {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; opacity: 0; transition: opacity 200ms ease;
+  background: radial-gradient(240px circle at var(--mx, -999px) var(--my, -999px), rgba(255, 255, 255, 0.4), rgba(215, 38, 61, 0.35) 35%, rgba(0, 0, 0, 0) 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
 }
+.spotlight-group:hover .spotlight::after { opacity: 1; }
+
+/* Live ticker: two identical rows; the track slides one row's width and loops. Pauses on hover. */
+@keyframes ticker { to { transform: translateX(-50%); } }
+.ticker-track { width: max-content; animation: ticker 40s linear infinite; will-change: transform; }
+.ticker-mask:hover .ticker-track { animation-play-state: paused; }
+.ticker-mask { -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); }
+
+/* Motion kill switch. The OS setting applies unless the site toggle is "on" (html[data-motion="on"]); "off" applies it regardless. */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion="on"]) { scroll-behavior: auto; }
+  html:not([data-motion="on"]) *:not(.ring-spin), html:not([data-motion="on"]) *::before, html:not([data-motion="on"]) *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+html[data-motion="off"] { scroll-behavior: auto; }
+html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }

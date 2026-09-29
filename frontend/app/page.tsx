@@ -11,7 +11,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CircleCard } from "@/components/CircleCard";
 import { EmptyState } from "@/components/EmptyState";
 import { HowItWorks } from "@/components/HowItWorks";
+import { LiveTicker } from "@/components/landing/LiveTicker";
 import { MoneyFlow, type MoneyFlowLive } from "@/components/landing/MoneyFlow";
+import type { PotExample } from "@/components/landing/PotStory";
+import { Magnetic } from "@/components/motion/Magnetic";
+import { Parallax } from "@/components/motion/Parallax";
+import { SplitText } from "@/components/motion/SplitText";
+import { SpotlightGroup } from "@/components/motion/Spotlight";
 import { Transparency } from "@/components/landing/Transparency";
 import { WhyBlockchain } from "@/components/landing/WhyBlockchain";
 import { CountUp, CountUpMst } from "@/components/motion/CountUp";
@@ -42,6 +48,10 @@ export default function HomePage() {
   const stats = data?.stats ?? null;
   const count = (f: Filter) => all.filter((c) => FILTERS[f](c.status)).length;
   const featured = pickFeatured(all);
+  // The How-it-works illustration uses the featured circle's real parameters; shapes only when there is no circle yet.
+  const example: PotExample | null = featured
+    ? { potWei: BigInt(featured.contribution) * BigInt(featured.maxMembers), contributionWei: BigInt(featured.contribution), maxMembers: featured.maxMembers, maxDiscountBps: featured.maxDiscountBps, name: featured.name ?? `Circle #${featured.id}` }
+    : null;
   const enterHref = auth.status === "authenticated" ? auth.home : "/login";
 
   // Live values for the hero flow come from the first active circle (newest id); otherwise the flow shows neutral copy.
@@ -55,22 +65,24 @@ export default function HomePage() {
     <div className="space-y-10 md:space-y-12">
       {/* Hero: copy, CTAs, then the signature money flow. */}
       <RevealGroup as="section" mode="load" className="space-y-8 pt-2 md:pt-6">
-        <div className="max-w-2xl">
+        <Parallax className="max-w-2xl" distance={28} fadeTo={0.3}>
           <RevealItem className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
             <span>Chit funds on MST Blockchain</span>
             <TestnetBadge size="xs" />
           </RevealItem>
           <RevealItem>
-            <h1 className="mt-3 text-[36px] font-semibold leading-[1.08] tracking-tight md:text-[44px] md:leading-[48px]">Chit funds, rebuilt on-chain.</h1>
+            <h1 className="mt-3 text-[36px] font-semibold leading-[1.08] tracking-tight md:text-[44px] md:leading-[48px]">
+              <SplitText text="Chit funds, rebuilt on-chain." delay={0.1} />
+            </h1>
           </RevealItem>
           <RevealItem>
             <p className="mt-4 text-[15px] text-muted-foreground md:text-lg">Save together. Bid when you need it. Let smart contracts handle the pot.</p>
           </RevealItem>
           <RevealItem className="mt-6 flex flex-wrap gap-3">
-            <Button size="lg" asChild><Link href={enterHref}>Enter ChitChain</Link></Button>
-            <Button size="lg" variant="secondary" asChild><a href="#how">How it works</a></Button>
+            <Magnetic><Button size="lg" asChild><Link href={enterHref}>Enter ChitChain</Link></Button></Magnetic>
+            <Magnetic><Button size="lg" variant="secondary" asChild><a href="#how">How it works</a></Button></Magnetic>
           </RevealItem>
-        </div>
+        </Parallax>
         <RevealItem>
           <Card className="grid-texture p-4 md:p-6">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted-foreground">
@@ -82,12 +94,16 @@ export default function HomePage() {
         </RevealItem>
       </RevealGroup>
 
+      <SpotlightGroup>
       <RevealGroup as="section" className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Network stats">
         <StatTile label="Circles live" Icon={CircleDot} iconClassName="text-primary" value={stats?.circlesLive ?? (data ? all.filter((c) => c.status <= 1).length : "—")} loading={loading && !data} hint={stats ? `${stats.circlesTotal} total` : data?.source === "chain" ? "read from contract" : undefined} />
         <StatTile label="MST in contracts" Icon={Coins} iconClassName="text-pot" testnet value={stats ? <CountUpMst wei={stats.mstcInContract} fromZero /> : "—"} valueClassName="text-pot" loading={loading && !data} hint={stats ? "held by the contract, not by anyone" : "temporarily unavailable"} />
         <StatTile label="On-chain transactions" Icon={Activity} iconClassName="text-chain" value={stats ? <CountUp value={stats.txCount} fromZero /> : "—"} loading={loading && !data} hint={stats ? "every one verifiable on MSTScan" : "temporarily unavailable"} />
         <StatTile label="Members in live circles" Icon={Users} iconClassName="text-agent" value={data ? <CountUp value={liveMembers} fromZero /> : "—"} loading={loading && !data} hint={data ? "seats taken in open and active circles" : "temporarily unavailable"} />
       </RevealGroup>
+      </SpotlightGroup>
+
+      <LiveTicker />
 
       {featured && (
         <section aria-label={featured.status <= 1 ? "Live now" : "Latest circle"} className="space-y-4">
@@ -98,7 +114,7 @@ export default function HomePage() {
         </section>
       )}
 
-      <HowItWorks />
+      <HowItWorks example={example} />
 
       <WhyBlockchain />
 
@@ -139,9 +155,11 @@ export default function HomePage() {
         ) : (
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={filter} exit={{ opacity: 0 }} transition={{ duration: 0.15, ease: EASE }}>
-              <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {circles.map((c) => <CircleCard key={c.id} c={c} />)}
-              </RevealGroup>
+              <SpotlightGroup>
+                <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {circles.map((c) => <CircleCard key={c.id} c={c} />)}
+                </RevealGroup>
+              </SpotlightGroup>
             </motion.div>
           </AnimatePresence>
         )}

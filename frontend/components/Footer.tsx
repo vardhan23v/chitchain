@@ -1,3 +1,4 @@
+import { MotionToggle } from "@/components/motion/MotionToggle";
 import { HONEST_LIMITS, TESTNET_DISCLAIMER } from "@/lib/labels";
 
 export function Footer() {
@@ -7,6 +8,7 @@ export function Footer() {
         <p>{TESTNET_DISCLAIMER}</p>
         <p>{HONEST_LIMITS}</p>
         <p>Prototype on MST Testnet · Not a registered chit company · Chit Funds Act, 1982</p>
+        <div className="pt-3"><MotionToggle variant="pill" /></div>
       </div>
     </footer>
   );

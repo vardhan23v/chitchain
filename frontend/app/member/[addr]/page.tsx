@@ -14,6 +14,7 @@ import { InfoBanner } from "@/components/InfoBanner";
 import { PageHeader, SectionTitle } from "@/components/PageHeader";
 import { FeedItem } from "@/components/FeedItem";
 import { RiskCard } from "@/components/RiskCard";
+import { DrawLine } from "@/components/motion/DrawLine";
 import { scoreBand } from "@/components/ScoreGauge";
 import { TierChip } from "@/components/TierChip";
 import { TxLink } from "@/components/TxLink";
@@ -106,7 +107,7 @@ function Profile({ address, isYou }: { address: string; isYou: boolean }) {
         <SectionTitle Icon={History} tone="text-chain" trailing={data?.history?.length ? <span className="tnum">{data.history.length} events</span> : undefined}>On-chain history</SectionTitle>
         {data?.history?.length ? (
           <Card className="p-2 md:p-3">
-            <ol className="relative ml-3 space-y-0.5 border-l border-dashed border-white/[0.12] pl-1">{data.history.slice().reverse().map((e) => <FeedItem key={`${e.txHash}-${e.logIndex}`} e={e} labels={labelMap} now={Date.now()} />)}</ol>
+            <DrawLine as="ol" className="ml-3 space-y-0.5 pl-1" color="bg-chain/70">{data.history.slice().reverse().map((e) => <FeedItem key={`${e.txHash}-${e.logIndex}`} e={e} labels={labelMap} now={Date.now()} />)}</DrawLine>
           </Card>
         ) : (
           <EmptyState Icon={History} tone="bg-chain/10 text-chain" title={data ? "No on-chain events for this wallet yet." : "History is temporarily unavailable."} text={data ? "Join a circle and every contribution, bid and payout will appear here." : "Try again in a moment."} />

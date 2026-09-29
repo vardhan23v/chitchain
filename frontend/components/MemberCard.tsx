@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useReducedMotion } from "@/components/motion/MotionPref";
 import { EASE } from "@/components/motion/Reveal";
 import { XCircle } from "lucide-react";
 import Link from "next/link";

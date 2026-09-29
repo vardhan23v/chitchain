@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useReducedMotion } from "@/components/motion/MotionPref";
 
 /** Confetti-lite: 10 particles, 600 ms (DESIGN §10). No-op when reduced motion is preferred. */
 export function ConfettiLite({ trigger }: { trigger: number }) {

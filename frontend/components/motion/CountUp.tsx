@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { animate, useReducedMotion } from "framer-motion";
+import { animate } from "framer-motion";
+import { useReducedMotion } from "@/components/motion/MotionPref";
 import { formatUnits } from "ethers";
 import { EASE } from "@/components/motion/Reveal";
 import { cn } from "@/lib/utils";

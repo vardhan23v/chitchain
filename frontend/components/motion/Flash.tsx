@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useReducedMotion } from "@/components/motion/MotionPref";
 import { EASE } from "@/components/motion/Reveal";
 import { cn } from "@/lib/utils";
 

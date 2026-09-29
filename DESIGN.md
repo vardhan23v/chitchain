@@ -327,3 +327,23 @@ Utilities: `.card-hover` (translateY(-2px) + border white/14, 150 ms), `.grid-te
 Buttons: `default` red pill, `secondary` and `outline` (`bg-white/[0.06] border-white/10`), `ghost`, `destructive`, `link`; hover `scale-[1.02]`, active `scale-[0.98]`. Dialogs fade and scale in 150 ms over `bg-black/60`; dropdowns fade and translate; tooltips fade and rise; skeletons shimmer. All motion is transform and opacity only and stops under reduced motion.
 
 Shell: 240 px sidebar at xl (72 px icon rail with tooltips between md and xl, hidden below md), 64 px top header with the page title from `lib/routes.ts`, five-tab mobile bar. The signature animation is `components/landing/MoneyFlow.tsx`: Members → Collateral → Smart contract → Pot → Auction → Winner → Dividends → Reputation with two particles on a 6 s loop, paused under reduced motion and while the tab is hidden.
+
+
+## 15. Motion catalogue (v2.1, 2026-09-29)
+
+Every effect follows the site animation preference (`components/motion/MotionPref.tsx`): System follows the OS reduce-motion setting, On and Off override it, stored in `localStorage` as `chitchain:motion` and mirrored on `<html data-motion>` before first paint. The toggle lives in the footer and the sidebar bottom block. Transforms and opacity only; every effect has a static fallback.
+
+| Effect | Where | Component |
+|---|---|---|
+| Reading progress bar, 2 px red, spring-smoothed | every page, top edge | `motion/ScrollProgress.tsx` (mounted by `shell/TopHeader.tsx`, which also gains a shadow after 8 px of scroll) |
+| Headline word reveal, words rise out of clipped lines | landing hero | `motion/SplitText.tsx` |
+| Hero parallax and fade | landing hero copy | `motion/Parallax.tsx` |
+| Cursor-following body glow (spring lag, pointer devices only) | every page, behind cards | `motion/CursorGlow.tsx` |
+| Live on-chain ticker of the newest real events, pauses on hover | landing, under the stats | `landing/LiveTicker.tsx` |
+| Pinned scrollytelling How it works: steps light up and the pot illustration plays one round (join, contribute, bid, settle) driven by scroll; a self-drawing timeline on small screens | landing | `HowItWorks.tsx`, `landing/PotStory.tsx`, `motion/DrawLine.tsx` |
+| Money-flow connector traces itself and nodes switch on as it scrolls into view | landing hero, dashboard | `landing/MoneyFlow.tsx` |
+| Self-drawing rail on the on-chain history | profile page | `motion/DrawLine.tsx` |
+| Spotlight: pointer-tracked highlight on card borders | landing stats and circles grid | `motion/Spotlight.tsx`, `.spotlight` in `globals.css` |
+| Magnetic primary buttons (lean up to 6 px toward the pointer) | landing CTAs | `motion/Magnetic.tsx` |
+| Rolling countdown digits | auction card, featured circle | `motion/RollingClock.tsx` |
+| Hero ring spins continuously | landing featured circle | `.ring-spin` in `globals.css` (stays on under the OS setting, stops when the toggle is Off) |

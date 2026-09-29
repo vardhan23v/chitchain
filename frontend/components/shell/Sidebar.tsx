@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Activity, BookOpenText, ExternalLink, Gavel, KeyRound, LayoutGrid, LifeBuoy, LogOut, Orbit, ShieldCheck, Star, Wallet, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { MotionToggle } from "@/components/motion/MotionToggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavItems } from "@/components/shell/MobileTabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -109,6 +110,7 @@ export function Sidebar() {
           ) : (
             <span>Contract not deployed yet</span>
           )}
+          <MotionToggle variant="row" />
           {signedIn ? (
             <button type="button" onClick={() => void auth.signOut()} className="flex items-center gap-1.5 rounded-md text-foreground hover:text-primary">
               <LogOut className="h-3.5 w-3.5" aria-hidden /> Sign out
@@ -126,6 +128,7 @@ export function Sidebar() {
             </TooltipTrigger>
             <TooltipContent side="right">{CHAIN_NAME} · {network.label}</TooltipContent>
           </Tooltip>
+          <MotionToggle variant="icon" />
           <Tooltip>
             <TooltipTrigger asChild>
               {signedIn ? (

@@ -16,7 +16,8 @@ import { usePolling } from "@/hooks/usePolling";
 import { api } from "@/lib/api";
 import { POLL_API_MS } from "@/lib/chain";
 import { ZERO_ADDRESS } from "@/lib/contract";
-import { big, formatClock, formatMst, sameAddr, shortAddr, timeAgo } from "@/lib/format";
+import { RollingClock } from "@/components/motion/RollingClock";
+import { big, formatMst, sameAddr, shortAddr, timeAgo } from "@/lib/format";
 import { TOOLTIPS } from "@/lib/labels";
 import type { AuctionBid, CircleSummary, MemberInfo, RoundInfo, RoundPhase } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -105,7 +106,7 @@ export function AuctionCard({ circle, round, phase, me, activeMembers, labelFor,
           </Flash>
         </Tile>
         <Tile label="Time remaining" className={cn(under30 && "border-warning/40")}>
-          <span className={cn(under30 && "text-warning")}>{bidding ? formatClock(clock.remaining) : phase === "contribution" ? <span className="text-[15px] font-medium text-muted-foreground">Contributions open</span> : <span className="text-[15px] font-medium text-muted-foreground">Closed</span>}</span>
+          <span className={cn(under30 && "text-warning")}>{bidding ? <RollingClock seconds={clock.remaining} /> : phase === "contribution" ? <span className="text-[15px] font-medium text-muted-foreground">Contributions open</span> : <span className="text-[15px] font-medium text-muted-foreground">Closed</span>}</span>
         </Tile>
         <Tile label="Participants"><span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4 text-muted-foreground" aria-hidden />{activeMembers}</span> <span className="text-[12px] font-medium text-muted-foreground">{rows.length} bid{rows.length === 1 ? "" : "s"}</span></Tile>
       </div>

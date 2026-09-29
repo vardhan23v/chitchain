@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useReducedMotion } from "@/components/motion/MotionPref";
 import { Check, Clock, FileText, Radio, Send, Wallet, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ErrorState";
