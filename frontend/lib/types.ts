@@ -224,7 +224,7 @@ export interface Health {
 export interface AdminTreasury {
   treasury: string;
   claimable: string;
-  lastWithdrawTx: string | null;
+  lastWithdrawTx: { txHash: string; ts: number; amount: string } | null;
 }
 
 export type DataSource = "api" | "chain";

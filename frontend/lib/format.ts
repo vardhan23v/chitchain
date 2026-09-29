@@ -47,7 +47,7 @@ export function mst(wei: bigint | string | number | null | undefined, decimals =
 }
 
 export function shortAddr(addr: string | null | undefined, head = 6, tail = 4): string {
-  if (!addr) return "—";
+  if (!addr || typeof addr !== "string") return "—";
   if (addr.length <= head + tail + 2) return addr;
   return `${addr.slice(0, head)}…${addr.slice(-tail)}`;
 }

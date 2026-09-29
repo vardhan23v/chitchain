@@ -21,7 +21,7 @@ export function TreasuryTiles() {
   const [lastTx, setLastTx] = useState<string | null>(null);
   const claimable = big(t.data?.claimable);
   const unavailable = !t.data && !!t.error;
-  const txHash = lastTx ?? t.data?.lastWithdrawTx ?? null;
+  const txHash = lastTx ?? t.data?.lastWithdrawTx?.txHash ?? null;
 
   const withdraw = async () => {
     setBusy(true);
