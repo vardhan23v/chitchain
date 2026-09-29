@@ -12,6 +12,19 @@
 [![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?logo=prisma&logoColor=white)](backend/prisma/schema.prisma)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Railway-4169E1?logo=postgresql&logoColor=white)](backend/prisma/schema.prisma)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![AI agent](https://img.shields.io/badge/AI%20agent-health-8B7CF6?logo=fastapi&logoColor=white)](https://ai-agent-production-fef8.up.railway.app/health)
+[![CrewAI](https://img.shields.io/badge/CrewAI-bidding%20crew-FF5A50)](agent)
+[![Groq](https://img.shields.io/badge/LLM-Groq%20qwen3-F55036)](agent)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](agent)
+[![FastAPI](https://img.shields.io/badge/FastAPI-agent%20service-009688?logo=fastapi&logoColor=white)](agent/main.py)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](backend)
+[![Express](https://img.shields.io/badge/Express-API-000000?logo=express&logoColor=white)](backend/src)
+[![ethers](https://img.shields.io/badge/ethers-v6-2535A0)](frontend/lib)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-06B6D4?logo=tailwindcss&logoColor=white)](frontend/tailwind.config.ts)
+[![Framer Motion](https://img.shields.io/badge/Framer%20Motion-11-0055FF?logo=framer&logoColor=white)](frontend/components/motion)
+[![Wallet](https://img.shields.io/badge/wallet-BridgeKey-7C3AED)](https://chromewebstore.google.com/detail/bridgekey/bfjojdcfenehemjgjlepdjomkpginlkg)
+[![Theme](https://img.shields.io/badge/theme-dark%20midnight%20%2B%20MST%20red-D7263D)](DESIGN.md)
+[![Hosted on Railway](https://img.shields.io/badge/hosted%20on-Railway-0B0D0E?logo=railway&logoColor=white)](https://railway.app)
 
 ChitChain is a trust-minimised chit fund on **MST Blockchain**. Members lock collateral and pay into a pot that lives inside a smart contract. Each round the contract runs a reverse auction, pays the winner, covers missed payments from the defaulter's collateral, and holds back part of early winners' payouts as security for their future dues. An AI risk engine prices each member's collateral (Low 0.5× · Medium 1× · High/Unassessed 2× by default) and an AI bidding agent bids for members based on a plain-language goal. Nobody, not the organiser and not the AI, ever holds the money.
 
