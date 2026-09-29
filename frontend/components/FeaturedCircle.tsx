@@ -59,13 +59,8 @@ export function FeaturedCircle({ c }: { c: CircleSummary }) {
             transition={{ duration: active ? 3.2 : 4.8, ease: "easeInOut", repeat: Infinity }}
           />
         )}
-        {/* The contract ring and the members sitting on it turn together, slowly. */}
-        <motion.g
-          style={{ transformOrigin: "100px 100px" }}
-          initial={{ rotate: 0 }}
-          animate={reduce ? { rotate: 0 } : { rotate: 360 }}
-          transition={reduce ? { duration: 0 } : { duration: 60, ease: "linear", repeat: Infinity, delay: 0.2 + n * 0.04 }}
-        >
+        {/* The contract ring and the members sitting on it turn together, slowly and continuously (CSS keyframe, see .ring-spin). */}
+        <g className="ring-spin">
           {/* Invisible, symmetric bounds so the group's rotation origin is exactly the centre. */}
           <circle cx="100" cy="100" r="90" fill="none" stroke="none" />
           <circle cx="100" cy="100" r="82" fill="none" stroke="hsl(var(--primary))" strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="3 4" />
@@ -100,7 +95,7 @@ export function FeaturedCircle({ c }: { c: CircleSummary }) {
                   transition={{ duration: 1.6, ease: EASE, delay: 1 + i * 0.9, repeat: Infinity, repeatDelay: Math.max(0, arr.length * 0.9 - 1.6) }}
                 />
               ))}
-        </motion.g>
+        </g>
         <circle cx="100" cy="100" r="60" fill="hsl(var(--surface-2))" stroke="rgba(255,255,255,0.1)" />
       </svg>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">

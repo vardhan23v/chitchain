@@ -104,6 +104,10 @@
   .status-dot { @apply inline-block h-2 w-2 rounded-full; animation: pulseDot 2s ease-in-out infinite; }
 }
 
+/* Hero ring: a slow, steady turn. Kept on under reduced motion: it is small, linear and never loops content. */
+@keyframes ringSpin { to { transform: rotate(360deg); } }
+.ring-spin { transform-box: view-box; transform-origin: 50% 50%; animation: ringSpin 32s linear infinite; will-change: transform; }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  *:not(.ring-spin), *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
